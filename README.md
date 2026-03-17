@@ -265,8 +265,6 @@ MIT License — see [LICENSE](LICENSE)
 
 Hayal Oezkan · [malkreide](https://github.com/malkreide)
 
-*Part of the Swiss public-sector AI infrastructure portfolio.*
-
 ---
 
 ## Credits & Related Projects
