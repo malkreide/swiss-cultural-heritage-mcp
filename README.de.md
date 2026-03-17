@@ -265,8 +265,6 @@ MIT-Lizenz — siehe [LICENSE](LICENSE)
 
 Hayal Oezkan · [malkreide](https://github.com/malkreide)
 
-*Teil des Schweizer Open-Data-Portfolios für öffentliche KI-Infrastruktur.*
-
 ---
 
 ## Credits & Verwandte Projekte
