@@ -10,13 +10,14 @@ AI-nativer Zugang zu drei Schweizer Kulturerbe-Quellen:
 Kein API-Schlüssel erforderlich. Alle Daten öffentlich zugänglich unter offenen Lizenzen.
 """
 
+from __future__ import annotations
+
 import asyncio
 import csv
 import io
 import json
 import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import List, Optional
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -50,7 +51,7 @@ class ResponseFormat(str, Enum):
 
 
 # ─────────────────────────── Shared Utilities ──────────────────────────────────
-async def _http_get(url: str, params: Optional[dict] = None) -> httpx.Response:
+async def _http_get(url: str, params: dict | None = None) -> httpx.Response:
     """Wiederverwendbare HTTP-GET-Funktion mit einheitlichem Timeout."""
     async with httpx.AsyncClient(follow_redirects=True) as client:
         return await client.get(url, params=params, timeout=HTTP_TIMEOUT)
@@ -88,7 +89,7 @@ def _paginate(items: list, limit: int, offset: int) -> dict:
     }
 
 
-def _parse_oai_records(xml_text: str) -> List[dict]:
+def _parse_oai_records(xml_text: str) -> list[dict]:
     """Parsed OAI-PMH ListRecords/GetRecord-Antwort in eine Liste von Dicts."""
     root = ET.fromstring(xml_text)
     records = []
@@ -124,7 +125,7 @@ def _parse_oai_records(xml_text: str) -> List[dict]:
     return records
 
 
-def _extract_resumption_token(xml_text: str) -> Optional[str]:
+def _extract_resumption_token(xml_text: str) -> str | None:
     """Extrahiert OAI-PMH Resumption Token für Paginierung."""
     root    = ET.fromstring(xml_text)
     token_el = root.find(".//oai:resumptionToken", OAI_NS)
@@ -148,19 +149,19 @@ class ArtistSearchInput(BaseModel):
     """Input für die SIK-ISEA Künstler·innen-Suche."""
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:     Optional[str] = Field(
+    query:     str | None = Field(
         default=None, max_length=200,
         description="Name oder Namensteil (z. B. 'Hodler', 'Sophie Taeuber-Arp', 'Giacometti')"
     )
-    region:    Optional[str] = Field(
+    region:    str | None = Field(
         default=None, max_length=100,
         description="Schweizer Kanton oder Region (z. B. 'Zürich', 'Bern', 'Ticino', 'Genf')"
     )
-    period:    Optional[str] = Field(
+    period:    str | None = Field(
         default=None, max_length=100,
         description="Epoche oder Zeitraum (z. B. '19. Jahrhundert', 'Moderne', '1880-1950')"
     )
-    technique: Optional[str] = Field(
+    technique: str | None = Field(
         default=None, max_length=100,
         description="Technik oder Medium (z. B. 'Ölmalerei', 'Grafik', 'Skulptur', 'Fotografie')"
     )
@@ -170,7 +171,7 @@ class ArtistSearchInput(BaseModel):
 
     @field_validator("query", "region", "technique", "period")
     @classmethod
-    def not_blank(cls, v: Optional[str]) -> Optional[str]:
+    def not_blank(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
             raise ValueError("Darf nicht leer sein.")
         return v
@@ -194,22 +195,16 @@ async def heritage_search_artists(params: ArtistSearchInput) -> str:
 
     Args:
         params (ArtistSearchInput):
-            - query (Optional[str]):     Namenssuche (z. B. 'Hodler', 'Taeuber')
-            - region (Optional[str]):    Kanton/Region (z. B. 'Zürich', 'Wallis')
-            - period (Optional[str]):    Epoche (z. B. '19. Jahrhundert', '1880-1920')
-            - technique (Optional[str]): Technik (z. B. 'Ölmalerei', 'Skulptur')
+            - query (str | None):     Namenssuche (z. B. 'Hodler', 'Taeuber')
+            - region (str | None):    Kanton/Region (z. B. 'Zürich', 'Wallis')
+            - period (str | None):    Epoche (z. B. '19. Jahrhundert', '1880-1920')
+            - technique (str | None): Technik (z. B. 'Ölmalerei', 'Skulptur')
             - limit (int):               Max. Ergebnisse (Standard: 20)
             - offset (int):              Paginierungs-Offset
             - response_format:           'markdown' oder 'json'
 
     Returns:
         str: Liste gefundener Künstler·innen mit Name, Lebensdaten, Kanton, Technik.
-
-        Erfolg (Markdown):
-            ## [Name] | SIK-ID: …
-            Lebensdaten: … | Kanton: … | Technik: …
-
-        Fehler: "Fehler: …"
     """
     try:
         api_params: dict = {"format": "json"}
@@ -375,11 +370,11 @@ class MuseumSearchInput(BaseModel):
     """Input für SNM-Datensatzsuche."""
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:      Optional[str] = Field(
+    query:      str | None = Field(
         default=None, max_length=200,
         description="Suchbegriff (z. B. 'Münzen', 'Siegel', 'Mittelalter', 'Waffen', 'Textil')"
     )
-    collection: Optional[str] = Field(
+    collection: str | None = Field(
         default=None, max_length=100,
         description="Sammlungsfilter (z. B. 'numismatik', 'siegelsammlung', 'spezialsammlungen')"
     )
@@ -406,27 +401,14 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> str:
 
     Args:
         params (MuseumSearchInput):
-            - query (Optional[str]):      Suchbegriff über Titel/Beschreibung
-            - collection (Optional[str]): Sammlungsfilter (z. B. 'numismatik')
+            - query (str | None):      Suchbegriff über Titel/Beschreibung
+            - collection (str | None): Sammlungsfilter (z. B. 'numismatik')
             - limit / offset:             Paginierung
             - response_format:            'markdown' oder 'json'
 
     Returns:
         str: Liste verfügbarer SNM-Datensätze mit Titel, Beschreibung und
              Download-URLs (CSV, XLSX, JSON).
-
-        Schema:
-            {
-              "total": int,
-              "datasets": [
-                {
-                  "name": str,       # CKAN Package-ID
-                  "title": str,
-                  "description": str,
-                  "resources": [{"name": str, "format": str, "url": str}]
-                }
-              ]
-            }
     """
     try:
         search_q = f"organization:{SNM_ORG}"
@@ -516,7 +498,7 @@ class CollectionBrowseInput(BaseModel):
         ..., min_length=1,
         description="CKAN Resource-ID (aus heritage_search_museum_datasets, z. B. 'abc123-...')"
     )
-    query:  Optional[str] = Field(default=None, max_length=200, description="Suchbegriff im Datensatz")
+    query:  str | None = Field(default=None, max_length=200, description="Suchbegriff im Datensatz")
     limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
     offset: int = Field(default=0, ge=0)
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
@@ -536,24 +518,16 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> str:
     """Durchsucht Objekte innerhalb eines SNM-Sammlungsdatensatzes via CKAN DataStore.
 
     Voraussetzung: Resource-ID aus `heritage_search_museum_datasets`.
-    Geeignet für Objekte in der Numismatik-, Siegel- oder Spezialsammlung.
 
     Args:
         params (CollectionBrowseInput):
             - resource_id (str): CKAN Resource-ID (aus heritage_search_museum_datasets)
-            - query (Optional[str]): Suchbegriff (z. B. 'Zürich', 'Karl der Grosse', 'Gold')
+            - query (str | None): Suchbegriff (z. B. 'Zürich', 'Karl der Grosse', 'Gold')
             - limit / offset: Paginierung
             - response_format: 'markdown' oder 'json'
 
     Returns:
         str: Liste von Sammlungsobjekten mit verfügbaren Feldern.
-
-        Schema:
-            {
-              "total": int,
-              "fields": [str],
-              "records": [dict]  # Struktur abhängig vom Datensatz
-            }
     """
     try:
         api_params: dict = {
@@ -598,7 +572,7 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> str:
             fields[0] if fields else None,
         )
 
-        lines = [f"# SNM-Sammlung: Objekte\n"]
+        lines = ["# SNM-Sammlung: Objekte\n"]
         lines.append(f"**Ressource:** `{params.resource_id}`")
         if params.query:
             lines.append(f"**Suche:** *{params.query}*")
@@ -632,7 +606,7 @@ class HelvticatSearchInput(BaseModel):
     """Input für die OAI-PMH-Suche in der Nationalbibliothek."""
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:      Optional[str] = Field(
+    query:      str | None = Field(
         default=None, max_length=300,
         description=(
             "Suchbegriff für clientseitige Filterung (Titel, Autor, Schlagwort) — "
@@ -640,16 +614,16 @@ class HelvticatSearchInput(BaseModel):
             "Hinweis: OAI-PMH unterstützt keine serverseitige Volltextsuche."
         )
     )
-    set_spec:   Optional[str] = Field(
+    set_spec:   str | None = Field(
         default=None, max_length=100,
         description="OAI-Set-Bezeichner (aus heritage_list_nb_collections) — z. B. 'helveticat'"
     )
-    from_date:  Optional[str] = Field(
+    from_date:  str | None = Field(
         default=None,
         description="Publikationen ab diesem Datum (YYYY oder YYYY-MM-DD)",
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
     )
-    until_date: Optional[str] = Field(
+    until_date: str | None = Field(
         default=None,
         description="Publikationen bis zu diesem Datum (YYYY oder YYYY-MM-DD)",
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
@@ -671,40 +645,17 @@ class HelvticatSearchInput(BaseModel):
 async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
     """Durchsucht die Schweizerische Nationalbibliothek (Helveticat) via OAI-PMH.
 
-    Helveticat ist die Nationalbibliografie der Schweiz und verzeichnet alle
-    in der Schweiz erschienenen Publikationen (Pflichtexemplargesetz).
-
-    Hinweis: OAI-PMH unterstützt keine serverseitige Volltextsuche. Datum- und
-    Set-Filter sind am effektivsten; query-Parameter filtert clientseitig.
-
     Args:
         params (HelvticatSearchInput):
-            - query (Optional[str]):      Clientseitige Filterung (Titel, Autor)
-            - set_spec (Optional[str]):   OAI-Set-ID (aus heritage_list_nb_collections)
-            - from_date (Optional[str]):  Datum von (YYYY oder YYYY-MM-DD)
-            - until_date (Optional[str]): Datum bis (YYYY oder YYYY-MM-DD)
+            - query (str | None):      Clientseitige Filterung (Titel, Autor)
+            - set_spec (str | None):   OAI-Set-ID (aus heritage_list_nb_collections)
+            - from_date (str | None):  Datum von (YYYY oder YYYY-MM-DD)
+            - until_date (str | None): Datum bis (YYYY oder YYYY-MM-DD)
             - limit (int):                Max. Ergebnisse 1–50 (Standard: 10)
             - response_format:            'markdown' oder 'json'
 
     Returns:
         str: Liste von Publikationen mit Titel, Autor, Jahr, Schlagwörtern und Identifier.
-
-        Schema:
-            {
-              "count": int,
-              "has_more": bool,
-              "records": [
-                {
-                  "identifier": str,
-                  "title": str | [str],
-                  "creator": str | [str],
-                  "date": str,
-                  "subject": str | [str],
-                  "description": str,
-                  "language": str
-                }
-              ]
-            }
     """
     try:
         oai_params: dict = {"verb": "ListRecords", "metadataPrefix": "oai_dc"}
@@ -793,7 +744,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
             lines.append("")
 
         if resumption:
-            lines.append(f"*Weitere Ergebnisse verfügbar (OAI Resumption Token vorhanden).*")
+            lines.append("*Weitere Ergebnisse verfügbar (OAI Resumption Token vorhanden).*")
 
         return "\n".join(lines)
 
@@ -814,17 +765,11 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
 async def heritage_list_nb_collections(response_format: str = "markdown") -> str:
     """Listet verfügbare Sammlungen/Sets der Nationalbibliothek auf (OAI-PMH ListSets).
 
-    Liefert die OAI-Set-Bezeichner (`set_spec`) für die gezielte Suche in
-    spezifischen NB-Teilbeständen via `heritage_search_helveticat`.
-
     Args:
         response_format (str): 'markdown' oder 'json'
 
     Returns:
         str: Liste aller OAI-PMH Sets mit Bezeichner (setSpec) und Name.
-
-        Schema:
-            {"sets": [{"spec": str, "name": str}]}
     """
     try:
         resp = await _http_get(NB_OAI_PMH, params={"verb": "ListSets"})
@@ -887,9 +832,6 @@ async def heritage_get_publication(params: PublicationDetailInput) -> str:
 
     Returns:
         str: Vollständige DC-Metadaten (Titel, Autor, Verlag, Sprache, Rechte, etc.).
-
-        DC-Felder: title, creator, contributor, publisher, date, type, format,
-                   language, subject, description, source, relation, coverage, rights
     """
     try:
         resp = await _http_get(
@@ -958,7 +900,7 @@ class CrossSearchInput(BaseModel):
             "'Industrialisierung Schweiz')"
         )
     )
-    sources: List[str] = Field(
+    sources: list[str] = Field(
         default=["sik_isea", "snm", "nb"],
         description="Quellen: 'sik_isea', 'snm', 'nb' (Standard: alle drei)",
     )
@@ -969,7 +911,7 @@ class CrossSearchInput(BaseModel):
 
     @field_validator("sources")
     @classmethod
-    def validate_sources(cls, v: List[str]) -> List[str]:
+    def validate_sources(cls, v: list[str]) -> list[str]:
         valid   = {"sik_isea", "snm", "nb"}
         invalid = set(v) - valid
         if invalid:
@@ -990,19 +932,10 @@ class CrossSearchInput(BaseModel):
 async def heritage_cross_search(params: CrossSearchInput) -> str:
     """Durchsucht SIK-ISEA, SNM und NB gleichzeitig nach einem Begriff.
 
-    Aggregiert Ergebnisse aus drei Schweizer Kulturerbe-Quellen in einer
-    einzigen Abfrage — ideal für interdisziplinäre Recherchen.
-
-    Beispiele:
-        - 'Ferdinand Hodler' → Biografie (SIK-ISEA) + SNM-Objekte + Bücher (NB)
-        - 'Mittelalter Zürich' → Kunstwerke + Museumsobjekte + Forschungsliteratur
-        - 'Volksschule' → Bildungsgeschichte + Historisches + Kunstpädagogik
-        - 'Gottfried Keller' → Autor (NB) + historische Objekte (SNM)
-
     Args:
         params (CrossSearchInput):
             - query (str): Suchbegriff
-            - sources (List[str]): ['sik_isea', 'snm', 'nb'] (Standard: alle)
+            - sources (list[str]): ['sik_isea', 'snm', 'nb'] (Standard: alle)
             - limit_per_source (int): Max. Ergebnisse je Quelle (Standard: 5)
 
     Returns:
