@@ -12,36 +12,36 @@ Ausführen:
 """
 
 import json
+
+import httpx
 import pytest
 import respx
-import httpx
 
 from swiss_cultural_heritage_mcp.server import (
-    ArtistSearchInput,
-    ArtistDetailInput,
-    MuseumSearchInput,
-    CollectionBrowseInput,
-    HelvticatSearchInput,
-    PublicationDetailInput,
-    CrossSearchInput,
-    ResponseFormat,
-    _paginate,
-    _parse_oai_records,
-    _extract_resumption_token,
-    _normalize_ckan_title,
-    _handle_error,
-    SIK_ISEA_API,
     CKAN_API,
     NB_OAI_PMH,
-    SNM_ORG,
-    heritage_search_artists,
-    heritage_get_artist,
-    heritage_search_museum_datasets,
+    SIK_ISEA_API,
+    ArtistDetailInput,
+    ArtistSearchInput,
+    CollectionBrowseInput,
+    CrossSearchInput,
+    HelvticatSearchInput,
+    MuseumSearchInput,
+    PublicationDetailInput,
+    ResponseFormat,
+    _extract_resumption_token,
+    _handle_error,
+    _normalize_ckan_title,
+    _paginate,
+    _parse_oai_records,
     heritage_browse_collection,
-    heritage_search_helveticat,
-    heritage_list_nb_collections,
-    heritage_get_publication,
     heritage_cross_search,
+    heritage_get_artist,
+    heritage_get_publication,
+    heritage_list_nb_collections,
+    heritage_search_artists,
+    heritage_search_helveticat,
+    heritage_search_museum_datasets,
 )
 
 # ─────────────────────────── Fixtures ──────────────────────────────────────────
@@ -420,7 +420,6 @@ class TestHeritageSIKISEA:
     @pytest.mark.asyncio
     async def test_get_artist_404(self):
         with respx.mock:
-            req = httpx.Request("GET", f"{SIK_ISEA_API}/personendaten/99999")
             respx.get(f"{SIK_ISEA_API}/personendaten/99999").mock(
                 return_value=httpx.Response(404)
             )

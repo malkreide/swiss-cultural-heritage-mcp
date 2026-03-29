@@ -17,7 +17,7 @@ import csv
 import io
 import json
 import xml.etree.ElementTree as ET
-from enum import Enum
+from enum import StrEnum
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -44,7 +44,7 @@ OAI_NS = {
 
 
 # ─────────────────────────── Enum ──────────────────────────────────────────────
-class ResponseFormat(str, Enum):
+class ResponseFormat(StrEnum):
     """Ausgabeformat für Tool-Antworten."""
     MARKDOWN = "markdown"
     JSON     = "json"
@@ -239,10 +239,14 @@ async def heritage_search_artists(params: ArtistSearchInput) -> str:
             return json.dumps(paged, ensure_ascii=False, indent=2)
 
         filters = []
-        if params.query:     filters.append(f"Name: *{params.query}*")
-        if params.region:    filters.append(f"Kanton: *{params.region}*")
-        if params.technique: filters.append(f"Technik: *{params.technique}*")
-        if params.period:    filters.append(f"Epoche: *{params.period}*")
+        if params.query:
+            filters.append(f"Name: *{params.query}*")
+        if params.region:
+            filters.append(f"Kanton: *{params.region}*")
+        if params.technique:
+            filters.append(f"Technik: *{params.technique}*")
+        if params.period:
+            filters.append(f"Epoche: *{params.period}*")
 
         lines = ["# SIK-ISEA Künstler·innen-Suche\n"]
         if filters:
