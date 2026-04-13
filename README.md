@@ -29,6 +29,10 @@ This server completes the humanistic dimension of the Swiss public data portfoli
 
 **Anchor demo query:** *"Find works by Zurich-based painters from the 19th century in the Nationalmuseum, and cross-reference with their biography in the SIK-ISEA artist database."*
 
+### Demo
+
+![Demo: Claude using heritage_cross_search](docs/assets/demo.svg)
+
 ---
 
 ## Features
@@ -220,6 +224,17 @@ swiss-cultural-heritage-mcp/
 ├── README.md                    # This file (English)
 └── README.de.md                 # German version
 ```
+
+---
+
+## Safety & Limits
+
+- **Read-only:** All tools perform HTTP GET requests only — no data is written, modified, or deleted.
+- **No personal data:** The APIs return institutional records (artworks, publications, artists). No personally identifiable information (PII) is processed or stored by this server.
+- **Rate limits:** SIK-ISEA and OAI-PMH endpoints are not rate-limit-documented; use `limit` parameters conservatively. The server enforces a 30s timeout per request.
+- **Data freshness:** Records reflect the upstream source at query time. No caching is performed by this server.
+- **Terms of service:** Data is subject to the ToS of each source — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/terms-of-use), [Nationalbibliothek OAI-PMH](https://www.nb.admin.ch/). All data is published under open licenses (CC0 / CC BY).
+- **No guarantees:** This server is a community project, not affiliated with SIK-ISEA, SNM, or NB. Availability depends on upstream APIs.
 
 ---
 
