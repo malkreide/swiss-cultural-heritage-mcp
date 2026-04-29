@@ -90,6 +90,8 @@ Try it immediately in Claude Desktop:
 > *"What coins does the Nationalmuseum have from Zurich?"*
 > *"Find publications about Volksschule in the Swiss national bibliography"*
 
+[→ More use cases by audience →](EXAMPLES.md)
+
 ---
 
 ## Configuration

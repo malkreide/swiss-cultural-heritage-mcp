@@ -90,6 +90,8 @@ Sofort in Claude Desktop ausprobieren:
 > *«Welche Münzen aus Zürich hat das Nationalmuseum?»*
 > *«Finde Publikationen zur Volksschule in der Nationalbibliothek»*
 
+[→ Weitere Anwendungsbeispiele nach Zielgruppe →](EXAMPLES.md)
+
 ---
 
 ## Konfiguration
