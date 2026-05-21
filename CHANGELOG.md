@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-21
+
+### Added
+- `/health` endpoint for Render / Kubernetes / Cloud Run liveness probes
+- Hardened `Dockerfile` (non-root UID 10001, slim Python base)
+- `docs/security.md`, `docs/network-egress.md`, `docs/data-residency.md`
+- Nightly live-test CI workflow (`.github/workflows/nightly-live.yml`)
+- `NbCollectionsInput` Pydantic model for `heritage_list_nb_collections`
+- `.gitignore`
+- Reproducible audit deliverables under `audits/` (baseline + re-run reports, per-finding files)
+
+### Changed
+- HTTP client now owned by FastMCP `lifespan`; a single `httpx.AsyncClient` is reused across all requests
+- All tools catch the narrow `ExpectedUpstreamError` tuple instead of bare `Exception`
+- Dependency upper bounds tightened (`<2.0.0` on `mcp`, `<1.0.0` on `httpx`, `<3.0.0` on `pydantic`, `<1.0.0` on `defusedxml`)
+- `__version__` derived from `importlib.metadata.version()` (single source of truth)
+- `heritage_cross_search.idempotentHint` corrected from `False` to `True`
+- README (EN + DE): Render section now requires the Frankfurt region for Swiss public-sector deployments
+
+### Security
+- Egress allow-list (`ALLOWED_HOSTS` frozenset) enforced on every HTTP request
+- `follow_redirects=False` on the shared httpx client to close the redirect-chain SSRF vector
+- Swapped `xml.etree.ElementTree` → `defusedxml.ElementTree` for OAI-PMH parsing
+- Programming bugs now propagate to the framework layer instead of being hidden in user-facing strings
+
 ## [0.1.0] - 2026-03-13
 
 ### Added
