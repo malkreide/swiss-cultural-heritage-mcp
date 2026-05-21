@@ -1,0 +1,30 @@
+name: Nightly Live Tests
+
+# Runs the @pytest.mark.live suite against the real upstream APIs once per day
+# to catch schema drift and silent breaking changes. Failures do not block the
+# main branch — they trigger a notification so a maintainer can investigate.
+#
+# Audit reference: OPS-001 (test strategy).
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # 04:17 UTC daily
+  workflow_dispatch:
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run live tests
+        run: PYTHONPATH=src pytest tests/ -m live
