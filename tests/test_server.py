@@ -18,6 +18,7 @@ import pytest
 import respx
 
 from swiss_cultural_heritage_mcp.server import (
+    ALLOWED_HOSTS,
     CKAN_API,
     NB_OAI_PMH,
     SIK_ISEA_API,
@@ -29,8 +30,10 @@ from swiss_cultural_heritage_mcp.server import (
     MuseumSearchInput,
     PublicationDetailInput,
     ResponseFormat,
+    _assert_allowed,
     _extract_resumption_token,
     _handle_error,
+    _http_get,
     _normalize_ckan_title,
     _paginate,
     _parse_oai_records,
@@ -282,6 +285,27 @@ class TestNormalizeCkanTitle:
 
     def test_none(self):
         assert _normalize_ckan_title(None) == "—"
+
+
+class TestEgressAllowList:
+    def test_allowed_hosts_contain_upstreams(self):
+        assert "api.sik-isea.ch" in ALLOWED_HOSTS
+        assert "opendata.swiss" in ALLOWED_HOSTS
+        assert "www.nb.admin.ch" in ALLOWED_HOSTS
+
+    def test_assert_allowed_accepts_known_host(self):
+        _assert_allowed(SIK_ISEA_API)
+        _assert_allowed(CKAN_API)
+        _assert_allowed(NB_OAI_PMH)
+
+    def test_assert_allowed_rejects_unknown_host(self):
+        with pytest.raises(ValueError, match="Allow-List"):
+            _assert_allowed("https://evil.example.com/exfil")
+
+    @pytest.mark.asyncio
+    async def test_http_get_rejects_unknown_host(self):
+        with pytest.raises(ValueError, match="Allow-List"):
+            await _http_get("https://evil.example.com/exfil")
 
 
 class TestHandleError:
