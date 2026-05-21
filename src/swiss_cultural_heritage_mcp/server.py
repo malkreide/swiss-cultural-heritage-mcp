@@ -16,15 +16,15 @@ import asyncio
 import csv
 import io
 import json
-import xml.etree.ElementTree as ET
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from enum import StrEnum
+from typing import Final
 
 import httpx
+from defusedxml import ElementTree as ET
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-# ─────────────────────────── Server ────────────────────────────────────────────
-mcp = FastMCP("swiss_cultural_heritage_mcp")
 
 # ─────────────────────────── Konstanten ────────────────────────────────────────
 SIK_ISEA_API  = "https://api.sik-isea.ch"
@@ -35,12 +35,53 @@ HTTP_TIMEOUT  = 30.0
 DEFAULT_LIMIT = 20
 MAX_LIMIT     = 100
 
+# Egress-Allow-List (SEC-021): nur diese Hosts dürfen kontaktiert werden.
+ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
+    "api.sik-isea.ch",
+    "opendata.swiss",
+    "www.nb.admin.ch",
+})
+
 # OAI-PMH XML-Namespaces
 OAI_NS = {
     "oai":    "http://www.openarchives.org/OAI/2.0/",
     "oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
     "dc":     "http://purl.org/dc/elements/1.1/",
 }
+
+
+# ─────────────────────────── HTTP-Client-Lifecycle (SDK-001) ───────────────────
+# Genau ein httpx.AsyncClient pro Serverprozess. Der Lifespan erzeugt/schliesst
+# ihn; ausserhalb des Lifespans (z. B. in Unit-Tests) wird lazy initialisiert.
+_http_client: httpx.AsyncClient | None = None
+
+
+def _new_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=False)
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = _new_client()
+    return _http_client
+
+
+@asynccontextmanager
+async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
+    """Erzeugt einen geteilten httpx-Client für die Lebensdauer des Servers."""
+    global _http_client
+    _http_client = _new_client()
+    try:
+        yield
+    finally:
+        client, _http_client = _http_client, None
+        if client is not None:
+            await client.aclose()
+
+
+# ─────────────────────────── Server ────────────────────────────────────────────
+mcp = FastMCP("swiss_cultural_heritage_mcp", lifespan=lifespan)
 
 
 # ─────────────────────────── Enum ──────────────────────────────────────────────
@@ -51,10 +92,29 @@ class ResponseFormat(StrEnum):
 
 
 # ─────────────────────────── Shared Utilities ──────────────────────────────────
+# Tupel der erwarteten Upstream-Fehler. Andere Exceptions (KeyError, TypeError, …)
+# sind Programmierfehler und sollen propagieren, damit sie nicht in
+# Benutzer-Strings versteckt werden (OBS-001).
+ExpectedUpstreamError = (
+    httpx.HTTPStatusError,
+    httpx.TimeoutException,
+    httpx.RequestError,
+    ET.ParseError,
+    ValueError,
+)
+
+
+def _assert_allowed(url: str) -> None:
+    """SEC-021: Host muss in der statischen Allow-List sein."""
+    host = httpx.URL(url).host
+    if host not in ALLOWED_HOSTS:
+        raise ValueError(f"Host nicht in Allow-List: {host}")
+
+
 async def _http_get(url: str, params: dict | None = None) -> httpx.Response:
-    """Wiederverwendbare HTTP-GET-Funktion mit einheitlichem Timeout."""
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        return await client.get(url, params=params, timeout=HTTP_TIMEOUT)
+    """HTTP-GET über den geteilten Client, mit Egress-Allow-List."""
+    _assert_allowed(url)
+    return await _get_http_client().get(url, params=params)
 
 
 def _handle_error(e: Exception) -> str:
@@ -72,6 +132,10 @@ def _handle_error(e: Exception) -> str:
         return "Fehler: Zeitüberschreitung. Der Dienst antwortet nicht. Bitte erneut versuchen."
     if isinstance(e, ET.ParseError):
         return "Fehler: XML-Antwort konnte nicht verarbeitet werden. Möglicherweise vorübergehend."
+    if isinstance(e, ValueError):
+        return f"Fehler: {e}"
+    if isinstance(e, httpx.RequestError):
+        return f"Fehler: Netzwerkfehler ({type(e).__name__}): {e}"
     return f"Fehler: Unerwarteter Fehler ({type(e).__name__}): {e}"
 
 
@@ -284,7 +348,7 @@ async def heritage_search_artists(params: ArtistSearchInput) -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -362,7 +426,7 @@ async def heritage_get_artist(params: ArtistDetailInput) -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -490,7 +554,7 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -598,7 +662,7 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -752,7 +816,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -801,7 +865,7 @@ async def heritage_list_nb_collections(response_format: str = "markdown") -> str
         )
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -885,7 +949,7 @@ async def heritage_get_publication(params: PublicationDetailInput) -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except ExpectedUpstreamError as e:
         return _handle_error(e)
 
 
@@ -960,7 +1024,7 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
                 reader  = csv.DictReader(io.StringIO(text))
                 artists = list(reader)[:n]
             return {"source": "SIK-ISEA", "label": "Künstler·innen", "items": artists}
-        except Exception as e:
+        except ExpectedUpstreamError as e:
             return {"source": "SIK-ISEA", "error": str(e)}
 
     async def _snm() -> dict:
@@ -972,7 +1036,7 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
             resp.raise_for_status()
             pkgs = resp.json().get("result", {}).get("results", [])
             return {"source": "SNM", "label": "Museumsdatensätze", "items": pkgs}
-        except Exception as e:
+        except ExpectedUpstreamError as e:
             return {"source": "SNM", "error": str(e)}
 
     async def _nb() -> dict:
@@ -983,7 +1047,7 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
             q_lower  = q.lower()
             filtered = [r for r in records if q_lower in json.dumps(r, ensure_ascii=False).lower()][:n]
             return {"source": "NB", "label": "Publikationen", "items": filtered}
-        except Exception as e:
+        except ExpectedUpstreamError as e:
             return {"source": "NB", "error": str(e)}
 
     task_map = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
