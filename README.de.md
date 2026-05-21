@@ -135,8 +135,11 @@ Für den Einsatz via **claude.ai im Browser** (z.B. auf verwalteten Arbeitsplät
 **Render.com (empfohlen):**
 1. Repository auf GitHub pushen/forken
 2. Auf [render.com](https://render.com): New Web Service → GitHub-Repo verbinden
-3. Start-Befehl setzen: `python -m swiss_cultural_heritage_mcp.server --http --port 8000`
-4. In claude.ai unter Settings → MCP Servers eintragen: `https://your-app.onrender.com/sse`
+3. **Region `Frankfurt` (EU) wählen** — erforderlich für den Schweizer Public-Sector-Einsatz gemäss revDSG / EDÖB. Siehe [`docs/data-residency.md`](docs/data-residency.md).
+4. Start-Befehl setzen: `python -m swiss_cultural_heritage_mcp.server --http --port 8000`
+5. In claude.ai unter Settings → MCP Servers eintragen: `https://your-app.onrender.com/sse`
+
+Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository enthält ein gehärtetes `Dockerfile` (non-root UID 10001). Siehe [`docs/security.md`](docs/security.md) für empfohlene `SecurityContext`-Einstellungen und [`docs/network-egress.md`](docs/network-egress.md) für die Egress-Policy.
 
 > 💡 *«stdio für den Entwickler-Laptop, SSE für den Browser.»*
 
