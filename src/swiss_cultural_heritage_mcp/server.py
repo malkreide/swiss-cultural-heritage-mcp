@@ -1277,6 +1277,17 @@ Antworte auf Deutsch."""
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  HEALTH-ENDPOINT (nur im HTTP-Transport sichtbar)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health(_request):
+    """Liveness-Probe für Render / Kubernetes / Cloud Run."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "ok", "service": "swiss-cultural-heritage-mcp"})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 

@@ -17,6 +17,7 @@ import httpx
 import pytest
 import respx
 
+from swiss_cultural_heritage_mcp import __version__ as pkg_version
 from swiss_cultural_heritage_mcp.server import (
     ALLOWED_HOSTS,
     CKAN_API,
@@ -286,6 +287,39 @@ class TestNormalizeCkanTitle:
 
     def test_none(self):
         assert _normalize_ckan_title(None) == "—"
+
+
+class TestPackageMetadata:
+    """Audit follow-up: __version__ via importlib.metadata, no duplication."""
+
+    def test_version_string_format(self):
+        # Installed package returns the pyproject version (e.g. "0.1.0");
+        # source-tree fallback returns "0.0.0+local".
+        assert isinstance(pkg_version, str)
+        assert pkg_version  # not empty
+
+
+class TestHealthEndpoint:
+    """Audit follow-up: /health for Render/k8s liveness probes."""
+
+    @pytest.mark.asyncio
+    async def test_health_route_registered(self):
+        from swiss_cultural_heritage_mcp.server import mcp
+        paths = [r.path for r in mcp._custom_starlette_routes]
+        assert "/health" in paths
+
+    @pytest.mark.asyncio
+    async def test_health_returns_ok(self):
+        from httpx import ASGITransport, AsyncClient
+
+        from swiss_cultural_heritage_mcp.server import mcp
+        app = mcp.streamable_http_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            r = await ac.get("/health")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["service"] == "swiss-cultural-heritage-mcp"
 
 
 class TestInputModelConsistency:
