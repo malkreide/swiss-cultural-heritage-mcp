@@ -820,6 +820,13 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
         return _handle_error(e)
 
 
+class NbCollectionsInput(BaseModel):
+    """Input für die OAI-PMH ListSets-Abfrage der Nationalbibliothek."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
+
+
 @mcp.tool(
     name="heritage_list_nb_collections",
     annotations={
@@ -830,15 +837,19 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
         "openWorldHint":   True,
     },
 )
-async def heritage_list_nb_collections(response_format: str = "markdown") -> str:
+async def heritage_list_nb_collections(
+    params: NbCollectionsInput | None = None,
+) -> str:
     """Listet verfügbare Sammlungen/Sets der Nationalbibliothek auf (OAI-PMH ListSets).
 
     Args:
-        response_format (str): 'markdown' oder 'json'
+        params (NbCollectionsInput | None):
+            - response_format: 'markdown' (Standard) oder 'json'
 
     Returns:
         str: Liste aller OAI-PMH Sets mit Bezeichner (setSpec) und Name.
     """
+    params = params or NbCollectionsInput()
     try:
         resp = await _http_get(NB_OAI_PMH, params={"verb": "ListSets"})
         resp.raise_for_status()
@@ -853,7 +864,7 @@ async def heritage_list_nb_collections(response_format: str = "markdown") -> str
                 "name": name_el.text if name_el is not None else "",
             })
 
-        if response_format == "json":
+        if params.response_format == ResponseFormat.JSON:
             return json.dumps({"sets": sets}, ensure_ascii=False, indent=2)
 
         lines = ["# Nationalbibliothek — Verfügbare Sammlungen (OAI-PMH Sets)\n"]
@@ -993,7 +1004,7 @@ class CrossSearchInput(BaseModel):
         "title": "Quellenübergreifende Kulturerbe-Suche (SIK-ISEA + SNM + NB)",
         "readOnlyHint":    True,
         "destructiveHint": False,
-        "idempotentHint":  False,
+        "idempotentHint":  True,
         "openWorldHint":   True,
     },
 )

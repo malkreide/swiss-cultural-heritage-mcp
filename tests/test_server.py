@@ -28,6 +28,7 @@ from swiss_cultural_heritage_mcp.server import (
     CrossSearchInput,
     HelvticatSearchInput,
     MuseumSearchInput,
+    NbCollectionsInput,
     PublicationDetailInput,
     ResponseFormat,
     _assert_allowed,
@@ -285,6 +286,37 @@ class TestNormalizeCkanTitle:
 
     def test_none(self):
         assert _normalize_ckan_title(None) == "—"
+
+
+class TestInputModelConsistency:
+    """ARCH (PR 2): jedes Tool-Input-Modell verwendet extra='forbid' und ResponseFormat-Enum."""
+
+    @pytest.mark.parametrize("model_cls", [
+        ArtistSearchInput,
+        ArtistDetailInput,
+        MuseumSearchInput,
+        CollectionBrowseInput,
+        HelvticatSearchInput,
+        PublicationDetailInput,
+        CrossSearchInput,
+        NbCollectionsInput,
+    ])
+    def test_forbids_extra_fields(self, model_cls):
+        assert model_cls.model_config.get("extra") == "forbid"
+
+    @pytest.mark.parametrize("model_cls", [
+        ArtistSearchInput,
+        ArtistDetailInput,
+        MuseumSearchInput,
+        CollectionBrowseInput,
+        HelvticatSearchInput,
+        PublicationDetailInput,
+        NbCollectionsInput,
+    ])
+    def test_response_format_field_is_enum(self, model_cls):
+        field = model_cls.model_fields.get("response_format")
+        assert field is not None
+        assert field.annotation is ResponseFormat
 
 
 class TestEgressAllowList:
