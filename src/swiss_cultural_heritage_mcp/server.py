@@ -34,6 +34,7 @@ SNM_ORG       = "schweizerisches-nationalmuseum"
 HTTP_TIMEOUT  = 30.0
 DEFAULT_LIMIT = 20
 MAX_LIMIT     = 100
+MAX_REDIRECTS = 5
 
 # Egress-Allow-List (SEC-021): nur diese Hosts dürfen kontaktiert werden.
 ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
@@ -112,9 +113,26 @@ def _assert_allowed(url: str) -> None:
 
 
 async def _http_get(url: str, params: dict | None = None) -> httpx.Response:
-    """HTTP-GET über den geteilten Client, mit Egress-Allow-List."""
+    """HTTP-GET über den geteilten Client, mit Egress-Allow-List.
+
+    Redirects werden manuell verfolgt, damit die Allow-List (SEC-021) bei
+    *jedem* Hop greift. Automatisches ``follow_redirects`` würde nur die
+    Start-URL prüfen und so ein SSRF-Schlupfloch über einen Redirect öffnen.
+    """
     _assert_allowed(url)
-    return await _get_http_client().get(url, params=params)
+    client = _get_http_client()
+    resp   = await client.get(url, params=params)
+    for _ in range(MAX_REDIRECTS):
+        if not resp.is_redirect:
+            break
+        location = resp.headers.get("location")
+        if not location:
+            break
+        next_url = str(resp.url.join(location))
+        _assert_allowed(next_url)
+        await resp.aclose()
+        resp = await client.get(next_url)
+    return resp
 
 
 def _handle_error(e: Exception) -> str:
