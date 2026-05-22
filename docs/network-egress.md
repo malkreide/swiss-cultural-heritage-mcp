@@ -8,13 +8,12 @@ The list is declared as an immutable `frozenset` in `src/swiss_cultural_heritage
 
 ```python
 ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
-    "api.sik-isea.ch",      # SIK-ISEA REST/CSV API
-    "opendata.swiss",       # CKAN API for Schweizerisches Nationalmuseum
-    "www.nb.admin.ch",      # OAI-PMH provider for the Nationalbibliothek
+    "ckan.opendata.swiss",     # CKAN API — SIKART artist data + Nationalmuseum datasets
+    "helveticat.nb.admin.ch",  # OAI-PMH provider — Nationalbibliothek (Helveticat)
 })
 ```
 
-Every HTTP request passes through `_assert_allowed(url)` in `_http_get`. Any other host raises `ValueError` *before* the request leaves the process. The shared `httpx.AsyncClient` is also configured with `follow_redirects=False` so an upstream cannot redirect us off-list.
+Every HTTP request passes through `_assert_allowed(url)` in `_http_get`. Any other host raises `ValueError` *before* the request leaves the process. The shared `httpx.AsyncClient` keeps `follow_redirects=False`; redirects are followed manually in `_http_get` and **every hop is re-checked** against the allow-list, so an upstream cannot redirect us off-list.
 
 ## How to update the allow-list
 
@@ -62,11 +61,11 @@ spec:
           port: 443
 ```
 
-For stricter control, pair with an egress proxy (e.g. Cloudflare WARP, AWS NAT + Security Group, GCP Cloud NAT + Firewall) and limit destinations to the three FQDNs.
+For stricter control, pair with an egress proxy (e.g. Cloudflare WARP, AWS NAT + Security Group, GCP Cloud NAT + Firewall) and limit destinations to the two FQDNs.
 
 ### Cloudflare Zero Trust
 
-Create a Gateway HTTP policy allowing only `api.sik-isea.ch`, `opendata.swiss`, `www.nb.admin.ch` and blocking the catch-all for the workload identity.
+Create a Gateway HTTP policy allowing only `ckan.opendata.swiss`, `helveticat.nb.admin.ch` and blocking the catch-all for the workload identity.
 
 ### Render / Railway / Fly.io
 

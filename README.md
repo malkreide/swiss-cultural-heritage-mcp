@@ -21,7 +21,7 @@
 
 | Source | Data | API |
 |--------|------|-----|
-| **SIK-ISEA** | 50,000+ Swiss artists (biographies, techniques, cantons) | REST/CSV |
+| **SIK-ISEA (SIKART)** | ~17,000 Swiss artists — SIKART biographical data | opendata.swiss CKAN |
 | **Nationalmuseum (SNM)** | Museum collections (numismatics, seals, special collections) | opendata.swiss CKAN |
 | **Nationalbibliothek (NB)** | Swiss national bibliography (Helveticat) | OAI-PMH |
 
@@ -151,8 +151,8 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 
 | Tool | Description |
 |------|-------------|
-| `heritage_search_artists` | Search 50,000+ Swiss artists by name, region, period, technique |
-| `heritage_get_artist` | Full artist profile by SIK-ISEA ID |
+| `heritage_search_artists` | Search ~17,000 Swiss artists (SIKART) by name or place |
+| `heritage_get_artist` | Full artist profile by SIKART ID (HAUPTNR) |
 
 ### Nationalmuseum (SNM)
 
@@ -180,7 +180,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 | Query | Tool |
 |-------|------|
 | *"Who is Ferdinand Hodler?"* | `heritage_get_artist` |
-| *"Find 19th-century painters from canton Bern"* | `heritage_search_artists` |
+| *"Find Swiss artists born in Basel"* | `heritage_search_artists` |
 | *"What coins from Zurich does the Nationalmuseum have?"* | `heritage_browse_collection` |
 | *"Find publications about Volksschule"* | `heritage_search_helveticat` |
 | *"Search for everything about Sophie Taeuber-Arp"* | `heritage_cross_search` |
@@ -192,7 +192,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 ```
 ┌─────────────────┐     ┌──────────────────────────────┐     ┌──────────────────────────┐
 │   Claude / AI   │────▶│  Swiss Cultural Heritage MCP  │────▶│  SIK-ISEA                │
-│   (MCP Host)    │◀────│  (MCP Server)                │◀────│  REST/CSV                │
+│   (MCP Host)    │◀────│  (MCP Server)                │◀────│  opendata.swiss / CKAN   │
 └─────────────────┘     │                              │     ├──────────────────────────┤
                         │  9 Tools · 2 Resources       │────▶│  Nationalmuseum (SNM)    │
                         │  2 Prompts                   │◀────│  opendata.swiss / CKAN   │
@@ -206,7 +206,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 
 | Source | Protocol | Coverage | Auth |
 |--------|----------|----------|------|
-| SIK-ISEA | REST/CSV | 50,000+ Swiss artists | None |
+| SIK-ISEA (SIKART) | CKAN DataStore | ~17,000 Swiss artists | None |
 | Nationalmuseum | CKAN DataStore | Museum collections | None |
 | Nationalbibliothek | OAI-PMH | Swiss national bibliography | None |
 
@@ -236,7 +236,7 @@ swiss-cultural-heritage-mcp/
 
 - **Read-only:** All tools perform HTTP GET requests only — no data is written, modified, or deleted.
 - **No personal data:** The APIs return institutional records (artworks, publications, artists). No personally identifiable information (PII) is processed or stored by this server.
-- **Rate limits:** SIK-ISEA and OAI-PMH endpoints are not rate-limit-documented; use `limit` parameters conservatively. The server enforces a 30s timeout per request.
+- **Rate limits:** The opendata.swiss and OAI-PMH endpoints are not rate-limit-documented; use `limit` parameters conservatively. The server enforces a 30s timeout per request.
 - **Data freshness:** Records reflect the upstream source at query time. No caching is performed by this server.
 - **Terms of service:** Data is subject to the ToS of each source — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/terms-of-use), [Nationalbibliothek OAI-PMH](https://www.nb.admin.ch/). All data is published under open licenses (CC0 / CC BY).
 - **No guarantees:** This server is a community project, not affiliated with SIK-ISEA, SNM, or NB. Availability depends on upstream APIs.
