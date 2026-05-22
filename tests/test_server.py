@@ -22,7 +22,7 @@ from swiss_cultural_heritage_mcp.server import (
     ALLOWED_HOSTS,
     CKAN_API,
     NB_OAI_PMH,
-    SIK_ISEA_API,
+    SIKART_RESOURCE_ID,
     ArtistDetailInput,
     ArtistSearchInput,
     CollectionBrowseInput,
@@ -37,7 +37,6 @@ from swiss_cultural_heritage_mcp.server import (
     _handle_error,
     _http_get,
     _normalize_ckan_title,
-    _paginate,
     _parse_oai_records,
     heritage_browse_collection,
     heritage_cross_search,
@@ -51,28 +50,58 @@ from swiss_cultural_heritage_mcp.server import (
 
 # ─────────────────────────── Fixtures ──────────────────────────────────────────
 
-MOCK_ARTIST_JSON = [
-    {
-        "ID": "12345",
-        "Name": "Hodler",
-        "Vorname": "Ferdinand",
-        "Geburtsjahr": "1853",
-        "Todesjahr": "1918",
-        "Kanton": "Bern",
-        "Technik": "Ölmalerei",
-        "Beruf": "Maler",
+# CKAN DataStore-Antwort der SIKART-Künstlerressource (Feldnamen wie im echten Datensatz).
+MOCK_SIKART_DATASTORE = {
+    "success": True,
+    "result": {
+        "resource_id": SIKART_RESOURCE_ID,
+        "total": 2,
+        "fields": [
+            {"id": "_id", "type": "int"},
+            {"id": "HAUPTNR", "type": "text"},
+            {"id": "NAME", "type": "text"},
+            {"id": "VORNAME", "type": "text"},
+        ],
+        "records": [
+            {
+                "_id": 1, "HAUPTNR": "4000123",
+                "NAME": "Hodler", "VORNAME": "Ferdinand", "NAMIDENT": "Hodler, Ferdinand",
+                "GEBURTSJAHR": "1853", "GEBURTSDATUM": "14.3.1853", "GEBURTSORT": "Bern",
+                "GEBURTSKANTON": "BE", "GEBURTSLAND": "CH",
+                "STERBEJAHR": "1918", "STERBEDATUM": "19.5.1918", "STERBEORT": "Genf",
+                "STERBEKANTON": "GE", "STERBELAND": "CH",
+                "LEBENSDATEN": "* 14.3.1853 Bern, + 19.5.1918 Genf",
+                "VITAZEILE": "Maler. Landschaften, Figurenbilder, Historienbilder.",
+                "TYPUS": "Künstler", "NUTZUNGSLIZENZ": "Nutzungslizenz: CC-BY-NC-SA",
+                "GND": "118552155", "HLS_ID": None, "WEBSITE": None,
+                "SIKART_LINK": "https://recherche.sik-isea.ch/de/sik:person-4000123/in/sikisea/actor/list",
+            },
+            {
+                "_id": 2, "HAUPTNR": "4000456",
+                "NAME": "Taeuber-Arp", "VORNAME": "Sophie", "NAMIDENT": "Taeuber-Arp, Sophie",
+                "GEBURTSJAHR": "1889", "GEBURTSDATUM": "19.1.1889", "GEBURTSORT": "Davos",
+                "GEBURTSKANTON": "GR", "GEBURTSLAND": "CH",
+                "STERBEJAHR": "1943", "STERBEDATUM": "13.1.1943", "STERBEORT": "Zürich",
+                "STERBEKANTON": "ZH", "STERBELAND": "CH",
+                "LEBENSDATEN": "* 19.1.1889 Davos, + 13.1.1943 Zürich",
+                "VITAZEILE": "Malerin, Bildhauerin, Textilkünstlerin, Tänzerin.",
+                "TYPUS": "Künstlerin", "NUTZUNGSLIZENZ": "Nutzungslizenz: CC-BY-NC-SA",
+                "GND": "118620916", "HLS_ID": None, "WEBSITE": None,
+                "SIKART_LINK": "https://recherche.sik-isea.ch/de/sik:person-4000456/in/sikisea/actor/list",
+            },
+        ],
     },
-    {
-        "ID": "67890",
-        "Name": "Taeuber-Arp",
-        "Vorname": "Sophie",
-        "Geburtsjahr": "1889",
-        "Todesjahr": "1943",
-        "Kanton": "Appenzell",
-        "Technik": "Abstraktion",
-        "Beruf": "Künstlerin",
+}
+
+# Einzelresultat (datastore_search mit filters auf HAUPTNR) für heritage_get_artist.
+MOCK_SIKART_ONE = {
+    "success": True,
+    "result": {
+        "resource_id": SIKART_RESOURCE_ID,
+        "total": 1,
+        "records": [MOCK_SIKART_DATASTORE["result"]["records"][0]],
     },
-]
+}
 
 MOCK_CKAN_RESPONSE = {
     "success": True,
@@ -222,34 +251,6 @@ MOCK_OAI_GET_RECORD = """<?xml version="1.0" encoding="UTF-8"?>
 
 # ─────────────────────────── Unit Tests: Utilities ─────────────────────────────
 
-class TestPaginateHelper:
-    def test_first_page(self):
-        items = list(range(50))
-        r = _paginate(items, limit=10, offset=0)
-        assert r["total"] == 50
-        assert r["count"] == 10
-        assert r["has_more"] is True
-        assert r["next_offset"] == 10
-
-    def test_last_page(self):
-        items = list(range(25))
-        r = _paginate(items, limit=10, offset=20)
-        assert r["count"] == 5
-        assert r["has_more"] is False
-        assert r["next_offset"] is None
-
-    def test_empty(self):
-        r = _paginate([], limit=10, offset=0)
-        assert r["total"] == 0
-        assert r["count"] == 0
-        assert r["has_more"] is False
-
-    def test_offset_beyond_total(self):
-        r = _paginate(list(range(5)), limit=10, offset=10)
-        assert r["count"] == 0
-        assert r["has_more"] is False
-
-
 class TestOaiParsing:
     def test_parse_records(self):
         records = _parse_oai_records(MOCK_OAI_RECORDS)
@@ -355,12 +356,10 @@ class TestInputModelConsistency:
 
 class TestEgressAllowList:
     def test_allowed_hosts_contain_upstreams(self):
-        assert "api.sik-isea.ch" in ALLOWED_HOSTS
-        assert "opendata.swiss" in ALLOWED_HOSTS
-        assert "www.nb.admin.ch" in ALLOWED_HOSTS
+        assert "ckan.opendata.swiss" in ALLOWED_HOSTS
+        assert "helveticat.nb.admin.ch" in ALLOWED_HOSTS
 
     def test_assert_allowed_accepts_known_host(self):
-        _assert_allowed(SIK_ISEA_API)
         _assert_allowed(CKAN_API)
         _assert_allowed(NB_OAI_PMH)
 
@@ -399,8 +398,9 @@ class TestHandleError:
 
 class TestArtistSearchInput:
     def test_valid_all_fields(self):
-        p = ArtistSearchInput(query="Hodler", region="Bern", technique="Ölmalerei")
+        p = ArtistSearchInput(query="Hodler", region="Bern")
         assert p.query == "Hodler"
+        assert p.region == "Bern"
         assert p.limit == 20
 
     def test_all_optional(self):
@@ -461,34 +461,37 @@ class TestHeritageSIKISEA:
     @pytest.mark.asyncio
     async def test_search_artists_json_response(self):
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten").mock(
-                return_value=httpx.Response(200, json=MOCK_ARTIST_JSON)
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
             )
             params = ArtistSearchInput(query="Hodler", response_format=ResponseFormat.JSON)
             result = await heritage_search_artists(params)
 
         data = json.loads(result)
         assert data["total"] == 2
-        assert data["items"][0]["Name"] == "Hodler"
+        assert data["artists"][0]["NAME"] == "Hodler"
 
     @pytest.mark.asyncio
     async def test_search_artists_markdown(self):
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten").mock(
-                return_value=httpx.Response(200, json=MOCK_ARTIST_JSON)
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
             )
             params = ArtistSearchInput(query="Hodler")
             result = await heritage_search_artists(params)
 
         assert "Ferdinand Hodler" in result
-        assert "SIK-ISEA" in result
+        assert "SIKART" in result
         assert "1853" in result
 
     @pytest.mark.asyncio
     async def test_search_artists_empty(self):
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten").mock(
-                return_value=httpx.Response(200, json=[])
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json={
+                    "success": True,
+                    "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
+                })
             )
             params = ArtistSearchInput(query="UnbekannterName12345")
             result = await heritage_search_artists(params)
@@ -498,22 +501,36 @@ class TestHeritageSIKISEA:
     @pytest.mark.asyncio
     async def test_get_artist_markdown(self):
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten/12345").mock(
-                return_value=httpx.Response(200, json=MOCK_ARTIST_JSON[0])
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_ONE)
             )
-            params = ArtistDetailInput(artist_id="12345")
+            params = ArtistDetailInput(artist_id="4000123")
             result = await heritage_get_artist(params)
 
         assert "Ferdinand Hodler" in result
-        assert "12345" in result
+        assert "4000123" in result
 
     @pytest.mark.asyncio
-    async def test_get_artist_404(self):
+    async def test_get_artist_not_found(self):
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten/99999").mock(
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json={
+                    "success": True,
+                    "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
+                })
+            )
+            params = ArtistDetailInput(artist_id="99999999")
+            result = await heritage_get_artist(params)
+
+        assert "Keine Daten gefunden" in result
+
+    @pytest.mark.asyncio
+    async def test_get_artist_http_error(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
                 return_value=httpx.Response(404)
             )
-            params = ArtistDetailInput(artist_id="99999")
+            params = ArtistDetailInput(artist_id="99999999")
             result = await heritage_get_artist(params)
 
         assert "Fehler" in result
@@ -660,8 +677,8 @@ class TestHeritageCrossSearch:
     @pytest.mark.asyncio
     async def test_cross_search_all_sources(self):
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten").mock(
-                return_value=httpx.Response(200, json=MOCK_ARTIST_JSON)
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
             )
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
@@ -692,7 +709,7 @@ class TestHeritageCrossSearch:
     async def test_cross_search_partial_failure(self):
         """Wenn eine Quelle fehlschlägt, sollen die anderen weiter angezeigt werden."""
         with respx.mock:
-            respx.get(f"{SIK_ISEA_API}/personendaten").mock(
+            respx.get(f"{CKAN_API}/datastore_search").mock(
                 return_value=httpx.Response(503)
             )
             respx.get(f"{CKAN_API}/package_search").mock(

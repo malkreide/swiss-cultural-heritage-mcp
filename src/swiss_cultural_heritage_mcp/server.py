@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Swiss Cultural Heritage MCP Server — v0.1.0
+Swiss Cultural Heritage MCP Server
 
 AI-nativer Zugang zu drei Schweizer Kulturerbe-Quellen:
-  · SIK-ISEA:          Schweizerisches Institut für Kunstwissenschaft (50'000+ Künstler·innen)
+  · SIK-ISEA:          SIKART-Künstlerdaten (~17'000) via opendata.swiss CKAN DataStore
   · Nationalmuseum:    Sammlungsdaten via opendata.swiss CKAN API
-  · Nationalbibliothek: Schweizerische Nationalbibliografie via OAI-PMH
+  · Nationalbibliothek: Helveticat (Schweizerische Nationalbibliografie) via OAI-PMH
 
 Kein API-Schlüssel erforderlich. Alle Daten öffentlich zugänglich unter offenen Lizenzen.
 """
@@ -13,8 +13,6 @@ Kein API-Schlüssel erforderlich. Alle Daten öffentlich zugänglich unter offen
 from __future__ import annotations
 
 import asyncio
-import csv
-import io
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -27,10 +25,17 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ─────────────────────────── Konstanten ────────────────────────────────────────
-SIK_ISEA_API  = "https://api.sik-isea.ch"
-CKAN_API      = "https://opendata.swiss/api/3/action"
-NB_OAI_PMH    = "https://www.nb.admin.ch/oai/oai-provider"
+# opendata.swiss bedient die CKAN-API unter dem kanonischen Host ckan.opendata.swiss;
+# opendata.swiss/api/... antwortet mit 302 dorthin.
+CKAN_API      = "https://ckan.opendata.swiss/api/3/action"
 SNM_ORG       = "schweizerisches-nationalmuseum"
+
+# SIKART-Künstlerdaten (~17'000) als DataStore-fähige CKAN-Ressource.
+SIKART_RESOURCE_ID = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
+
+# Helveticat OAI-PMH (Ex-Libris-Alma-Provider der Schweizerischen Nationalbibliothek).
+NB_OAI_PMH    = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
+
 HTTP_TIMEOUT  = 30.0
 DEFAULT_LIMIT = 20
 MAX_LIMIT     = 100
@@ -38,9 +43,8 @@ MAX_REDIRECTS = 5
 
 # Egress-Allow-List (SEC-021): nur diese Hosts dürfen kontaktiert werden.
 ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
-    "api.sik-isea.ch",
-    "opendata.swiss",
-    "www.nb.admin.ch",
+    "ckan.opendata.swiss",
+    "helveticat.nb.admin.ch",
 })
 
 # OAI-PMH XML-Namespaces
@@ -157,20 +161,6 @@ def _handle_error(e: Exception) -> str:
     return f"Fehler: Unerwarteter Fehler ({type(e).__name__}): {e}"
 
 
-def _paginate(items: list, limit: int, offset: int) -> dict:
-    """Standard-Pagination-Hilfsfunktion."""
-    total  = len(items)
-    sliced = items[offset : offset + limit]
-    return {
-        "total":       total,
-        "count":       len(sliced),
-        "offset":      offset,
-        "has_more":    (offset + len(sliced)) < total,
-        "next_offset": (offset + len(sliced)) if (offset + len(sliced)) < total else None,
-        "items":       sliced,
-    }
-
-
 def _parse_oai_records(xml_text: str) -> list[dict]:
     """Parsed OAI-PMH ListRecords/GetRecord-Antwort in eine Liste von Dicts."""
     root = ET.fromstring(xml_text)
@@ -224,34 +214,50 @@ def _normalize_ckan_title(title) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  MODUL 1 — SIK-ISEA  (Schweizerisches Institut für Kunstwissenschaft)
+#  MODUL 1 — SIK-ISEA / SIKART  (Schweizerisches Institut für Kunstwissenschaft)
 # ══════════════════════════════════════════════════════════════════════════════
+# Datenquelle: SIKART-Künstlerdaten (~17'000 Einträge) als DataStore-Ressource
+# auf opendata.swiss. Abfrage über die CKAN-DataStore-API (datastore_search) mit
+# serverseitiger Volltextsuche und Paginierung.
+
+
+def _artist_full_name(rec: dict) -> str:
+    """Setzt Vor- und Nachname eines SIKART-Records zusammen."""
+    name    = (rec.get("NAME") or "").strip()
+    vorname = (rec.get("VORNAME") or "").strip()
+    full    = f"{vorname} {name}".strip()
+    return full or (rec.get("NAMIDENT") or "").strip() or "(Unbekannt)"
+
+
+def _artist_lifespan(rec: dict) -> str:
+    """Liefert eine Lebensdaten-Zeile aus einem SIKART-Record."""
+    lebensdaten = (rec.get("LEBENSDATEN") or "").strip()
+    if lebensdaten:
+        return lebensdaten
+    birth = (rec.get("GEBURTSJAHR") or "").strip()
+    death = (rec.get("STERBEJAHR") or "").strip()
+    if birth or death:
+        return f"{birth or '?'}–{death or '?'}"
+    return ""
+
 
 class ArtistSearchInput(BaseModel):
-    """Input für die SIK-ISEA Künstler·innen-Suche."""
+    """Input für die SIKART-Künstler·innen-Suche."""
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:     str | None = Field(
+    query:  str | None = Field(
         default=None, max_length=200,
-        description="Name oder Namensteil (z. B. 'Hodler', 'Sophie Taeuber-Arp', 'Giacometti')"
+        description="Name, Beruf oder Stichwort (z. B. 'Hodler', 'Bildhauer', 'Taeuber-Arp')"
     )
-    region:    str | None = Field(
+    region: str | None = Field(
         default=None, max_length=100,
-        description="Schweizer Kanton oder Region (z. B. 'Zürich', 'Bern', 'Ticino', 'Genf')"
-    )
-    period:    str | None = Field(
-        default=None, max_length=100,
-        description="Epoche oder Zeitraum (z. B. '19. Jahrhundert', 'Moderne', '1880-1950')"
-    )
-    technique: str | None = Field(
-        default=None, max_length=100,
-        description="Technik oder Medium (z. B. 'Ölmalerei', 'Grafik', 'Skulptur', 'Fotografie')"
+        description="Geburts-/Sterbeort oder Kanton (z. B. 'Basel', 'Genf', 'BE', 'Zürich')"
     )
     limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max. Ergebnisse (1–100)")
     offset: int = Field(default=0, ge=0, description="Offset für Paginierung")
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
-    @field_validator("query", "region", "technique", "period")
+    @field_validator("query", "region")
     @classmethod
     def not_blank(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
@@ -262,7 +268,7 @@ class ArtistSearchInput(BaseModel):
 @mcp.tool(
     name="heritage_search_artists",
     annotations={
-        "title": "Schweizer Künstler·innen suchen (SIK-ISEA)",
+        "title": "Schweizer Künstler·innen suchen (SIKART)",
         "readOnlyHint":    True,
         "destructiveHint": False,
         "idempotentHint":  True,
@@ -270,99 +276,88 @@ class ArtistSearchInput(BaseModel):
     },
 )
 async def heritage_search_artists(params: ArtistSearchInput) -> str:
-    """Sucht Schweizer Künstler·innen in der SIK-ISEA-Datenbank (50'000+ Einträge).
+    """Sucht Schweizer Künstler·innen in den SIKART-Daten (~17'000 Einträge).
 
-    SIK-ISEA (Schweizerisches Institut für Kunstwissenschaft) pflegt das umfassendste
-    Verzeichnis Schweizer Künstler·innen mit biografischen Angaben, Technik, Herkunft.
+    SIKART (Lexikon zur Kunst in der Schweiz, herausgegeben vom Schweizerischen
+    Institut für Kunstwissenschaft SIK-ISEA) dokumentiert historische und
+    zeitgenössische Kunstschaffende mit biografischen Grunddaten. Die Suche läuft
+    als CKAN-DataStore-Volltextsuche über alle Felder; mehrere Begriffe werden
+    UND-verknüpft.
 
     Args:
         params (ArtistSearchInput):
-            - query (str | None):     Namenssuche (z. B. 'Hodler', 'Taeuber')
-            - region (str | None):    Kanton/Region (z. B. 'Zürich', 'Wallis')
-            - period (str | None):    Epoche (z. B. '19. Jahrhundert', '1880-1920')
-            - technique (str | None): Technik (z. B. 'Ölmalerei', 'Skulptur')
-            - limit (int):               Max. Ergebnisse (Standard: 20)
-            - offset (int):              Paginierungs-Offset
-            - response_format:           'markdown' oder 'json'
+            - query (str | None):  Name, Beruf oder Stichwort (z. B. 'Hodler')
+            - region (str | None): Geburts-/Sterbeort oder Kanton (z. B. 'Basel')
+            - limit (int):         Max. Ergebnisse (Standard: 20)
+            - offset (int):        Paginierungs-Offset
+            - response_format:     'markdown' oder 'json'
 
     Returns:
-        str: Liste gefundener Künstler·innen mit Name, Lebensdaten, Kanton, Technik.
+        str: Liste gefundener Künstler·innen mit Name, Lebensdaten, Kanton, Kurzbiografie.
     """
     try:
-        api_params: dict = {"format": "json"}
-        if params.query:
-            api_params["q"] = params.query
-        if params.region:
-            api_params["kanton"] = params.region
-        if params.technique:
-            api_params["technik"] = params.technique
-        if params.period:
-            api_params["epoche"] = params.period
+        api_params: dict = {
+            "resource_id": SIKART_RESOURCE_ID,
+            "limit":       params.limit,
+            "offset":      params.offset,
+        }
+        q_terms = [t for t in (params.query, params.region) if t]
+        if q_terms:
+            api_params["q"] = " ".join(q_terms)
 
-        resp = await _http_get(f"{SIK_ISEA_API}/personendaten", params=api_params)
+        resp = await _http_get(f"{CKAN_API}/datastore_search", params=api_params)
         resp.raise_for_status()
+        data = resp.json()
 
-        # SIK-ISEA kann JSON oder CSV zurückgeben
-        content_type = resp.headers.get("content-type", "")
-        text = resp.text.strip()
-        if "csv" in content_type or (text and not text.startswith("{") and not text.startswith("[")):
-            reader  = csv.DictReader(io.StringIO(text))
-            artists = list(reader)
-        else:
-            data    = resp.json()
-            artists = data if isinstance(data, list) else data.get("results", data.get("data", []))
+        if not data.get("success"):
+            return "Fehler: CKAN-DataStore-Anfrage fehlgeschlagen."
 
-        if not artists:
+        result  = data.get("result", {})
+        records = result.get("records", [])
+        total   = result.get("total", len(records))
+
+        if not records:
             return "Keine Künstler·innen gefunden für die angegebenen Suchkriterien."
 
-        paged = _paginate(artists, params.limit, params.offset)
-
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps(paged, ensure_ascii=False, indent=2)
+            return json.dumps(
+                {"total": total, "count": len(records), "offset": params.offset, "artists": records},
+                ensure_ascii=False, indent=2,
+            )
 
         filters = []
         if params.query:
-            filters.append(f"Name: *{params.query}*")
+            filters.append(f"Stichwort: *{params.query}*")
         if params.region:
-            filters.append(f"Kanton: *{params.region}*")
-        if params.technique:
-            filters.append(f"Technik: *{params.technique}*")
-        if params.period:
-            filters.append(f"Epoche: *{params.period}*")
+            filters.append(f"Ort/Kanton: *{params.region}*")
 
-        lines = ["# SIK-ISEA Künstler·innen-Suche\n"]
+        lines = ["# SIKART — Schweizer Künstler·innen-Suche\n"]
         if filters:
             lines.append("**Filter:** " + " · ".join(filters))
-        lines.append(f"\nGefunden: {paged['total']} Einträge (zeige {paged['count']})\n")
+        lines.append(f"\nGefunden: {total} Einträge (zeige {len(records)})\n")
         lines.append("---\n")
 
-        for artist in paged["items"]:
-            name       = artist.get("Name") or artist.get("name") or artist.get("Nachname", "")
-            vorname    = artist.get("Vorname") or artist.get("vorname", "")
-            full_name  = f"{vorname} {name}".strip() if vorname else name
-            artist_id  = artist.get("ID") or artist.get("id") or artist.get("PersonID", "—")
-            birth      = artist.get("Geburtsjahr") or artist.get("birth_year", "")
-            death      = artist.get("Todesjahr")   or artist.get("death_year", "")
-            canton     = artist.get("Kanton")      or artist.get("kanton") or ""
-            tech       = artist.get("Technik")     or artist.get("technik") or ""
-            beruf      = artist.get("Beruf")       or ""
-
-            lines.append(f"## {full_name or '(Unbekannt)'}")
+        for rec in records:
+            lines.append(f"## {_artist_full_name(rec)}")
             meta: list = []
-            if birth or death:
-                meta.append(f"**Lebensdaten:** {birth or '?'}–{death or 'heute'}")
+            lifespan_line = _artist_lifespan(rec)
+            if lifespan_line:
+                meta.append(f"**Lebensdaten:** {lifespan_line}")
+            canton = (rec.get("GEBURTSKANTON") or rec.get("STERBEKANTON") or "").strip()
             if canton:
                 meta.append(f"**Kanton:** {canton}")
-            if tech:
-                meta.append(f"**Technik:** {tech}")
-            elif beruf:
-                meta.append(f"**Beruf:** {beruf}")
-            meta.append(f"**SIK-ID:** `{artist_id}`")
+            meta.append(f"**SIKART-ID:** `{rec.get('HAUPTNR', '—')}`")
             lines.append("  ·  ".join(meta))
+            vita = (rec.get("VITAZEILE") or "").strip()
+            if vita:
+                lines.append(f"*{vita}*")
+            link = (rec.get("SIKART_LINK") or "").strip()
+            if link:
+                lines.append(f"[SIKART-Eintrag]({link})")
             lines.append("")
 
-        if paged["has_more"]:
-            lines.append(f"*Weitere Ergebnisse verfügbar — Offset: {paged['next_offset']}*")
+        if (params.offset + len(records)) < total:
+            lines.append(f"*Weitere Ergebnisse ab Offset {params.offset + len(records)}*")
 
         return "\n".join(lines)
 
@@ -371,12 +366,12 @@ async def heritage_search_artists(params: ArtistSearchInput) -> str:
 
 
 class ArtistDetailInput(BaseModel):
-    """Input für SIK-ISEA Künstler·in-Detailabfrage."""
+    """Input für SIKART Künstler·in-Detailabfrage."""
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     artist_id: str = Field(
         ..., min_length=1,
-        description="SIK-ISEA Personen-ID (aus heritage_search_artists, z. B. '12345')"
+        description="SIKART-ID (HAUPTNR aus heritage_search_artists, z. B. '4023584')"
     )
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -384,7 +379,7 @@ class ArtistDetailInput(BaseModel):
 @mcp.tool(
     name="heritage_get_artist",
     annotations={
-        "title": "Künstler·in-Details abrufen (SIK-ISEA)",
+        "title": "Künstler·in-Details abrufen (SIKART)",
         "readOnlyHint":    True,
         "destructiveHint": False,
         "idempotentHint":  True,
@@ -392,55 +387,66 @@ class ArtistDetailInput(BaseModel):
     },
 )
 async def heritage_get_artist(params: ArtistDetailInput) -> str:
-    """Ruft vollständige Daten zu einer Künstler·in aus SIK-ISEA ab.
+    """Ruft den vollständigen SIKART-Datensatz zu einer Künstler·in ab.
 
     Args:
         params (ArtistDetailInput):
-            - artist_id (str): SIK-ISEA Personen-ID (aus heritage_search_artists)
+            - artist_id (str): SIKART-ID (HAUPTNR aus heritage_search_artists)
             - response_format: 'markdown' oder 'json'
 
     Returns:
-        str: Vollständiges Profil mit Lebensdaten, Technik, Biografie, Kanton und Links.
+        str: Vollständiges Profil mit Lebensdaten, Orten, Kurzbiografie und Links.
     """
     try:
         resp = await _http_get(
-            f"{SIK_ISEA_API}/personendaten/{params.artist_id}",
-            params={"format": "json"},
+            f"{CKAN_API}/datastore_search",
+            params={
+                "resource_id": SIKART_RESOURCE_ID,
+                "filters":     json.dumps({"HAUPTNR": params.artist_id}),
+                "limit":       1,
+            },
         )
         resp.raise_for_status()
+        data = resp.json()
 
-        data   = resp.json()
-        artist = (data[0] if isinstance(data, list) and data else data) or {}
+        if not data.get("success"):
+            return "Fehler: CKAN-DataStore-Anfrage fehlgeschlagen."
 
-        if not artist:
-            return f"Keine Daten gefunden für SIK-ISEA ID `{params.artist_id}`."
+        records = data.get("result", {}).get("records", [])
+        if not records:
+            return f"Keine Daten gefunden für SIKART-ID `{params.artist_id}`."
+
+        artist = records[0]
 
         if params.response_format == ResponseFormat.JSON:
             return json.dumps(artist, ensure_ascii=False, indent=2)
 
-        name      = artist.get("Name") or artist.get("name", "")
-        vorname   = artist.get("Vorname") or artist.get("vorname", "")
-        full_name = f"{vorname} {name}".strip() if vorname else name
-
-        lines = [f"# {full_name or 'Unbekannt'}\n", f"**SIK-ISEA ID:** `{params.artist_id}`\n"]
-
-        dc_map = [
-            ("Geburtsjahr",  "Geburtsjahr"),
-            ("Geburtsort",   "Geburtsort"),
-            ("Todesjahr",    "Todesjahr"),
-            ("Todesort",     "Todesort"),
-            ("Kanton",       "Kanton"),
-            ("Technik",      "Technik"),
-            ("Beruf",        "Beruf"),
-            ("Epoche",       "Epoche"),
-            ("Kommentar",    "Kommentar"),
-            ("Beschreibung", "Beschreibung"),
-            ("URL",          "Mehr Infos"),
+        lines = [
+            f"# {_artist_full_name(artist)}\n",
+            f"**SIKART-ID:** `{params.artist_id}`\n",
         ]
-        for field, label in dc_map:
-            val = artist.get(field) or artist.get(field.lower())
-            if val:
-                lines.append(f"**{label}:** {val}")
+        field_map = [
+            ("LEBENSDATEN",    "Lebensdaten"),
+            ("GEBURTSDATUM",   "Geburtsdatum"),
+            ("GEBURTSORT",     "Geburtsort"),
+            ("GEBURTSKANTON",  "Geburtskanton"),
+            ("GEBURTSLAND",    "Geburtsland"),
+            ("STERBEDATUM",    "Sterbedatum"),
+            ("STERBEORT",      "Sterbeort"),
+            ("STERBEKANTON",   "Sterbekanton"),
+            ("STERBELAND",     "Sterbeland"),
+            ("TYPUS",          "Typus"),
+            ("VITAZEILE",      "Kurzbiografie"),
+            ("NUTZUNGSLIZENZ", "Lizenz"),
+            ("GND",            "GND"),
+            ("HLS_ID",         "HLS-ID"),
+            ("SIKART_LINK",    "SIKART-Eintrag"),
+            ("WEBSITE",        "Website"),
+        ]
+        for field, label in field_map:
+            val = artist.get(field)
+            if val and str(val).strip():
+                lines.append(f"**{label}:** {str(val).strip()}")
 
         return "\n".join(lines)
 
@@ -702,7 +708,7 @@ class HelvticatSearchInput(BaseModel):
     )
     set_spec:   str | None = Field(
         default=None, max_length=100,
-        description="OAI-Set-Bezeichner (aus heritage_list_nb_collections) — z. B. 'helveticat'"
+        description="OAI-Set-Bezeichner (aus heritage_list_nb_collections) — z. B. 'swissbook'"
     )
     from_date:  str | None = Field(
         default=None,
@@ -1043,16 +1049,13 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
 
     async def _sik_isea() -> dict:
         try:
-            resp = await _http_get(f"{SIK_ISEA_API}/personendaten", params={"q": q, "format": "json"})
+            resp = await _http_get(
+                f"{CKAN_API}/datastore_search",
+                params={"resource_id": SIKART_RESOURCE_ID, "q": q, "limit": n},
+            )
             resp.raise_for_status()
-            text = resp.text.strip()
-            if text.startswith("{") or text.startswith("["):
-                data    = resp.json()
-                artists = (data if isinstance(data, list) else data.get("results", []))[:n]
-            else:
-                reader  = csv.DictReader(io.StringIO(text))
-                artists = list(reader)[:n]
-            return {"source": "SIK-ISEA", "label": "Künstler·innen", "items": artists}
+            records = resp.json().get("result", {}).get("records", [])
+            return {"source": "SIK-ISEA", "label": "Künstler·innen", "items": records}
         except ExpectedUpstreamError as e:
             return {"source": "SIK-ISEA", "error": str(e)}
 
@@ -1103,14 +1106,11 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
 
         for item in items:
             if src == "SIK-ISEA":
-                name    = item.get("Name") or item.get("name", "")
-                vorname = item.get("Vorname") or item.get("vorname", "")
-                full    = f"{vorname} {name}".strip() or "—"
-                birth   = item.get("Geburtsjahr", "")
-                death   = item.get("Todesjahr", "")
-                canton  = item.get("Kanton", "")
-                dating  = f" ({birth}–{death})" if birth or death else ""
-                ctxt    = f" · {canton}" if canton else ""
+                full   = _artist_full_name(item)
+                span   = _artist_lifespan(item)
+                canton = (item.get("GEBURTSKANTON") or "").strip()
+                dating = f" ({span})" if span else ""
+                ctxt   = f" · {canton}" if canton else ""
                 lines.append(f"- **{full}**{dating}{ctxt}")
 
             elif src == "SNM":
@@ -1141,36 +1141,38 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
 @mcp.resource("heritage://sik-isea/overview")
 async def sik_isea_overview() -> str:
     """Übersicht SIK-ISEA: Datenquelle, Umfang und verfügbare Tools."""
-    return """# SIK-ISEA — Schweizerisches Institut für Kunstwissenschaft
+    return """# SIK-ISEA / SIKART — Schweizer Künstler·innen
 
-## Was ist SIK-ISEA?
-Das Schweizerische Institut für Kunstwissenschaft (SIK-ISEA) ist die zentrale
-Forschungs- und Informationsstelle für Kunst in der Schweiz. Die Künstler-Datenbank
-umfasst über 50'000 Einträge zu Schweizer Künstler·innen aller Epochen und Medien.
+## Was ist SIKART?
+SIKART (Lexikon zur Kunst in der Schweiz) ist das Online-Nachschlagewerk des
+Schweizerischen Instituts für Kunstwissenschaft (SIK-ISEA). Der hier genutzte
+Datensatz umfasst rund 17'000 Einträge mit den biografischen Grunddaten zu
+historischen und zeitgenössischen Kunstschaffenden.
 
 ## Verfügbare Daten
-- Biografische Angaben (Geburt, Tod, Herkunft, Kanton)
-- Technik und Medium (Ölmalerei, Skulptur, Grafik, Fotografie, …)
-- Berufsbezeichnung und Epoche
-- Verlinkung zu weiterführenden Ressourcen
+- Name, Vorname, Namensvarianten
+- Lebensdaten (Geburts-/Sterbejahr, -datum, -ort, -kanton, -land)
+- Kurzbiografie (`VITAZEILE`, enthält oft die Berufsbezeichnung)
+- Verknüpfungen: SIKART-Eintrag, GND, HLS-ID
 
 ## API-Zugang
-- Endpoint:     https://api.sik-isea.ch/personendaten
-- Format:       JSON / CSV
+- Quelle:        opendata.swiss — Datensatz «kuenstlernamen-aus-sikart-lexikon-zur-kunst-in-der-schweiz»
+- Endpoint:      https://ckan.opendata.swiss/api/3/action/datastore_search
+- Format:        JSON (CKAN DataStore)
 - Authentifizierung: Keine (Open Data)
-- Lizenz:       CC0 / Freie Nutzung
+- Lizenz:        CC BY (opendata.swiss Nutzungsbedingungen)
 
 ## Verfügbare MCP-Tools
-| Tool                      | Funktion                                 |
-|---------------------------|------------------------------------------|
-| `heritage_search_artists` | Künstler·innen suchen (Name, Kanton, ...) |
-| `heritage_get_artist`     | Detaildaten zu einer Künstler·in          |
+| Tool                      | Funktion                                  |
+|---------------------------|-------------------------------------------|
+| `heritage_search_artists` | Künstler·innen suchen (Name, Ort/Kanton)  |
+| `heritage_get_artist`     | Detaildaten zu einer Künstler·in (HAUPTNR)|
 | `heritage_cross_search`   | Suche über alle drei Quellen              |
 
 ## Demo-Abfragen
-- «Welche Künstlerinnen aus dem Kanton Zürich gibt es?»
-- «Zeige mir alle Einträge zu Ferdinand Hodler»
-- «Schweizer Bildhauer·innen des 19. Jahrhunderts»
+- «Suche Künstler·innen mit Geburtsort Basel»
+- «Zeige mir Einträge zu Ferdinand Hodler»
+- «Finde Schweizer Bildhauer·innen»
 """
 
 
@@ -1180,19 +1182,23 @@ async def nb_collections_overview() -> str:
     return """# Schweizerische Nationalbibliothek (NB) — Sammlungsübersicht
 
 ## OAI-PMH Endpunkt
-- URL:           https://www.nb.admin.ch/oai/oai-provider
+- URL:           https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request
 - Protokoll:     OAI-PMH 2.0
 - Metadaten:     Dublin Core (oai_dc)
 - Authentifizierung: Keine
 
-## Hauptsammlungen (OAI-Sets)
-| Set            | Inhalt                                        |
-|----------------|-----------------------------------------------|
-| helveticat     | Schweizerische Nationalbibliografie            |
-| e-periodica    | Digitalisierte Schweizer Zeitschriften          |
-| webarchiv      | Archivierte Schweizer Websites                 |
-| sla            | Schweizerisches Literaturarchiv                |
-| phonothek      | Schweizerische Nationalphonothek               |
+## Bekannte OAI-Sets
+| Set         | Inhalt                                           |
+|-------------|--------------------------------------------------|
+| swissbook   | Das Schweizer Buch (Schweizerische Nationalbibliografie) |
+| xsichler    | Sammlung zur Geschichte der Erziehung und Bildung |
+| xrara       | Seltene Bücher (Helvetica Rara)                  |
+| xdigicoll   | Alle digitalisierten Bücher                      |
+| xmundart    | Sammlung zu Patois und Dialekten                 |
+| xsgg        | Publikationen der Schweiz. Gesellschaft für Geschichte |
+| xlivcar     | Auf Nutzeranfrage digitalisierte Bücher          |
+
+Die jeweils aktuelle Liste liefert `heritage_list_nb_collections` (OAI-PMH ListSets).
 
 ## Verfügbare MCP-Tools
 | Tool                          | Funktion                                  |
