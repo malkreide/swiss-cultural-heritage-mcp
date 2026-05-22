@@ -14,9 +14,9 @@ Hier finden Sie praxisnahe Anwendungsbeispiele für verschiedene Zielgruppen.
 *Warum nützlich:* Lehrpersonen finden schnell authentische Quellen und Sammlungsobjekte (z. B. Waffen, Münzen, Siegel) zur Veranschaulichung im Unterricht.
 
 **Recherche zu regionalen Künstlerinnen und Künstlern**
-«Zeige mir Künstlerinnen aus dem Kanton Bern, die im 19. Jahrhundert in der Ölmalerei tätig waren.»
-→ `heritage_search_artists(region="Bern", period="19. Jahrhundert", technique="Ölmalerei")`
-*Warum nützlich:* Ermöglicht Fachreferent:innen für Bildnerisches Gestalten die gezielte Einbindung lokaler und historischer Kunstschaffender in den Lehrplan.
+«Zeige mir Schweizer Kunstschaffende mit Geburtsort im Kanton Bern.»
+→ `heritage_search_artists(region="Bern")`
+*Warum nützlich:* Ermöglicht Fachreferent:innen für Bildnerisches Gestalten die gezielte Einbindung lokaler Kunstschaffender in den Lehrplan. Die Volltextsuche deckt auch Berufsbezeichnungen ab (z. B. `query="Bildhauer"`).
 
 ---
 
@@ -41,7 +41,7 @@ Hier finden Sie praxisnahe Anwendungsbeispiele für verschiedene Zielgruppen.
 **Biografische Recherche zu bekannten Persönlichkeiten**
 «Suche alle verfügbaren biografischen Informationen zur Künstlerin Sophie Taeuber-Arp.»
 → `heritage_search_artists(query="Sophie Taeuber-Arp")`
-→ `heritage_get_artist(artist_id="12345")`
+→ `heritage_get_artist(artist_id="<HAUPTNR aus dem Suchergebnis>")`
 *Warum nützlich:* Interessierte Bürgerinnen und Bürger erhalten direkten, verlässlichen Zugang zu den kuratierten Lebensdaten bedeutender Schweizer Persönlichkeiten.
 
 **Quellenübergreifende Kulturrecherche**
@@ -55,9 +55,9 @@ Hier finden Sie praxisnahe Anwendungsbeispiele für verschiedene Zielgruppen.
 *MCP-Enthusiast:innen, Forscher:innen, Prompt Engineers, öffentliche Verwaltung*
 
 **Metadaten-Analyse für Datensätze**
-«Liste alle verfügbaren OAI-PMH-Sets der Nationalbibliothek auf und durchsuche danach das Set 'helveticat' nach Publikationen zur KI-Ethik.»
+«Liste alle verfügbaren OAI-PMH-Sets der Nationalbibliothek auf und durchsuche danach das Set 'swissbook' nach Publikationen zur KI-Ethik.»
 → `heritage_list_nb_collections()`
-→ `heritage_search_helveticat(query="KI-Ethik", set_spec="helveticat")`
+→ `heritage_search_helveticat(query="KI-Ethik", set_spec="swissbook")`
 *Warum nützlich:* Entwickler:innen können die Struktur der OAI-PMH-Schnittstelle explorieren und gezielt Sammlungen für die automatisierte Metadaten-Extraktion nutzen.
 
 **Kulturhistorische Verknüpfung (Multi-Server)**
@@ -72,7 +72,7 @@ Hier finden Sie praxisnahe Anwendungsbeispiele für verschiedene Zielgruppen.
 
 | Ich möchte… | Tool(s) | Auth nötig? |
 |-------------|---------|-------------|
-| **Künstler:innen nach Region/Technik finden** | `heritage_search_artists` | Nein |
+| **Künstler:innen nach Name/Ort finden** | `heritage_search_artists` | Nein |
 | **Ein vollständiges Künstler:innen-Profil abrufen** | `heritage_get_artist` | Nein |
 | **Datensätze des Nationalmuseums suchen** | `heritage_search_museum_datasets` | Nein |
 | **Objekte in einer Museums-Sammlung ansehen** | `heritage_browse_collection` | Nein |

@@ -21,8 +21,8 @@ Residual risks the controls below mitigate:
 
 | Control | Location | Audit ref |
 |---|---|---|
-| Egress allow-list (`frozenset` of three upstreams) | `server.py:_assert_allowed` | SEC-021 |
-| `follow_redirects=False` on the shared httpx client | `server.py:_new_client` | SEC-021 |
+| Egress allow-list (`frozenset` of two upstreams) | `server.py:_assert_allowed` | SEC-021 |
+| Manual redirect following with a per-hop allow-list re-check (client keeps `follow_redirects=False`) | `server.py:_http_get` | SEC-021 |
 | `defusedxml.ElementTree` for OAI-PMH parsing | `server.py` imports | SEC (XML) |
 | Pydantic input models with `extra="forbid"`, length caps, regex date patterns | every `*Input` class | input validation |
 | Narrow `except ExpectedUpstreamError` (httpx + XML + ValueError) | every tool body | OBS-001 |

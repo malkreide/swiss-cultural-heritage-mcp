@@ -4,7 +4,7 @@ This document records the data-residency posture of `swiss-cultural-heritage-mcp
 
 ## Scope of personal data
 
-**None directly processed.** The three upstream APIs (SIK-ISEA, opendata.swiss, Nationalbibliothek OAI-PMH) return institutional records: artist biographies, museum objects, bibliographic metadata. The server is stateless: no database, no cache, no logging of request bodies.
+**None directly processed.** The upstream APIs (opendata.swiss CKAN — SIKART artists + Nationalmuseum datasets; Nationalbibliothek OAI-PMH) return institutional records: artist biographies, museum objects, bibliographic metadata. The server is stateless: no database, no cache, no logging of request bodies.
 
 However, **request strings can carry personal data incidentally** — a user searching for their own family name, a query that includes a learner's name, etc. Operators should treat HTTP access logs accordingly.
 
@@ -34,11 +34,10 @@ If you add an APM or log-aggregation service (Sentry, Datadog, etc.), use the EU
 
 The server's allow-list (`docs/network-egress.md`) restricts outbound traffic to:
 
-- `api.sik-isea.ch` — Switzerland
-- `opendata.swiss` — Switzerland
-- `www.nb.admin.ch` — Switzerland
+- `ckan.opendata.swiss` — opendata.swiss CKAN portal (Swiss Confederation)
+- `helveticat.nb.admin.ch` — Helveticat OAI-PMH (Schweizerische Nationalbibliothek)
 
-All three upstreams are hosted in Switzerland, so the server itself does not generate cross-border data transfers regardless of where it is deployed. The residency concern applies to the deployment host (which receives request strings) and any logging/observability backend you attach.
+Both upstreams are Swiss federal services, so the server itself does not generate cross-border data transfers regardless of where it is deployed. The residency concern applies to the deployment host (which receives request strings) and any logging/observability backend you attach.
 
 ## Processing inventory (revDSG Art. 12)
 
@@ -46,7 +45,7 @@ All three upstreams are hosted in Switzerland, so the server itself does not gen
 |---|---|
 | Purpose | Read-only access to Swiss public cultural heritage data |
 | Data categories | Search queries (may incidentally contain personal data); responses contain no personal data of end users |
-| Recipients | Three Swiss public-sector upstreams (see allow-list) |
+| Recipients | Two Swiss public-sector upstream hosts (see allow-list) |
 | Cross-border transfers | None at the application layer; depends on deployment region |
 | Retention | None — server is stateless |
 | Security measures | TLS to upstreams; egress allow-list; defusedxml; Pydantic input validation; container hardening (see `security.md`) |

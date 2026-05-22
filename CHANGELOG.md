@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nationalbibliothek: `NB_OAI_PMH` now targets `helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request`; the OAI-PMH (`oai_dc`) design is unchanged
 - CKAN base URL switched to the canonical `ckan.opendata.swiss` host (avoids the `302` from `opendata.swiss`)
 - Egress allow-list reduced to the hosts actually used: `ckan.opendata.swiss`, `helveticat.nb.admin.ch`
+- Documentation (`README.md`, `README.de.md`, `EXAMPLES.md`, `docs/`) updated to match the rebuilt SIK-ISEA / NB data sources
 
 ### Removed
 - `heritage_search_artists` parameters `period` and `technique` — the SIKART dataset has no structured fields for them; `query` covers professions via the biography line

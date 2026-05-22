@@ -21,7 +21,7 @@
 
 | Quelle | Daten | API |
 |--------|-------|-----|
-| **SIK-ISEA** | 50'000+ Schweizer Künstler·innen (Biografien, Techniken, Kantone) | REST/CSV |
+| **SIK-ISEA (SIKART)** | ~17'000 Schweizer Künstler·innen — SIKART-Biografiedaten | opendata.swiss CKAN |
 | **Nationalmuseum (SNM)** | Sammlungsdaten (Numismatik, Siegel, Spezialsammlungen) | opendata.swiss CKAN |
 | **Nationalbibliothek (NB)** | Schweizerische Nationalbibliografie (Helveticat) | OAI-PMH |
 
@@ -151,8 +151,8 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 
 | Tool | Beschreibung |
 |------|-------------|
-| `heritage_search_artists` | 50'000+ Künstler·innen nach Name, Region, Epoche, Technik suchen |
-| `heritage_get_artist` | Vollständiges Künstler·innen-Profil nach SIK-ISEA-ID |
+| `heritage_search_artists` | ~17'000 Künstler·innen (SIKART) nach Name oder Ort suchen |
+| `heritage_get_artist` | Vollständiges Künstler·innen-Profil nach SIKART-ID (HAUPTNR) |
 
 ### Nationalmuseum (SNM)
 
@@ -180,7 +180,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 | Abfrage | Tool |
 |---------|------|
 | *«Wer ist Ferdinand Hodler?»* | `heritage_get_artist` |
-| *«Zeige Maler des 19. Jahrhunderts aus dem Kanton Bern»* | `heritage_search_artists` |
+| *«Finde Schweizer Künstler·innen mit Geburtsort Basel»* | `heritage_search_artists` |
 | *«Welche Münzen aus Zürich hat das Nationalmuseum?»* | `heritage_browse_collection` |
 | *«Finde Publikationen zur Volksschule»* | `heritage_search_helveticat` |
 | *«Suche alles über Sophie Taeuber-Arp»* | `heritage_cross_search` |
@@ -192,7 +192,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 ```
 ┌─────────────────┐     ┌──────────────────────────────┐     ┌──────────────────────────┐
 │   Claude / KI   │────▶│  Swiss Cultural Heritage MCP  │────▶│  SIK-ISEA                │
-│   (MCP Host)    │◀────│  (MCP Server)                │◀────│  REST/CSV                │
+│   (MCP Host)    │◀────│  (MCP Server)                │◀────│  opendata.swiss / CKAN   │
 └─────────────────┘     │                              │     ├──────────────────────────┤
                         │  9 Tools · 2 Resources       │────▶│  Nationalmuseum (SNM)    │
                         │  2 Prompts                   │◀────│  opendata.swiss / CKAN   │
@@ -206,7 +206,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 
 | Quelle | Protokoll | Umfang | Auth |
 |--------|-----------|--------|------|
-| SIK-ISEA | REST/CSV | 50'000+ Schweizer Künstler·innen | Keine |
+| SIK-ISEA (SIKART) | CKAN DataStore | ~17'000 Schweizer Künstler·innen | Keine |
 | Nationalmuseum | CKAN DataStore | Museumssammlungen | Keine |
 | Nationalbibliothek | OAI-PMH | Schweizerische Nationalbibliografie | Keine |
 
@@ -236,7 +236,7 @@ swiss-cultural-heritage-mcp/
 
 - **Nur-Lesen:** Alle Tools verwenden ausschliesslich HTTP-GET-Anfragen — es werden keine Daten geschrieben, verändert oder gelöscht.
 - **Keine Personendaten:** Die APIs liefern institutionelle Datensätze (Kunstwerke, Publikationen, Künstlerbiografien). Keine personenbezogenen Daten werden durch diesen Server verarbeitet oder gespeichert.
-- **Rate Limits:** SIK-ISEA- und OAI-PMH-Endpunkte sind nicht explizit rate-limitiert; `limit`-Parameter konservativ einsetzen. Der Server erzwingt ein 30-Sekunden-Timeout pro Anfrage.
+- **Rate Limits:** Die opendata.swiss- und OAI-PMH-Endpunkte sind nicht explizit rate-limitiert; `limit`-Parameter konservativ einsetzen. Der Server erzwingt ein 30-Sekunden-Timeout pro Anfrage.
 - **Datenaktualität:** Datensätze spiegeln den Upstream-Stand zum Abfragezeitpunkt wider. Dieser Server nimmt kein Caching vor.
 - **Nutzungsbedingungen:** Die Daten unterliegen den Nutzungsbedingungen der jeweiligen Quelle — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/de/terms-of-use), [Nationalbibliothek OAI-PMH](https://www.nb.admin.ch/). Alle Daten sind unter offenen Lizenzen veröffentlicht (CC0 / CC BY).
 - **Keine Gewähr:** Dieses Projekt ist eine Community-Initiative ohne Verbindung zu SIK-ISEA, SNM oder NB. Verfügbarkeit hängt von den vorgelagerten APIs ab.
