@@ -16,7 +16,7 @@
 #   resources: { requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 256Mi} }
 
 # ─────────────────────────── Stage 1: builder ──────────────────────────────────
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -30,7 +30,7 @@ COPY src ./src
 RUN pip install --no-cache-dir --prefix=/install .
 
 # ─────────────────────────── Stage 2: runtime ──────────────────────────────────
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
