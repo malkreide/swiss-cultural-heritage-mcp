@@ -846,6 +846,77 @@ class TestStructuredOutput:
         assert "ResultEnvelope" in json.dumps(schema)
 
 
+class TestAttribution:
+    """CH-004: jede Antwort führt Quelle + Lizenz mit (OGD CC-BY-Compliance)."""
+
+    @pytest.mark.asyncio
+    async def test_markdown_search_has_attribution_footer(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            result = await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+        assert "Datenquelle & Lizenz:" in result
+        assert "SIK-ISEA / SIKART" in result
+        assert "CC BY" in result
+        assert "https://www.sik-isea.ch" in result
+
+    @pytest.mark.asyncio
+    async def test_markdown_detail_has_attribution_footer(self):
+        with respx.mock:
+            respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD)
+            )
+            params = PublicationDetailInput(identifier="oai:helveticat.ch:123456")
+            result = await heritage_get_publication(params)
+        assert "Datenquelle & Lizenz:" in result
+        assert "Nationalbibliothek" in result
+
+    @pytest.mark.asyncio
+    async def test_cross_search_markdown_per_item_provenance(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            respx.get(f"{CKAN_API}/package_search").mock(
+                return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            )
+            respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
+            )
+            # "Volksschule" matches the NB fixture so all three sections have items
+            result = await heritage_cross_search(
+                CrossSearchInput(query="Volksschule", limit_per_source=3)
+            )
+        # every result line tags its own source, not just the section header
+        assert "`[SIK-ISEA]`" in result
+        assert "`[SNM]`" in result
+        assert "`[NB]`" in result
+        # footer lists licences for all queried sources
+        assert "Datenquelle & Lizenz:" in result
+        assert result.count("Lizenz:") >= 3  # header label + 3 source rows
+
+    @pytest.mark.asyncio
+    async def test_cross_search_json_items_carry_license(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            respx.get(f"{CKAN_API}/package_search").mock(
+                return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            )
+            respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
+            )
+            result = await heritage_cross_search(
+                CrossSearchInput(query="Hodler", response_format=ResponseFormat.JSON)
+            )
+        assert isinstance(result, ResultEnvelope)
+        for section in result.results:
+            assert section.get("license")
+            assert section.get("url")
+
+
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
 @pytest.mark.live
