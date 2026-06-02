@@ -41,6 +41,13 @@ dev = [
     "respx>=0.21.0",
     "ruff>=0.4.0",
 ]
+# Optionales OpenTelemetry-Tracing (OBS-006). Nur nötig, wenn
+# OTEL_EXPORTER_OTLP_ENDPOINT gesetzt ist; sonst bleibt Tracing aus.
+otel = [
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "opentelemetry-instrumentation-httpx>=0.40b0",
+]
 
 [project.scripts]
 swiss-cultural-heritage-mcp = "swiss_cultural_heritage_mcp.server:mcp.run"
