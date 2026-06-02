@@ -29,6 +29,45 @@ from defusedxml import ElementTree as ET
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# ─────────────────────────── Konfiguration (ARCH-004) ──────────────────────────
+# Einziger Konfig-Ladepunkt: alle Endpunkte, Timeouts, die Egress-Allow-List sowie
+# Host/Port/Transport/Log-Level kommen aus diesem Settings-Objekt (statt aus frei
+# verstreuten Modul-Globals). Jedes Feld ist per Umgebungsvariable mit Präfix
+# ``MCP_`` überschreibbar (z. B. ``MCP_HTTP_TIMEOUT=10``), ohne Code zu ändern.
+class Settings(BaseSettings):
+    """Zentrale, env-überschreibbare Server-Konfiguration (Präfix ``MCP_``)."""
+    model_config = SettingsConfigDict(env_prefix="MCP_", extra="ignore")
+
+    # Upstream-Endpunkte / Ressourcen
+    ckan_api:           str = "https://ckan.opendata.swiss/api/3/action"
+    snm_org:            str = "schweizerisches-nationalmuseum"
+    sikart_resource_id: str = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
+    nb_oai_pmh:         str = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
+
+    # HTTP-Verhalten
+    http_timeout:  float = 30.0
+    default_limit: int = 20
+    max_limit:     int = 100
+    max_redirects: int = 5
+
+    # Egress-Allow-List (SEC-021)
+    allowed_hosts: frozenset[str] = frozenset({
+        "ckan.opendata.swiss",
+        "helveticat.nb.admin.ch",
+    })
+
+    # Transport / Netzwerk
+    transport:    Literal["stdio", "http"] = "stdio"
+    host:         str = "127.0.0.1"   # SEC-016: loopback-Default; Container setzt 0.0.0.0
+    port:         int = 8000
+    cors_origins: str = ""            # komma-separiert; leer = keine Cross-Origin-Freigabe
+    log_level:    str = "INFO"
+
+
+settings = Settings()
 
 
 # ─────────────────────────── Structured Logging (OBS-003) ──────────────────────
@@ -41,7 +80,7 @@ def _configure_logging(stream=sys.stderr, level: int | None = None) -> None:
     Das Log-Level steuert ``MCP_LOG_LEVEL`` (debug/info/warning/error/critical).
     """
     if level is None:
-        level = getattr(logging, os.getenv("MCP_LOG_LEVEL", "INFO").upper(), logging.INFO)
+        level = getattr(logging, settings.log_level.upper(), logging.INFO)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -137,28 +176,21 @@ def _is_error_result(result: object) -> bool:
 # Beim Import aktivieren — no-op, solange OTEL_EXPORTER_OTLP_ENDPOINT nicht gesetzt ist.
 _init_tracing()
 
-# ─────────────────────────── Konstanten ────────────────────────────────────────
-# opendata.swiss bedient die CKAN-API unter dem kanonischen Host ckan.opendata.swiss;
-# opendata.swiss/api/... antwortet mit 302 dorthin.
-CKAN_API      = "https://ckan.opendata.swiss/api/3/action"
-SNM_ORG       = "schweizerisches-nationalmuseum"
+# ─────────────────────────── Konstanten (aus Settings abgeleitet) ──────────────
+# Modulweite Aliase für die Konfigwerte — Quelle der Wahrheit ist ``settings``
+# (ARCH-004); diese Namen bleiben für Tools, Tests und Importeure stabil.
+CKAN_API           = settings.ckan_api
+SNM_ORG            = settings.snm_org
+SIKART_RESOURCE_ID = settings.sikart_resource_id
+NB_OAI_PMH         = settings.nb_oai_pmh
 
-# SIKART-Künstlerdaten (~17'000) als DataStore-fähige CKAN-Ressource.
-SIKART_RESOURCE_ID = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
-
-# Helveticat OAI-PMH (Ex-Libris-Alma-Provider der Schweizerischen Nationalbibliothek).
-NB_OAI_PMH    = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
-
-HTTP_TIMEOUT  = 30.0
-DEFAULT_LIMIT = 20
-MAX_LIMIT     = 100
-MAX_REDIRECTS = 5
+HTTP_TIMEOUT  = settings.http_timeout
+DEFAULT_LIMIT = settings.default_limit
+MAX_LIMIT     = settings.max_limit
+MAX_REDIRECTS = settings.max_redirects
 
 # Egress-Allow-List (SEC-021): nur diese Hosts dürfen kontaktiert werden.
-ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
-    "ckan.opendata.swiss",
-    "helveticat.nb.admin.ch",
-})
+ALLOWED_HOSTS: Final[frozenset[str]] = settings.allowed_hosts
 
 # OAI-PMH XML-Namespaces
 OAI_NS = {
@@ -1717,7 +1749,7 @@ async def health(_request):
 #  HTTP-APP (Streamable HTTP) — CORS (SDK-004)
 # ══════════════════════════════════════════════════════════════════════════════
 
-DEFAULT_HTTP_PORT: Final[int] = 8000
+DEFAULT_HTTP_PORT: Final[int] = settings.port
 
 
 def cors_origins_from_env() -> list[str]:
@@ -1726,8 +1758,7 @@ def cors_origins_from_env() -> list[str]:
     Default ist eine leere Liste — also keine Cross-Origin-Freigabe. Browser-Zugriff
     erfordert das explizite Setzen der erlaubten Origins (kein Wildcard in Produktion).
     """
-    raw = os.environ.get("MCP_CORS_ORIGINS", "")
-    return [o.strip() for o in raw.split(",") if o.strip()]
+    return [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 
 
 def build_http_app(cors_origins: list[str] | None = None):
@@ -1756,18 +1787,18 @@ def build_http_app(cors_origins: list[str] | None = None):
 # ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    if "--http" in sys.argv:
+    # ARCH-004: Transport/Host/Port kommen aus Settings (MCP_TRANSPORT/MCP_HOST/
+    # MCP_PORT); `--http` bleibt als bequemes CLI-Alias erhalten.
+    if settings.transport == "http" or "--http" in sys.argv:
         import uvicorn
 
-        port_idx = sys.argv.index("--port") + 1 if "--port" in sys.argv else None
-        port = int(sys.argv[port_idx]) if port_idx else int(os.environ.get("MCP_PORT", DEFAULT_HTTP_PORT))
-        # SEC-016: default to loopback; the container image sets MCP_HOST=0.0.0.0
-        # explicitly so it is reachable behind the platform load balancer.
-        host = os.environ.get("MCP_HOST", "127.0.0.1")
-
-        mcp.settings.host = host
-        mcp.settings.port = port
+        # SEC-016: loopback-Default; der Container setzt MCP_HOST=0.0.0.0 explizit.
+        mcp.settings.host = settings.host
+        mcp.settings.port = settings.port
         app = build_http_app(cors_origins_from_env())
-        uvicorn.run(app, host=host, port=port, log_level=mcp.settings.log_level.lower())
+        uvicorn.run(
+            app, host=settings.host, port=settings.port,
+            log_level=mcp.settings.log_level.lower(),
+        )
     else:
         mcp.run()
