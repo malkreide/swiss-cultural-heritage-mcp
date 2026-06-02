@@ -143,7 +143,7 @@ For use via **claude.ai in the browser** (e.g. on managed workstations without l
 
 > 💡 *"stdio for the developer laptop, SSE for the browser."*
 
-For container deployments (Docker / Kubernetes / Cloud Run): the repository ships a hardened `Dockerfile` (non-root UID 10001). See [`docs/security.md`](docs/security.md) for recommended `SecurityContext` and [`docs/network-egress.md`](docs/network-egress.md) for egress policy.
+For container deployments (Docker / Kubernetes / Cloud Run): the repository ships a hardened `Dockerfile` (non-root UID 10001). See [`docs/security.md`](docs/security.md) for recommended `SecurityContext` and [`docs/network-egress.md`](docs/network-egress.md) for egress policy. The service runs **single-instance** by default; before scaling horizontally, see [`docs/scaling.md`](docs/scaling.md) for the session-affinity prerequisites.
 
 ---
 
@@ -226,7 +226,7 @@ swiss-cultural-heritage-mcp/
 ├── .github/workflows/ci.yml     # GitHub Actions (Python 3.11/3.12/3.13)
 ├── .github/dependabot.yml       # Monthly dependency + SDK update PRs
 ├── Dockerfile                   # Multi-stage, non-root, HEALTHCHECK
-├── docs/                        # security, network-egress, data-residency, roadmap
+├── docs/                        # security, network-egress, scaling, data-residency, roadmap
 ├── pyproject.toml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md

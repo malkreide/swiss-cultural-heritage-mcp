@@ -375,6 +375,13 @@ class TestEgressAllowList:
         with pytest.raises(ValueError, match="Allow-List"):
             _assert_allowed("https://evil.example.com/exfil")
 
+    def test_assert_allowed_rejects_non_https_scheme(self):
+        # SEC-004: HTTPS is enforced even for an otherwise allow-listed host
+        with pytest.raises(ValueError, match="HTTPS"):
+            _assert_allowed("http://ckan.opendata.swiss/api/3/action/datastore_search")
+        with pytest.raises(ValueError, match="HTTPS"):
+            _assert_allowed("file:///etc/passwd")
+
     @pytest.mark.asyncio
     async def test_http_get_rejects_unknown_host(self):
         with pytest.raises(ValueError, match="Allow-List"):
