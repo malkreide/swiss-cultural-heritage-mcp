@@ -161,9 +161,13 @@ class ResultEnvelope(BaseModel):
     meta:     dict | None = Field(default=None, description="Tool-spezifische Zusatzfelder")
 
 
-# Quellen-/Lizenz-Konstanten (Provenienz pro Datensatz, Vorarbeit für CH-004).
+# Quellen-/Lizenz-Konstanten (Provenienz + Lizenz pro Datensatz, CH-004).
+# Lizenzangaben spiegeln die im Projekt dokumentierten OGD-Bedingungen wider
+# (vgl. heritage://*/overview-Ressourcen). Wo ein Datensatz/Record ein eigenes
+# Lizenzfeld trägt (SIKART `NUTZUNGSLIZENZ`, DC `rights`), ist dieses massgeblich
+# und wird in den Detailansichten zusätzlich ausgewiesen.
 SOURCE_SIKART: Final = SourceInfo(
-    name="SIK-ISEA / SIKART", license="CC BY-NC-SA", url="https://www.sik-isea.ch"
+    name="SIK-ISEA / SIKART", license="CC BY", url="https://www.sik-isea.ch"
 )
 SOURCE_SNM: Final = SourceInfo(
     name="Schweizerisches Nationalmuseum (opendata.swiss)",
@@ -173,6 +177,21 @@ SOURCE_NB: Final = SourceInfo(
     name="Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
     license="offen / pro Datensatz", url="https://www.nb.admin.ch",
 )
+
+
+def _attribution(source: SourceInfo | list[SourceInfo]) -> str:
+    """Markdown-Attributionsfooter (CH-004).
+
+    Open-Government-Data unter CC BY verlangt die Nennung von Quelle und Lizenz.
+    Dieser Footer stellt sicher, dass *jede* Antwort ihre Provenienz mitführt —
+    auch dann, wenn einzelne Datensätze aus dem Kontext kopiert werden.
+    """
+    sources = source if isinstance(source, list) else [source]
+    rows = "\n".join(
+        f"- {s.name} — Lizenz: {s.license}" + (f" · <{s.url}>" if s.url else "")
+        for s in sources
+    )
+    return f"\n\n---\n**Datenquelle & Lizenz:**\n{rows}\n"
 
 
 # ─────────────────────────── Shared Utilities ──────────────────────────────────
@@ -443,7 +462,7 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
         if (params.offset + len(records)) < total:
             lines.append(f"*Weitere Ergebnisse ab Offset {params.offset + len(records)}*")
 
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_SIKART)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -533,7 +552,7 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
             if val and str(val).strip():
                 lines.append(f"**{label}:** {str(val).strip()}")
 
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_SIKART)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -669,7 +688,7 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
         if total > params.offset + len(packages):
             lines.append(f"*Weitere Datensätze ab Offset {params.offset + len(packages)}*")
 
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_SNM)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -779,7 +798,7 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
         if (params.offset + len(records)) < total:
             lines.append(f"*Weitere Objekte ab Offset {params.offset + len(records)}*")
 
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_SNM)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -936,7 +955,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
         if resumption:
             lines.append("*Weitere Ergebnisse verfügbar (OAI Resumption Token vorhanden).*")
 
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_NB)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -997,7 +1016,7 @@ async def heritage_list_nb_collections(
         lines.append(
             "\n*Verwende den `set_spec`-Wert als Parameter `set_spec` in `heritage_search_helveticat`.*"
         )
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_NB)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -1082,7 +1101,7 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
                     val = " | ".join(v for v in val if v)
                 lines.append(f"**{label}:** {val}")
 
-        return "\n".join(lines)
+        return "\n".join(lines) + _attribution(SOURCE_NB)
 
     except ExpectedUpstreamError as e:
         return _handle_error(e)
@@ -1157,9 +1176,11 @@ async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | st
             )
             resp.raise_for_status()
             records = resp.json().get("result", {}).get("records", [])
-            return {"source": "SIK-ISEA", "label": "Künstler·innen", "items": records}
+            return {"source": "SIK-ISEA", "label": "Künstler·innen",
+                    "license": SOURCE_SIKART.license, "url": SOURCE_SIKART.url, "items": records}
         except ExpectedUpstreamError as e:
-            return {"source": "SIK-ISEA", "error": str(e)}
+            return {"source": "SIK-ISEA", "license": SOURCE_SIKART.license,
+                    "url": SOURCE_SIKART.url, "error": str(e)}
 
     async def _snm() -> dict:
         try:
@@ -1169,9 +1190,11 @@ async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | st
             )
             resp.raise_for_status()
             pkgs = resp.json().get("result", {}).get("results", [])
-            return {"source": "SNM", "label": "Museumsdatensätze", "items": pkgs}
+            return {"source": "SNM", "label": "Museumsdatensätze",
+                    "license": SOURCE_SNM.license, "url": SOURCE_SNM.url, "items": pkgs}
         except ExpectedUpstreamError as e:
-            return {"source": "SNM", "error": str(e)}
+            return {"source": "SNM", "license": SOURCE_SNM.license,
+                    "url": SOURCE_SNM.url, "error": str(e)}
 
     async def _nb() -> dict:
         try:
@@ -1180,20 +1203,21 @@ async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | st
             records  = _parse_oai_records(resp.text)
             q_lower  = q.lower()
             filtered = [r for r in records if q_lower in json.dumps(r, ensure_ascii=False).lower()][:n]
-            return {"source": "NB", "label": "Publikationen", "items": filtered}
+            return {"source": "NB", "label": "Publikationen",
+                    "license": SOURCE_NB.license, "url": SOURCE_NB.url, "items": filtered}
         except ExpectedUpstreamError as e:
-            return {"source": "NB", "error": str(e)}
+            return {"source": "NB", "license": SOURCE_NB.license,
+                    "url": SOURCE_NB.url, "error": str(e)}
 
-    task_map = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
-    results  = await asyncio.gather(*(task_map[s]() for s in params.sources if s in task_map))
+    task_map   = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
+    source_map = {"sik_isea": SOURCE_SIKART, "snm": SOURCE_SNM, "nb": SOURCE_NB}
+    results      = await asyncio.gather(*(task_map[s]() for s in params.sources if s in task_map))
+    used_sources = [source_map[s] for s in params.sources if s in source_map]
 
     if params.response_format == ResponseFormat.JSON:
-        source_map = {"sik_isea": SOURCE_SIKART, "snm": SOURCE_SNM, "nb": SOURCE_NB}
-        used_sources = [source_map[s] for s in params.sources if s in source_map]
-        item_count   = sum(len(r.get("items", [])) for r in results)
         return ResultEnvelope(
             source=used_sources,
-            count=item_count,
+            count=sum(len(r.get("items", [])) for r in results),
             results=list(results),
         )
 
@@ -1223,11 +1247,11 @@ async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | st
                 canton = (item.get("GEBURTSKANTON") or "").strip()
                 dating = f" ({span})" if span else ""
                 ctxt   = f" · {canton}" if canton else ""
-                lines.append(f"- **{full}**{dating}{ctxt}")
+                lines.append(f"- `[{src}]` **{full}**{dating}{ctxt}")
 
             elif src == "SNM":
                 title = _normalize_ckan_title(item.get("title"))
-                lines.append(f"- {title}")
+                lines.append(f"- `[{src}]` {title}")
 
             elif src == "NB":
                 title = item.get("title") or "Ohne Titel"
@@ -1239,11 +1263,11 @@ async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | st
                 date = item.get("date", "")
                 auth = f" — {creator}" if creator else ""
                 yr   = f" ({date})" if date else ""
-                lines.append(f"- **{title}**{auth}{yr}")
+                lines.append(f"- `[{src}]` **{title}**{auth}{yr}")
 
         lines.append("")
 
-    return "\n".join(lines)
+    return "\n".join(lines) + _attribution(used_sources)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
