@@ -37,12 +37,14 @@ This server completes the humanistic dimension of the Swiss public data portfoli
 
 ## Features
 
-- 🏛️ **9 tools, 2 resources, 2 prompts** across three data sources
+- 🏛️ **8 tools, 2 resources, 2 prompts** across three data sources
 - 🔍 **`heritage_cross_search`** — parallel search across all three sources in a single call
 - 🌐 **Bilingual output** (Markdown / JSON)
 - 🔓 **No API key required** — all data under open licenses
 - ☁️ **Dual transport** — stdio (Claude Desktop) + Streamable HTTP (cloud)
 - 📚 **Prompt templates** for art research and finding educational materials
+
+**Project phase:** **Phase 1 — read-only.** Every tool is annotated `readOnlyHint: true`; there are no write or destructive operations. Moving to Phase 2 (write-capable) requires the prerequisites in [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
@@ -218,10 +220,13 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 swiss-cultural-heritage-mcp/
 ├── src/swiss_cultural_heritage_mcp/
 │   ├── __init__.py              # Package
-│   └── server.py                # 9 tools, 2 resources, 2 prompts
+│   └── server.py                # 8 tools, 2 resources, 2 prompts
 ├── tests/
 │   └── test_server.py           # Unit + integration tests (mocked HTTP)
 ├── .github/workflows/ci.yml     # GitHub Actions (Python 3.11/3.12/3.13)
+├── .github/dependabot.yml       # Monthly dependency + SDK update PRs
+├── Dockerfile                   # Multi-stage, non-root, HEALTHCHECK
+├── docs/                        # security, network-egress, data-residency, roadmap
 ├── pyproject.toml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
@@ -229,6 +234,8 @@ swiss-cultural-heritage-mcp/
 ├── README.md                    # This file (English)
 └── README.de.md                 # German version
 ```
+
+> **Single-file server:** the 8 tools live in one `server.py` rather than a `tools/` package. At this size a single, linear module is easier to read and review than a split; if the tool count grows materially, the SIK-ISEA / SNM / NB / cross-search blocks are the natural split points.
 
 ---
 
@@ -261,6 +268,18 @@ PYTHONPATH=src pytest tests/ -m "not live"
 # Integration tests (live API calls)
 pytest tests/ -m "live"
 ```
+
+---
+
+## MCP Protocol Version
+
+| Item | Value |
+|---|---|
+| Supported MCP protocol version | `2025-11-25` (negotiated by the SDK) |
+| SDK | `mcp[cli] >=1.0.0,<2.0.0` (pinned in `pyproject.toml`) |
+| Update policy | The SDK pin is the source of truth for the protocol version. [Dependabot](.github/dependabot.yml) opens monthly `mcp` update PRs; protocol-version bumps are reviewed there and recorded in [CHANGELOG.md](CHANGELOG.md). |
+
+The official `mcp` SDK negotiates the protocol version during `initialize`; this server does not override it. Pin the SDK (not a hand-rolled version string) to control which protocol version is spoken.
 
 ---
 

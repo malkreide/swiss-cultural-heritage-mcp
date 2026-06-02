@@ -37,12 +37,14 @@ Dieser Server ergänzt das Schweizer Open-Data-Portfolio um die geisteswissensch
 
 ## Funktionen
 
-- 🏛️ **9 Tools, 2 Resources, 2 Prompts** über drei Datenquellen
+- 🏛️ **8 Tools, 2 Resources, 2 Prompts** über drei Datenquellen
 - 🔍 **`heritage_cross_search`** — parallele Suche über alle drei Quellen in einem Aufruf
 - 🌐 **Zweisprachige Ausgabe** (Markdown / JSON)
 - 🔓 **Kein API-Schlüssel erforderlich** — alle Daten unter offenen Lizenzen
 - ☁️ **Dualer Transport** — stdio (Claude Desktop) + Streamable HTTP (Cloud)
 - 📚 **Prompt-Vorlagen** für Künstler-Recherche und Bildungsressourcen
+
+**Projektphase:** **Phase 1 — read-only.** Jedes Tool ist mit `readOnlyHint: true` annotiert; es gibt keine schreibenden oder destruktiven Operationen. Der Übergang zu Phase 2 (schreibfähig) setzt die Voraussetzungen aus [`docs/roadmap.md`](docs/roadmap.md) voraus.
 
 ---
 
@@ -218,10 +220,13 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 swiss-cultural-heritage-mcp/
 ├── src/swiss_cultural_heritage_mcp/
 │   ├── __init__.py              # Package
-│   └── server.py                # 9 Tools, 2 Resources, 2 Prompts
+│   └── server.py                # 8 Tools, 2 Resources, 2 Prompts
 ├── tests/
 │   └── test_server.py           # Unit + Integrationstests (gemockt)
 ├── .github/workflows/ci.yml     # GitHub Actions (Python 3.11/3.12/3.13)
+├── .github/dependabot.yml       # Monatliche Dependency-/SDK-Update-PRs
+├── Dockerfile                   # Multi-Stage, non-root, HEALTHCHECK
+├── docs/                        # security, network-egress, data-residency, roadmap
 ├── pyproject.toml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
@@ -229,6 +234,8 @@ swiss-cultural-heritage-mcp/
 ├── README.md                    # Englische Hauptversion
 └── README.de.md                 # Diese Datei (Deutsch)
 ```
+
+> **Einzeldatei-Server:** Die 8 Tools liegen in einer `server.py` statt in einem `tools/`-Paket. Bei dieser Grösse ist ein einzelnes, lineares Modul leichter zu lesen und zu reviewen als eine Aufteilung; wächst die Tool-Zahl deutlich, sind die Blöcke SIK-ISEA / SNM / NB / Cross-Search die natürlichen Schnittstellen.
 
 ---
 
@@ -261,6 +268,18 @@ PYTHONPATH=src pytest tests/ -m "not live"
 # Integrationstests (Live-API-Aufrufe)
 pytest tests/ -m "live"
 ```
+
+---
+
+## MCP-Protokoll-Version
+
+| Punkt | Wert |
+|---|---|
+| Unterstützte MCP-Protokoll-Version | `2025-11-25` (vom SDK ausgehandelt) |
+| SDK | `mcp[cli] >=1.0.0,<2.0.0` (gepinnt in `pyproject.toml`) |
+| Update-Policy | Der SDK-Pin ist die Quelle der Wahrheit für die Protokoll-Version. [Dependabot](.github/dependabot.yml) öffnet monatlich `mcp`-Update-PRs; Protokoll-Version-Bumps werden dort geprüft und im [CHANGELOG.md](CHANGELOG.md) festgehalten. |
+
+Das offizielle `mcp`-SDK handelt die Protokoll-Version beim `initialize` aus; dieser Server überschreibt sie nicht. Steuere die gesprochene Protokoll-Version über den SDK-Pin, nicht über einen handgeschriebenen Versions-String.
 
 ---
 

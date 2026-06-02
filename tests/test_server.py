@@ -39,6 +39,8 @@ from swiss_cultural_heritage_mcp.server import (
     _http_get,
     _normalize_ckan_title,
     _parse_oai_records,
+    build_http_app,
+    cors_origins_from_env,
     heritage_browse_collection,
     heritage_cross_search,
     heritage_get_artist,
@@ -440,6 +442,26 @@ class TestErrorMasking:
                 await heritage_search_artists(ArtistSearchInput(query="Hodler"))
         assert "Interner Fehler" in str(exc.value)
         assert "AttributeError" not in str(exc.value)
+
+
+class TestHttpCors:
+    """SDK-004: CORS exponiert Mcp-Session-Id für Browser-Clients."""
+
+    def test_cors_origins_from_env_parsing(self, monkeypatch):
+        monkeypatch.setenv("MCP_CORS_ORIGINS", " https://a.example , https://b.example ,")
+        assert cors_origins_from_env() == ["https://a.example", "https://b.example"]
+
+    def test_cors_origins_default_empty(self, monkeypatch):
+        monkeypatch.delenv("MCP_CORS_ORIGINS", raising=False)
+        assert cors_origins_from_env() == []
+
+    def test_build_http_app_exposes_session_id(self):
+        app = build_http_app(["https://app.example"])
+        cors = next(m for m in app.user_middleware if m.cls.__name__ == "CORSMiddleware")
+        assert "Mcp-Session-Id" in cors.kwargs["expose_headers"]
+        assert "Mcp-Session-Id" in cors.kwargs["allow_headers"]
+        assert cors.kwargs["allow_origins"] == ["https://app.example"]
+        assert "*" not in cors.kwargs["allow_origins"]
 
 
 # ─────────────────────────── Unit Tests: Input Models ──────────────────────────

@@ -9,8 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Audit finding `OBS-002`: unhandled (programming) errors no longer leak their internal exception text to the client/LLM. The official `mcp.server.fastmcp` SDK has no `mask_error_details` flag (that exists only in the standalone `fastmcp` package) and otherwise wraps every tool exception as `ToolError(f"Error executing tool {name}: {e}")`. A new `mask_unexpected_errors` decorator on every tool logs the full exception to stderr (server-side) and re-raises a generic `ToolError`, so the error is still surfaced as an error result (`OBS-001`) but with internals masked.
+- Audit finding `SDK-004`: Streamable-HTTP transport now mounts CORS middleware that exposes `Mcp-Session-Id` (so browser clients can read/continue the session) with an explicit, non-wildcard origin allow-list via `MCP_CORS_ORIGINS`.
+- Audit finding `SEC-016`: the HTTP host now defaults to `127.0.0.1`; only the container image sets `MCP_HOST=0.0.0.0`, preventing accidental all-interface binding outside a container.
+
+### Added
+- Audit finding `ARCH-012`: `.github/dependabot.yml` (monthly pip / GitHub Actions / Docker update PRs) and a "MCP Protocol Version" section in both READMEs documenting the supported version (`2025-11-25`) and SDK-pin update policy.
+- Audit finding `OPS-003`: `docs/roadmap.md` declaring the read-only Phase 1 scope and the Phase 1 → 2 gate; the phase is now stated in both READMEs.
+- Audit findings `SEC-019` / `SEC-013` / `SCALE-006`: lethal-trifecta assessment, secret-management note, and recommended container resource limits added to `docs/security.md`.
 
 ### Fixed
+- HTTP entry point: `--http` mode previously called `mcp.run(transport="streamable-http", port=port)`, but the official SDK's `run()` takes no `port` argument — the server now configures host/port on `mcp.settings` and serves the CORS-wrapped app via uvicorn (`SDK-004` / `SCALE-001`).
+- Documentation drift: both READMEs said "9 tools"; the server registers 8 (`OPS-002`).
 - Test isolation: the shared `httpx.AsyncClient` is now reset between tests, fixing `RuntimeError: Event loop is closed` when live tests run in pytest's per-test event loops
 - HTTP redirects are followed again — a `302` from opendata.swiss previously surfaced to users as `Fehler: API-Anfrage fehlgeschlagen (HTTP 302)`
 - SIK-ISEA module pointed at a non-existent host (`api.sik-isea.ch`); it now uses the real SIKART artist dataset (~17'000 records) on opendata.swiss
