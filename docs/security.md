@@ -26,7 +26,7 @@ Residual risks the controls below mitigate:
 | Manual redirect following with a per-hop allow-list re-check (client keeps `follow_redirects=False`) | `server.py:_http_get` | SEC-021 |
 | `defusedxml.ElementTree` for OAI-PMH parsing | `server.py` imports | SEC (XML) |
 | Pydantic input models with `extra="forbid"`, length caps, regex date patterns | every `*Input` class | input validation |
-| Narrow `except ExpectedUpstreamError` (httpx + XML + ValueError) | every tool body | OBS-001 |
+| Narrow `except ExpectedUpstreamError` (httpx + XML + ValueError); handled failures raised as `ToolError` so the client receives an `isError: true` result, not a plain string | every tool body / `server.py:_raise_tool_error` | OBS-001 |
 | Unexpected (programming) errors masked: full detail to stderr, generic `ToolError` to the client | `server.py:mask_unexpected_errors` | OBS-002 |
 | Shared httpx client owned by FastMCP `lifespan` | `server.py:lifespan` | SDK-001 |
 | CORS exposes `Mcp-Session-Id` with an explicit (non-wildcard) origin allow-list | `server.py:build_http_app` | SDK-004 |
