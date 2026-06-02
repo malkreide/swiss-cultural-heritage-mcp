@@ -33,6 +33,7 @@ from swiss_cultural_heritage_mcp.server import (
     NbCollectionsInput,
     PublicationDetailInput,
     ResponseFormat,
+    ResultEnvelope,
     _assert_allowed,
     _extract_resumption_token,
     _handle_error,
@@ -50,6 +51,7 @@ from swiss_cultural_heritage_mcp.server import (
     heritage_search_helveticat,
     heritage_search_museum_datasets,
     mask_unexpected_errors,
+    mcp,
 )
 
 # ─────────────────────────── Fixtures ──────────────────────────────────────────
@@ -537,9 +539,11 @@ class TestHeritageSIKISEA:
             params = ArtistSearchInput(query="Hodler", response_format=ResponseFormat.JSON)
             result = await heritage_search_artists(params)
 
-        data = json.loads(result)
-        assert data["total"] == 2
-        assert data["artists"][0]["NAME"] == "Hodler"
+        assert isinstance(result, ResultEnvelope)
+        assert result.total == 2
+        assert result.results[0]["NAME"] == "Hodler"
+        assert result.source.name == "SIK-ISEA / SIKART"
+        assert result.source.license
 
     @pytest.mark.asyncio
     async def test_search_artists_markdown(self):
@@ -628,10 +632,10 @@ class TestHeritageSNM:
             params = MuseumSearchInput(query="Münzen", response_format=ResponseFormat.JSON)
             result = await heritage_search_museum_datasets(params)
 
-        data = json.loads(result)
-        assert data["total"] == 2
-        assert len(data["datasets"]) == 2
-        assert data["datasets"][0]["name"] == "snm-numismatik"
+        assert isinstance(result, ResultEnvelope)
+        assert result.total == 2
+        assert len(result.results) == 2
+        assert result.results[0]["name"] == "snm-numismatik"
 
     @pytest.mark.asyncio
     async def test_browse_collection_markdown(self):
@@ -682,9 +686,10 @@ class TestHeritageNB:
             params = HelvticatSearchInput(response_format=ResponseFormat.JSON)
             result = await heritage_search_helveticat(params)
 
-        data = json.loads(result)
-        assert "records" in data
-        assert data["count"] >= 1
+        assert isinstance(result, ResultEnvelope)
+        assert result.count >= 1
+        assert result.results
+        assert result.source.name.startswith("Schweizerische Nationalbibliothek")
 
     @pytest.mark.asyncio
     async def test_search_helveticat_query_filter(self):
@@ -738,9 +743,10 @@ class TestHeritageNB:
             )
             result = await heritage_get_publication(params)
 
-        data = json.loads(result)
-        assert data["title"] == "Geschichte der Schweizer Volksschule"
-        assert data["creator"] == "Muster, Anna"
+        assert isinstance(result, ResultEnvelope)
+        assert result.count == 1
+        assert result.results[0]["title"] == "Geschichte der Schweizer Volksschule"
+        assert result.results[0]["creator"] == "Muster, Anna"
 
 
 class TestHeritageCrossSearch:
@@ -790,6 +796,54 @@ class TestHeritageCrossSearch:
 
         # SNM results should still appear despite SIK-ISEA failure
         assert "SNM" in result
+
+
+class TestStructuredOutput:
+    """SDK-002: JSON-Modus liefert typisierten Envelope, Markdown bleibt str."""
+
+    @pytest.mark.asyncio
+    async def test_markdown_mode_returns_str(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            result = await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+        assert isinstance(result, str)
+        assert not isinstance(result, ResultEnvelope)
+
+    @pytest.mark.asyncio
+    async def test_cross_search_json_envelope_multi_source(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            respx.get(f"{CKAN_API}/package_search").mock(
+                return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            )
+            respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
+            )
+            params = CrossSearchInput(
+                query="Hodler", limit_per_source=3, response_format=ResponseFormat.JSON
+            )
+            result = await heritage_cross_search(params)
+        assert isinstance(result, ResultEnvelope)
+        # provenance for every queried source
+        assert isinstance(result.source, list)
+        assert {s.name for s in result.source} == {
+            "SIK-ISEA / SIKART",
+            "Schweizerisches Nationalmuseum (opendata.swiss)",
+            "Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
+        }
+        assert result.count == sum(len(r.get("items", [])) for r in result.results)
+
+    @pytest.mark.asyncio
+    async def test_tool_exposes_output_schema(self):
+        tools = {t.name: t for t in await mcp.list_tools()}
+        schema = tools["heritage_search_artists"].outputSchema
+        assert schema is not None
+        # the envelope model is referenced in the (union) output schema
+        assert "ResultEnvelope" in json.dumps(schema)
 
 
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────

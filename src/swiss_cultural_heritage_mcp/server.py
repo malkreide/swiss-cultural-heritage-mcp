@@ -20,7 +20,7 @@ import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from enum import StrEnum
-from typing import Final, TypeVar
+from typing import Any, Final, TypeVar
 
 import httpx
 from defusedxml import ElementTree as ET
@@ -108,7 +108,7 @@ mcp = FastMCP("swiss_cultural_heritage_mcp", lifespan=lifespan)
 # zurück (siehe ``_handle_error``). Programmierfehler sollen weiterhin als Fehler-
 # Ergebnis propagieren (OBS-001) — aber mit einer generischen, internen-frei
 # maskierten Meldung. Der vollständige Stacktrace landet nur im Server-Log (stderr).
-F = TypeVar("F", bound=Callable[..., Awaitable[str]])
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 def mask_unexpected_errors(fn: F) -> F:
@@ -135,6 +135,44 @@ class ResponseFormat(StrEnum):
     """Ausgabeformat für Tool-Antworten."""
     MARKDOWN = "markdown"
     JSON     = "json"
+
+
+# ─────────────────────────── Response-Envelope (SDK-002) ───────────────────────
+# Konsistenter, typisierter Envelope für alle Such-/Listen-Tools. Im JSON-Modus
+# geben die Tools dieses Modell zurück — das offizielle mcp-SDK erzeugt daraus
+# echten *structured output* inkl. ``outputSchema``. Im Markdown-Modus rendern die
+# Tools eine menschenlesbare Ansicht über denselben Daten (``str``). Der
+# Rückgabetyp ist deshalb ``ResultEnvelope | str``.
+class SourceInfo(BaseModel):
+    """Provenienz und Lizenz einer Datenquelle."""
+    name:    str
+    license: str
+    url:     str | None = None
+
+
+class ResultEnvelope(BaseModel):
+    """Einheitlicher Response-Envelope für Such-/Listen-Tools."""
+    source:   SourceInfo | list[SourceInfo] = Field(description="Quelle(n) inkl. Lizenz")
+    count:    int = Field(description="Anzahl zurückgegebener Einträge")
+    total:    int | None = Field(default=None, description="Gesamtzahl upstream verfügbar")
+    offset:   int | None = Field(default=None, description="Paginierungs-Offset")
+    has_more: bool = Field(default=False, description="Weitere Ergebnisse verfügbar")
+    results:  list[dict] = Field(default_factory=list, description="Datensätze (quellnah)")
+    meta:     dict | None = Field(default=None, description="Tool-spezifische Zusatzfelder")
+
+
+# Quellen-/Lizenz-Konstanten (Provenienz pro Datensatz, Vorarbeit für CH-004).
+SOURCE_SIKART: Final = SourceInfo(
+    name="SIK-ISEA / SIKART", license="CC BY-NC-SA", url="https://www.sik-isea.ch"
+)
+SOURCE_SNM: Final = SourceInfo(
+    name="Schweizerisches Nationalmuseum (opendata.swiss)",
+    license="CC BY / CC0 (pro Datensatz)", url="https://www.nationalmuseum.ch",
+)
+SOURCE_NB: Final = SourceInfo(
+    name="Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
+    license="offen / pro Datensatz", url="https://www.nb.admin.ch",
+)
 
 
 # ─────────────────────────── Shared Utilities ──────────────────────────────────
@@ -317,7 +355,7 @@ class ArtistSearchInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_search_artists(params: ArtistSearchInput) -> str:
+async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope | str:
     """Sucht Schweizer Künstler·innen in den SIKART-Daten (~17'000 Einträge).
 
     SIKART (Lexikon zur Kunst in der Schweiz, herausgegeben vom Schweizerischen
@@ -362,9 +400,13 @@ async def heritage_search_artists(params: ArtistSearchInput) -> str:
             return "Keine Künstler·innen gefunden für die angegebenen Suchkriterien."
 
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps(
-                {"total": total, "count": len(records), "offset": params.offset, "artists": records},
-                ensure_ascii=False, indent=2,
+            return ResultEnvelope(
+                source=SOURCE_SIKART,
+                count=len(records),
+                total=total,
+                offset=params.offset,
+                has_more=(params.offset + len(records)) < total,
+                results=records,
             )
 
         filters = []
@@ -429,7 +471,7 @@ class ArtistDetailInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_get_artist(params: ArtistDetailInput) -> str:
+async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str:
     """Ruft den vollständigen SIKART-Datensatz zu einer Künstler·in ab.
 
     Args:
@@ -462,7 +504,7 @@ async def heritage_get_artist(params: ArtistDetailInput) -> str:
         artist = records[0]
 
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps(artist, ensure_ascii=False, indent=2)
+            return ResultEnvelope(source=SOURCE_SIKART, count=1, total=1, results=[artist])
 
         lines = [
             f"# {_artist_full_name(artist)}\n",
@@ -529,7 +571,7 @@ class MuseumSearchInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_search_museum_datasets(params: MuseumSearchInput) -> str:
+async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEnvelope | str:
     """Sucht Datensätze des Schweizerischen Nationalmuseums (SNM) auf opendata.swiss.
 
     Das SNM publiziert Sammlungsdaten als Open Data: Numismatik (~100'000 Münzen),
@@ -587,7 +629,14 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> str:
                 }
                 for pkg in packages
             ]
-            return json.dumps({"total": total, "count": len(packages), "datasets": simplified}, ensure_ascii=False, indent=2)
+            return ResultEnvelope(
+                source=SOURCE_SNM,
+                count=len(packages),
+                total=total,
+                offset=params.offset,
+                has_more=total > params.offset + len(packages),
+                results=simplified,
+            )
 
         lines = ["# Schweizerisches Nationalmuseum (SNM) — Open Data\n"]
         if params.query:
@@ -651,7 +700,7 @@ class CollectionBrowseInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_browse_collection(params: CollectionBrowseInput) -> str:
+async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnvelope | str:
     """Durchsucht Objekte innerhalb eines SNM-Sammlungsdatensatzes via CKAN DataStore.
 
     Voraussetzung: Resource-ID aus `heritage_search_museum_datasets`.
@@ -694,14 +743,15 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> str:
             )
 
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps({
-                "total":       total,
-                "count":       len(records),
-                "offset":      params.offset,
-                "resource_id": params.resource_id,
-                "fields":      fields,
-                "records":     records,
-            }, ensure_ascii=False, indent=2)
+            return ResultEnvelope(
+                source=SOURCE_SNM,
+                count=len(records),
+                total=total,
+                offset=params.offset,
+                has_more=(params.offset + len(records)) < total,
+                results=records,
+                meta={"resource_id": params.resource_id, "fields": fields},
+            )
 
         # Titelfeld ermitteln (erste sinnvolle Spalte)
         title_field = next(
@@ -780,7 +830,7 @@ class HelvticatSearchInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
+async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnvelope | str:
     """Durchsucht die Schweizerische Nationalbibliothek (Helveticat) via OAI-PMH.
 
     Args:
@@ -833,9 +883,11 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
             )
 
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps(
-                {"count": len(records), "has_more": bool(resumption), "records": records},
-                ensure_ascii=False, indent=2,
+            return ResultEnvelope(
+                source=SOURCE_NB,
+                count=len(records),
+                has_more=bool(resumption),
+                results=records,
             )
 
         lines = ["# Nationalbibliothek — Helveticat\n"]
@@ -910,7 +962,7 @@ class NbCollectionsInput(BaseModel):
 @mask_unexpected_errors
 async def heritage_list_nb_collections(
     params: NbCollectionsInput | None = None,
-) -> str:
+) -> ResultEnvelope | str:
     """Listet verfügbare Sammlungen/Sets der Nationalbibliothek auf (OAI-PMH ListSets).
 
     Args:
@@ -936,7 +988,7 @@ async def heritage_list_nb_collections(
             })
 
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps({"sets": sets}, ensure_ascii=False, indent=2)
+            return ResultEnvelope(source=SOURCE_NB, count=len(sets), results=sets)
 
         lines = ["# Nationalbibliothek — Verfügbare Sammlungen (OAI-PMH Sets)\n"]
         lines.append(f"Insgesamt {len(sets)} Sets\n")
@@ -973,7 +1025,7 @@ class PublicationDetailInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_get_publication(params: PublicationDetailInput) -> str:
+async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnvelope | str:
     """Ruft vollständige Dublin-Core-Metadaten einer Publikation der NB ab.
 
     Args:
@@ -998,7 +1050,7 @@ async def heritage_get_publication(params: PublicationDetailInput) -> str:
         rec = records[0]
 
         if params.response_format == ResponseFormat.JSON:
-            return json.dumps(rec, ensure_ascii=False, indent=2)
+            return ResultEnvelope(source=SOURCE_NB, count=1, total=1, results=[rec])
 
         title = rec.get("title") or "Ohne Titel"
         if isinstance(title, list):
@@ -1059,6 +1111,7 @@ class CrossSearchInput(BaseModel):
         default=5, ge=1, le=20,
         description="Max. Ergebnisse pro Quelle (Standard: 5)"
     )
+    response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
     @field_validator("sources")
     @classmethod
@@ -1081,7 +1134,7 @@ class CrossSearchInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_cross_search(params: CrossSearchInput) -> str:
+async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | str:
     """Durchsucht SIK-ISEA, SNM und NB gleichzeitig nach einem Begriff.
 
     Args:
@@ -1133,6 +1186,16 @@ async def heritage_cross_search(params: CrossSearchInput) -> str:
 
     task_map = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
     results  = await asyncio.gather(*(task_map[s]() for s in params.sources if s in task_map))
+
+    if params.response_format == ResponseFormat.JSON:
+        source_map = {"sik_isea": SOURCE_SIKART, "snm": SOURCE_SNM, "nb": SOURCE_NB}
+        used_sources = [source_map[s] for s in params.sources if s in source_map]
+        item_count   = sum(len(r.get("items", [])) for r in results)
+        return ResultEnvelope(
+            source=used_sources,
+            count=item_count,
+            results=list(results),
+        )
 
     lines = [f"# Kulturerbe-Suche: *{q}*\n"]
     lines.append(f"Quellen: {', '.join(params.sources)}  ·  Max. {n} Ergebnisse/Quelle\n")

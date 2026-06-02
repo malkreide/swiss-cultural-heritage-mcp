@@ -13,9 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audit finding `SEC-016`: the HTTP host now defaults to `127.0.0.1`; only the container image sets `MCP_HOST=0.0.0.0`, preventing accidental all-interface binding outside a container.
 
 ### Added
+- Audit finding `SDK-002`: typed structured output. Search/list tools now return a consistent `ResultEnvelope` Pydantic model (`source` + licence, `count`, `total`, `offset`, `has_more`, `results`, optional `meta`) in `response_format="json"` mode, so the official SDK emits real MCP structured content plus an `outputSchema`. Markdown remains the default human-readable view over the same data (return type is `ResultEnvelope | str`). `heritage_cross_search` gained a `response_format` parameter and returns multi-source provenance in its envelope.
 - Audit finding `ARCH-012`: `.github/dependabot.yml` (monthly pip / GitHub Actions / Docker update PRs) and a "MCP Protocol Version" section in both READMEs documenting the supported version (`2025-11-25`) and SDK-pin update policy.
 - Audit finding `OPS-003`: `docs/roadmap.md` declaring the read-only Phase 1 scope and the Phase 1 → 2 gate; the phase is now stated in both READMEs.
 - Audit findings `SEC-019` / `SEC-013` / `SCALE-006`: lethal-trifecta assessment, secret-management note, and recommended container resource limits added to `docs/security.md`.
+
+### Changed
+- **Breaking (JSON consumers):** `response_format="json"` now returns the typed `ResultEnvelope` (fields `source`/`count`/`total`/`offset`/`has_more`/`results`/`meta`) instead of the previous ad-hoc keys (`artists`/`datasets`/`records`/`sets`). Record lists moved under `results`; provenance and licence are under `source`. Markdown output is unchanged.
 
 ### Fixed
 - HTTP entry point: `--http` mode previously called `mcp.run(transport="streamable-http", port=port)`, but the official SDK's `run()` takes no `port` argument — the server now configures host/port on `mcp.settings` and serves the CORS-wrapped app via uvicorn (`SDK-004` / `SCALE-001`).
