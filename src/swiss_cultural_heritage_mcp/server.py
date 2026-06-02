@@ -20,7 +20,7 @@ import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from enum import StrEnum
-from typing import Any, Final, TypeVar
+from typing import Any, Final, Literal, TypeVar
 
 import httpx
 from defusedxml import ElementTree as ET
@@ -157,6 +157,13 @@ class ResultEnvelope(BaseModel):
     total:    int | None = Field(default=None, description="Gesamtzahl upstream verfügbar")
     offset:   int | None = Field(default=None, description="Paginierungs-Offset")
     has_more: bool = Field(default=False, description="Weitere Ergebnisse verfügbar")
+    match_type: Literal["exact", "fuzzy", "none"] = Field(
+        default="exact",
+        description=(
+            "Trefferart (ARCH-003): 'exact' = direkte Suche, 'fuzzy' = gelockerte/"
+            "erweiterte Suche nach 0 exakten Treffern, 'none' = keine Treffer"
+        ),
+    )
     results:  list[dict] = Field(default_factory=list, description="Datensätze (quellnah)")
     meta:     dict | None = Field(default=None, description="Tool-spezifische Zusatzfelder")
 
@@ -192,6 +199,29 @@ def _attribution(source: SourceInfo | list[SourceInfo]) -> str:
         for s in sources
     )
     return f"\n\n---\n**Datenquelle & Lizenz:**\n{rows}\n"
+
+
+# Markdown-Hinweis, wenn nur über eine gelockerte (fuzzy) Suche Treffer gefunden
+# wurden — damit das LLM weiss, dass es sich um erweiterte und nicht um exakte
+# Treffer handelt (ARCH-003).
+_FUZZY_NOTE: Final = (
+    "> ℹ️ *Keine exakten Treffer — Ergebnisse stammen aus einer gelockerten Suche "
+    "(`match_type: fuzzy`). Bitte Relevanz prüfen.*\n"
+)
+
+
+def _no_match(
+    source: SourceInfo, response_format: ResponseFormat, hint: str
+) -> ResultEnvelope | str:
+    """Null-Treffer-Antwort (ARCH-003).
+
+    Im JSON-Modus ein strukturierter Envelope mit ``match_type='none'`` (statt
+    eines blanken Strings), im Markdown-Modus der bestehende, handlungsleitende
+    Hinweistext.
+    """
+    if response_format == ResponseFormat.JSON:
+        return ResultEnvelope(source=source, count=0, total=0, results=[], match_type="none")
+    return hint
 
 
 # ─────────────────────────── Shared Utilities ──────────────────────────────────
@@ -381,7 +411,9 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
     Institut für Kunstwissenschaft SIK-ISEA) dokumentiert historische und
     zeitgenössische Kunstschaffende mit biografischen Grunddaten. Die Suche läuft
     als CKAN-DataStore-Volltextsuche über alle Felder; mehrere Begriffe werden
-    UND-verknüpft.
+    UND-verknüpft. Liefert die exakte Suche keine Treffer, wird automatisch
+    breiter mit dem spezifischsten Begriff gesucht und das Resultat als
+    `match_type: fuzzy` markiert (ARCH-003); bleibt es leer, `match_type: none`.
 
     Args:
         params (ArtistSearchInput):
@@ -395,28 +427,39 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
         str: Liste gefundener Künstler·innen mit Name, Lebensdaten, Kanton, Kurzbiografie.
     """
     try:
-        api_params: dict = {
-            "resource_id": SIKART_RESOURCE_ID,
-            "limit":       params.limit,
-            "offset":      params.offset,
-        }
+        async def _query(q: str | None) -> tuple[list[dict], int]:
+            api_params: dict = {
+                "resource_id": SIKART_RESOURCE_ID,
+                "limit":       params.limit,
+                "offset":      params.offset,
+            }
+            if q:
+                api_params["q"] = q
+            resp = await _http_get(f"{CKAN_API}/datastore_search", params=api_params)
+            resp.raise_for_status()
+            data = resp.json()
+            if not data.get("success"):
+                raise ValueError("CKAN-DataStore-Anfrage fehlgeschlagen.")
+            res  = data.get("result", {})
+            recs = res.get("records", [])
+            return recs, res.get("total", len(recs))
+
         q_terms = [t for t in (params.query, params.region) if t]
-        if q_terms:
-            api_params["q"] = " ".join(q_terms)
+        records, total = await _query(" ".join(q_terms) if q_terms else None)
+        match_type: Literal["exact", "fuzzy", "none"] = "exact"
 
-        resp = await _http_get(f"{CKAN_API}/datastore_search", params=api_params)
-        resp.raise_for_status()
-        data = resp.json()
-
-        if not data.get("success"):
-            return "Fehler: CKAN-DataStore-Anfrage fehlgeschlagen."
-
-        result  = data.get("result", {})
-        records = result.get("records", [])
-        total   = result.get("total", len(records))
+        # Fuzzy-Retry (ARCH-003): bei 0 Treffern und mehreren Begriffen breiter
+        # mit dem spezifischsten (längsten) Begriff suchen.
+        if not records and len(q_terms) >= 2:
+            records, total = await _query(max(q_terms, key=len))
+            if records:
+                match_type = "fuzzy"
 
         if not records:
-            return "Keine Künstler·innen gefunden für die angegebenen Suchkriterien."
+            return _no_match(
+                SOURCE_SIKART, params.response_format,
+                "Keine Künstler·innen gefunden für die angegebenen Suchkriterien.",
+            )
 
         if params.response_format == ResponseFormat.JSON:
             return ResultEnvelope(
@@ -426,6 +469,7 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
                 offset=params.offset,
                 has_more=(params.offset + len(records)) < total,
                 results=records,
+                match_type=match_type,
             )
 
         filters = []
@@ -437,6 +481,8 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
         lines = ["# SIKART — Schweizer Künstler·innen-Suche\n"]
         if filters:
             lines.append("**Filter:** " + " · ".join(filters))
+        if match_type == "fuzzy":
+            lines.append(_FUZZY_NOTE)
         lines.append(f"\nGefunden: {total} Einträge (zeige {len(records)})\n")
         lines.append("---\n")
 
@@ -594,7 +640,9 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
     """Sucht Datensätze des Schweizerischen Nationalmuseums (SNM) auf opendata.swiss.
 
     Das SNM publiziert Sammlungsdaten als Open Data: Numismatik (~100'000 Münzen),
-    Siegelsammlung (~80'000 Objekte), Spezialsammlungen und weitere.
+    Siegelsammlung (~80'000 Objekte), Spezialsammlungen und weitere. Bei 0
+    exakten Treffern wird die Solr-Suche automatisch gelockert (OR-verknüpfte
+    Präfix-Wildcards) und das Resultat als `match_type: fuzzy` markiert (ARCH-003).
 
     Args:
         params (MuseumSearchInput):
@@ -608,28 +656,44 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
              Download-URLs (CSV, XLSX, JSON).
     """
     try:
-        search_q = f"organization:{SNM_ORG}"
-        if params.query:
-            search_q = f"{params.query} {search_q}"
-        if params.collection:
-            search_q += f" {params.collection}"
+        org_filter = f"organization:{SNM_ORG}"
+        extra      = f" {params.collection}" if params.collection else ""
 
-        resp = await _http_get(
-            f"{CKAN_API}/package_search",
-            params={"q": search_q, "rows": params.limit, "start": params.offset},
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async def _query(query: str | None, fuzzy: bool = False) -> tuple[list[dict], int]:
+            if query and fuzzy:
+                # Gelockerte Solr-Suche: OR-verknüpfte Präfix-Wildcards je Wort.
+                words  = [w for w in query.split() if w]
+                q_part = "(" + " OR ".join(f"{w}*" for w in words) + ") " if words else ""
+            elif query:
+                q_part = f"{query} "
+            else:
+                q_part = ""
+            search_q = f"{q_part}{org_filter}{extra}"
+            resp = await _http_get(
+                f"{CKAN_API}/package_search",
+                params={"q": search_q, "rows": params.limit, "start": params.offset},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if not data.get("success"):
+                raise ValueError(f"CKAN-API-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}")
+            res = data.get("result", {})
+            return res.get("results", []), res.get("count", 0)
 
-        if not data.get("success"):
-            return f"Fehler: CKAN-API-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}"
+        packages, total = await _query(params.query)
+        match_type: Literal["exact", "fuzzy", "none"] = "exact"
 
-        result   = data.get("result", {})
-        packages = result.get("results", [])
-        total    = result.get("count", 0)
+        # Fuzzy-Retry (ARCH-003): bei 0 Treffern die Suchbegriffe lockern.
+        if not packages and params.query:
+            packages, total = await _query(params.query, fuzzy=True)
+            if packages:
+                match_type = "fuzzy"
 
         if not packages:
-            return "Keine SNM-Datensätze gefunden für die angegebenen Kriterien."
+            return _no_match(
+                SOURCE_SNM, params.response_format,
+                "Keine SNM-Datensätze gefunden für die angegebenen Kriterien.",
+            )
 
         if params.response_format == ResponseFormat.JSON:
             simplified = [
@@ -655,11 +719,14 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
                 offset=params.offset,
                 has_more=total > params.offset + len(packages),
                 results=simplified,
+                match_type=match_type,
             )
 
         lines = ["# Schweizerisches Nationalmuseum (SNM) — Open Data\n"]
         if params.query:
             lines.append(f"**Suche:** *{params.query}*\n")
+        if match_type == "fuzzy":
+            lines.append(_FUZZY_NOTE)
         lines.append(f"Gefunden: {total} Datensätze (zeige {len(packages)})\n")
         lines.append("---\n")
 
@@ -895,10 +962,12 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
         records = records[:params.limit]
 
         if not records:
-            return (
+            return _no_match(
+                SOURCE_NB, params.response_format,
                 "Keine Publikationen gefunden für die angegebenen Kriterien.\n\n"
-                "**Tipp:** OAI-PMH unterstützt keine Volltextsuche. "
-                "Für komplexe Abfragen: [helveticat.ch](https://www.helveticat.ch)"
+                "**Tipp:** OAI-PMH unterstützt keine serverseitige Volltextsuche, daher "
+                "gibt es hier keine unscharfe Suche (`match_type` ist immer `exact`). "
+                "Für komplexe Abfragen: [helveticat.ch](https://www.helveticat.ch)",
             )
 
         if params.response_format == ResponseFormat.JSON:

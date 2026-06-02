@@ -986,6 +986,108 @@ class TestProgressReporting:
         assert "SNM" in result
 
 
+class TestFuzzyMatch:
+    """ARCH-003: match_type (exact/fuzzy/none) + gelockerte Retry-Suche."""
+
+    @pytest.mark.asyncio
+    async def test_artists_exact_match_type(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            params = ArtistSearchInput(query="Hodler", response_format=ResponseFormat.JSON)
+            result = await heritage_search_artists(params)
+        assert isinstance(result, ResultEnvelope)
+        assert result.match_type == "exact"
+
+    @pytest.mark.asyncio
+    async def test_artists_fuzzy_retry(self):
+        empty = {"success": True, "result": {"resource_id": SIKART_RESOURCE_ID,
+                                             "total": 0, "records": []}}
+
+        def handler(request):
+            q = request.url.params.get("q", "")
+            # exact attempt uses both terms; loosened retry uses the longest term
+            if q == "Hodler Bern":
+                return httpx.Response(200, json=empty)
+            return httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(side_effect=handler)
+            params = ArtistSearchInput(
+                query="Hodler", region="Bern", response_format=ResponseFormat.JSON
+            )
+            result = await heritage_search_artists(params)
+        assert isinstance(result, ResultEnvelope)
+        assert result.match_type == "fuzzy"
+        assert result.count == 2
+
+    @pytest.mark.asyncio
+    async def test_artists_fuzzy_note_in_markdown(self):
+        empty = {"success": True, "result": {"total": 0, "records": []}}
+
+        def handler(request):
+            q = request.url.params.get("q", "")
+            return httpx.Response(200, json=empty if q == "Hodler Bern"
+                                  else MOCK_SIKART_DATASTORE)
+
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(side_effect=handler)
+            result = await heritage_search_artists(
+                ArtistSearchInput(query="Hodler", region="Bern")
+            )
+        assert "match_type: fuzzy" in result
+
+    @pytest.mark.asyncio
+    async def test_artists_none_returns_structured_envelope(self):
+        empty = {"success": True, "result": {"total": 0, "records": []}}
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=empty)
+            )
+            params = ArtistSearchInput(
+                query="Xyzzy", region="Nirgendwo", response_format=ResponseFormat.JSON
+            )
+            result = await heritage_search_artists(params)
+        assert isinstance(result, ResultEnvelope)
+        assert result.match_type == "none"
+        assert result.count == 0
+        assert result.results == []
+
+    @pytest.mark.asyncio
+    async def test_datasets_fuzzy_retry(self):
+        empty = {"success": True, "result": {"count": 0, "results": []}}
+
+        def handler(request):
+            q = request.url.params.get("q", "")
+            # the loosened retry introduces OR / wildcard syntax
+            if "OR" in q or "*" in q:
+                return httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            return httpx.Response(200, json=empty)
+
+        with respx.mock:
+            respx.get(f"{CKAN_API}/package_search").mock(side_effect=handler)
+            params = MuseumSearchInput(query="Münzen", response_format=ResponseFormat.JSON)
+            result = await heritage_search_museum_datasets(params)
+        assert isinstance(result, ResultEnvelope)
+        assert result.match_type == "fuzzy"
+        assert result.count >= 1
+
+    @pytest.mark.asyncio
+    async def test_helveticat_none_is_structured(self):
+        with respx.mock:
+            respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
+            )
+            params = HelvticatSearchInput(
+                query="zzz-kein-treffer", response_format=ResponseFormat.JSON
+            )
+            result = await heritage_search_helveticat(params)
+        assert isinstance(result, ResultEnvelope)
+        assert result.match_type == "none"
+        assert result.count == 0
+
+
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
 @pytest.mark.live
