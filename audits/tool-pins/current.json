@@ -1,15 +1,15 @@
 {
   "generated_for_version": "0.2.0",
   "tool_count": 8,
-  "manifest_sha256": "4715a9cdee1a398bf0cd77f2cf86c434a466f13eb51d0c399b0dd335a6fd6adc",
+  "manifest_sha256": "a74f572d093f487279a2e462096c0c40ec513999f9f04bd610fc8fd8e7277f56",
   "tools": {
-    "heritage_browse_collection": "1a4c6857bc11b3c2fa24f598c4d3af301db2952db091d7e048961882cf1c5c6f",
-    "heritage_cross_search": "339f271d5563cc16c5d153931e56e8a7271f2655a66a74822919d9f46140e468",
-    "heritage_get_artist": "0b323a4df5649fd42d5fbb2903ffca434554299c51870ae5adea5ab4c88a4612",
-    "heritage_get_publication": "d0898054700fcd18d7526ddd0dbc1f7c18c6b58414319e4914a413e9bb146413",
-    "heritage_list_nb_collections": "aaeed9ca5c19216dd69e46418d15c850b783c0083343068b9d235965de23d6cb",
-    "heritage_search_artists": "7f85fa41464bd1cf006520297811df5282789cf2f1780064f7310c539645d5bc",
-    "heritage_search_helveticat": "eff4efd9aee4dc733408419a313ceef93de2cd14aec645fe99cf47794c342119",
-    "heritage_search_museum_datasets": "70d90c7c589a9c2dbcf4a8d28630287fa2c6a14e2f5bcf1f0c4b7ede88974b2c"
+    "heritage_browse_collection": "9cf8cefb43348c90dca9781310bc7f33dc340b45c933682ba4ecde61732034c0",
+    "heritage_cross_search": "46777687a3ff1ea39ed93947b0614f716f87680b1f7461d7aec8d1c64f786edc",
+    "heritage_get_artist": "9fef2e77fb1fe5d06094bf319368507e44353b0c8fadc090cf6ae79db740683d",
+    "heritage_get_publication": "0c57e05fc352db79d7f336449462cd97937c955e5499a19bfa088082350a22f5",
+    "heritage_list_nb_collections": "960903404382d215ab05e6ceb69bf7e4a2fbda8b9f3990ceaced74ede54a718e",
+    "heritage_search_artists": "2ee4d4c5c20c5441a3b62099d7aeb9124b2c4932d1a218f2092111c7426dbfae",
+    "heritage_search_helveticat": "1924d12d582970d3e539e59a7d3ede3976d7ca85ff3fe7ba10ab57733cf0886e",
+    "heritage_search_museum_datasets": "6dee3735c966b6898f9972021adc6749af45addb0a1476bca695149f99969874"
   }
 }
