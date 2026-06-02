@@ -17,21 +17,48 @@ import functools
 import json
 import logging
 import os
+import sys
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from enum import StrEnum
 from typing import Any, Final, Literal, TypeVar
 
 import httpx
+import structlog
 from defusedxml import ElementTree as ET
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Library-style logger: relies on the stdlib last-resort handler, which writes
-# to stderr — keeping stdout reserved for the MCP protocol in stdio mode
-# (OBS-004). Host applications own handler/formatter configuration.
-logger = logging.getLogger("swiss_cultural_heritage_mcp")
+
+# ─────────────────────────── Structured Logging (OBS-003) ──────────────────────
+def _configure_logging(stream=sys.stderr, level: int | None = None) -> None:
+    """Strukturiertes JSON-Logging nach stderr (OBS-003).
+
+    JSON-Logs gehen ausschliesslich nach stderr; stdout bleibt für das
+    MCP-Protokoll (stdio-Transport) reserviert (OBS-004). Bewusst werden *keine*
+    Payloads/PII geloggt — nur Tool-Name, Request-ID, Fehlerklasse und HTTP-Status.
+    Das Log-Level steuert ``MCP_LOG_LEVEL`` (debug/info/warning/error/critical).
+    """
+    if level is None:
+        level = getattr(logging, os.getenv("MCP_LOG_LEVEL", "INFO").upper(), logging.INFO)
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.WriteLoggerFactory(file=stream),
+        wrapper_class=structlog.make_filtering_bound_logger(level),
+        cache_logger_on_first_use=True,
+    )
+
+
+_configure_logging()
+log = structlog.get_logger("swiss_cultural_heritage_mcp")
 
 # ─────────────────────────── Konstanten ────────────────────────────────────────
 # opendata.swiss bedient die CKAN-API unter dem kanonischen Host ckan.opendata.swiss;
@@ -111,21 +138,41 @@ mcp = FastMCP("swiss_cultural_heritage_mcp", lifespan=lifespan)
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
+def _request_log_context(tool: str) -> dict[str, str]:
+    """Pro-Aufruf-Kontext fürs Logging (OBS-003): Tool-Name + Request-ID.
+
+    Die Request-ID wird best-effort aus dem MCP-Request gezogen; bei direkten
+    Aufrufen ausserhalb eines Requests (z. B. Tests) fehlt sie einfach.
+    """
+    data = {"tool": tool}
+    try:
+        data["request_id"] = str(mcp.get_context().request_context.request_id)
+    except Exception:
+        pass
+    return data
+
+
 def mask_unexpected_errors(fn: F) -> F:
     """Maskiert unerwartete Exceptions: Detail ins Server-Log, generisch an den Client."""
+    name = getattr(fn, "__name__", "?")
 
     @functools.wraps(fn)
     async def wrapper(*args, **kwargs):
-        try:
-            return await fn(*args, **kwargs)
-        except ToolError:
-            raise
-        except Exception:
-            logger.exception("Unerwarteter Fehler in Tool %s", getattr(fn, "__name__", "?"))
-            raise ToolError(
-                "Interner Fehler bei der Tool-Ausführung. "
-                "Details wurden serverseitig protokolliert."
-            ) from None
+        bound = log.bind(tool=name)
+        # contextvars sorgen dafür, dass auch tief im Tool-Body emittierte Logs
+        # (z. B. aus _handle_error) Tool-Name + Request-ID mittragen.
+        with structlog.contextvars.bound_contextvars(**_request_log_context(name)):
+            bound.info("tool.call")
+            try:
+                return await fn(*args, **kwargs)
+            except ToolError:
+                raise
+            except Exception as e:
+                bound.error("tool.unexpected_error", error_type=type(e).__name__, exc_info=True)
+                raise ToolError(
+                    "Interner Fehler bei der Tool-Ausführung. "
+                    "Details wurden serverseitig protokolliert."
+                ) from None
 
     return wrapper  # type: ignore[return-value]
 
@@ -269,6 +316,13 @@ async def _http_get(url: str, params: dict | None = None) -> httpx.Response:
 
 def _handle_error(e: Exception) -> str:
     """Einheitliche, handlungsorientierte Fehlermeldungen (auf Deutsch)."""
+    # Strukturierte Warnung für jeden Upstream-Fehler (OBS-003) — nur Fehlerklasse
+    # und HTTP-Status, keine Payloads. Tool-Name/Request-ID kommen via contextvars.
+    log.warning(
+        "upstream.error",
+        error_kind=type(e).__name__,
+        status=getattr(getattr(e, "response", None), "status_code", None),
+    )
     if isinstance(e, httpx.HTTPStatusError):
         code = e.response.status_code
         if code == 404:
@@ -1592,8 +1646,6 @@ def build_http_app(cors_origins: list[str] | None = None):
 # ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    import sys
-
     if "--http" in sys.argv:
         import uvicorn
 

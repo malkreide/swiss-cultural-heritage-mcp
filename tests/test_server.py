@@ -17,6 +17,7 @@ import httpx
 import pytest
 import respx
 from mcp.server.fastmcp.exceptions import ToolError
+from structlog.testing import capture_logs
 
 from swiss_cultural_heritage_mcp import __version__ as pkg_version
 from swiss_cultural_heritage_mcp.server import (
@@ -40,6 +41,7 @@ from swiss_cultural_heritage_mcp.server import (
     _http_get,
     _normalize_ckan_title,
     _parse_oai_records,
+    _request_log_context,
     build_http_app,
     cors_origins_from_env,
     heritage_browse_collection,
@@ -1086,6 +1088,61 @@ class TestFuzzyMatch:
         assert isinstance(result, ResultEnvelope)
         assert result.match_type == "none"
         assert result.count == 0
+
+
+class TestStructuredLogging:
+    """OBS-003: strukturierte JSON-Logs mit Pro-Aufruf-Kontext und Severity."""
+
+    @pytest.mark.asyncio
+    async def test_tool_call_is_logged_with_tool_name(self):
+        with capture_logs() as logs:
+            with respx.mock:
+                respx.get(f"{CKAN_API}/datastore_search").mock(
+                    return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+                )
+                await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+        call_events = [e for e in logs if e["event"] == "tool.call"]
+        assert call_events
+        assert call_events[0]["tool"] == "heritage_search_artists"
+        assert call_events[0]["log_level"] == "info"
+
+    @pytest.mark.asyncio
+    async def test_upstream_error_logged_at_warning(self):
+        with capture_logs() as logs:
+            with respx.mock:
+                respx.get(f"{CKAN_API}/datastore_search").mock(
+                    return_value=httpx.Response(503)
+                )
+                result = await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+        # the user still gets a clean message …
+        assert "Fehler" in result
+        # … and the failure is recorded as a structured warning (class + status, no payload)
+        warn = [e for e in logs if e["event"] == "upstream.error"]
+        assert warn
+        assert warn[0]["log_level"] == "warning"
+        assert warn[0]["error_kind"] == "HTTPStatusError"
+        assert warn[0]["status"] == 503
+
+    @pytest.mark.asyncio
+    async def test_unexpected_error_logged_at_error_and_masked(self):
+        @mask_unexpected_errors
+        async def boom(_):
+            raise RuntimeError("internal detail that must not leak")
+
+        with capture_logs() as logs:
+            with pytest.raises(ToolError) as exc:
+                await boom(None)
+        # client-facing message is generic (no leak of the internal detail)
+        assert "internal detail" not in str(exc.value)
+        err = [e for e in logs if e["event"] == "tool.unexpected_error"]
+        assert err
+        assert err[0]["log_level"] == "error"
+        assert err[0]["error_type"] == "RuntimeError"
+
+    def test_request_log_context_outside_request(self):
+        # No active MCP request → only the tool name, request_id gracefully omitted
+        ctx = _request_log_context("heritage_demo")
+        assert ctx == {"tool": "heritage_demo"}
 
 
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
