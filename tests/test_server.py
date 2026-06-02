@@ -1311,6 +1311,33 @@ class TestErrorIsFlagged:
                 await heritage_search_helveticat(HelvticatSearchInput(query="x"))
 
 
+class TestToolPins:
+    """SEC-022: committed tool-definition hash detects silent drift / rug pulls."""
+
+    @pytest.mark.asyncio
+    async def test_tool_definitions_match_committed_pin(self):
+        import json
+        import pathlib
+
+        from swiss_cultural_heritage_mcp._toolpins import compute_tool_pins
+
+        pin_file = (
+            pathlib.Path(__file__).resolve().parents[1]
+            / "audits" / "tool-pins" / "current.json"
+        )
+        committed = json.loads(pin_file.read_text())
+        live = await compute_tool_pins(mcp)
+
+        # version is environment-dependent and intentionally not compared
+        assert live["tools"] == committed["tools"], (
+            "Tool definitions changed (SEC-022). If intentional, regenerate the "
+            "pin with `PYTHONPATH=src python scripts/pin_tools.py` and add a "
+            "CHANGELOG re-approval note describing the change."
+        )
+        assert live["manifest_sha256"] == committed["manifest_sha256"]
+        assert live["tool_count"] == committed["tool_count"]
+
+
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
 @pytest.mark.live

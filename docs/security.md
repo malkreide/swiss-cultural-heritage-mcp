@@ -47,6 +47,24 @@ The following are **defense-in-depth measures deliberately deferred** while the 
 
 **Why deferred:** with a closed two-host allow-list and no user-controlled host, the resolved-IP and DNS-rebinding vectors are not reachable in practice. Implementing them (a custom `httpx` transport/resolver) before they are reachable adds complexity and a maintenance surface for no live risk reduction. If either trigger above occurs, implement **both** before shipping the change, and add the corresponding `_assert_allowed` / transport tests.
 
+## Tool-definition pinning & namespacing (SEC-022)
+
+To guard against a **"rug pull"** — a silently changed tool description or schema
+that re-tasks the LLM — the repository commits a hash snapshot of every tool's
+`name` + `description` + `input`/`output` schema at
+[`audits/tool-pins/current.json`](../audits/tool-pins/current.json). A CI test
+(`TestToolPins`) recomputes the live hashes on every run and fails on any drift,
+forcing a conscious regeneration (`scripts/pin_tools.py`) plus a CHANGELOG
+**re-approval** note when a tool definition changes. See
+[`audits/tool-pins/README.md`](../audits/tool-pins/README.md) for the process.
+
+**Deferred (breaking):** SEC-022 also suggests a `<server>__<tool>` server-identity
+prefix instead of the current consistent `heritage_` prefix. Renaming every tool
+id is a breaking change for existing client configurations (a major version
+bump), so it is deferred as a Phase-2 decision. The hash pin above provides the
+drift-detection benefit without the breakage; the `heritage_` prefix remains
+consistent and is namespaced under the server in practice via the MCP client.
+
 ## Horizontal scaling (SCALE-002 / SCALE-003)
 
 The deployment is **single-instance by constraint**. The Streamable-HTTP transport keeps a per-session state (`Mcp-Session-Id`) in process, so scaling to more than one instance requires session affinity or a shared session backend first. The full constraint, session model, and the path to safe horizontal scaling are documented in [`scaling.md`](scaling.md).

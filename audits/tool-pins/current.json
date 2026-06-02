@@ -1,0 +1,15 @@
+{
+  "generated_for_version": "0.2.0",
+  "tool_count": 8,
+  "manifest_sha256": "4715a9cdee1a398bf0cd77f2cf86c434a466f13eb51d0c399b0dd335a6fd6adc",
+  "tools": {
+    "heritage_browse_collection": "1a4c6857bc11b3c2fa24f598c4d3af301db2952db091d7e048961882cf1c5c6f",
+    "heritage_cross_search": "339f271d5563cc16c5d153931e56e8a7271f2655a66a74822919d9f46140e468",
+    "heritage_get_artist": "0b323a4df5649fd42d5fbb2903ffca434554299c51870ae5adea5ab4c88a4612",
+    "heritage_get_publication": "d0898054700fcd18d7526ddd0dbc1f7c18c6b58414319e4914a413e9bb146413",
+    "heritage_list_nb_collections": "aaeed9ca5c19216dd69e46418d15c850b783c0083343068b9d235965de23d6cb",
+    "heritage_search_artists": "7f85fa41464bd1cf006520297811df5282789cf2f1780064f7310c539645d5bc",
+    "heritage_search_helveticat": "eff4efd9aee4dc733408419a313ceef93de2cd14aec645fe99cf47794c342119",
+    "heritage_search_museum_datasets": "70d90c7c589a9c2dbcf4a8d28630287fa2c6a14e2f5bcf1f0c4b7ede88974b2c"
+  }
+}
