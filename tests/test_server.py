@@ -614,9 +614,9 @@ class TestHeritageSIKISEA:
                 return_value=httpx.Response(404)
             )
             params = ArtistDetailInput(artist_id="99999999")
-            result = await heritage_get_artist(params)
-
-        assert "Fehler" in result
+            # OBS-001: a handled upstream error raises (→ isError), not a plain string
+            with pytest.raises(ToolError, match="nicht gefunden"):
+                await heritage_get_artist(params)
 
 
 class TestHeritageSNM:
@@ -1120,10 +1120,10 @@ class TestStructuredLogging:
                 respx.get(f"{CKAN_API}/datastore_search").mock(
                     return_value=httpx.Response(503)
                 )
-                result = await heritage_search_artists(ArtistSearchInput(query="Hodler"))
-        # the user still gets a clean message …
-        assert "Fehler" in result
-        # … and the failure is recorded as a structured warning (class + status, no payload)
+                # the error is raised (→ isError downstream), and logged on the way out
+                with pytest.raises(ToolError, match="Fehler"):
+                    await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+        # the failure is recorded as a structured warning (class + status, no payload)
         warn = [e for e in logs if e["event"] == "upstream.error"]
         assert warn
         assert warn[0]["log_level"] == "warning"
@@ -1186,7 +1186,9 @@ class TestTracing:
                 respx.get(f"{CKAN_API}/datastore_search").mock(
                     return_value=httpx.Response(503)
                 )
-                await heritage_search_artists(ArtistSearchInput(query="Boom"))
+                # OBS-001: the error path raises; the span still closes with is_error=True
+                with pytest.raises(ToolError):
+                    await heritage_search_artists(ArtistSearchInput(query="Boom"))
         finally:
             srv._otel_span = None
 
@@ -1225,6 +1227,53 @@ class TestTracing:
         finally:
             HTTPXClientInstrumentor().uninstrument()
             srv._otel_span = None
+
+
+class TestErrorIsFlagged:
+    """OBS-001: handled upstream errors surface as isError, not as content."""
+
+    @staticmethod
+    async def _call(name: str, arguments: dict):
+        """Invoke a tool through the SDK's low-level CallTool handler."""
+        import mcp.types as types
+        handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
+        req = types.CallToolRequest(
+            method="tools/call",
+            params=types.CallToolRequestParams(name=name, arguments=arguments),
+        )
+        return (await handler(req)).root  # CallToolResult
+
+    @pytest.mark.asyncio
+    async def test_upstream_failure_is_flagged_iserror(self):
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(503)
+            )
+            result = await self._call("heritage_search_artists", {"params": {"query": "Hodler"}})
+        assert result.isError is True
+        assert "Fehler" in result.content[0].text  # German guidance preserved
+
+    @pytest.mark.asyncio
+    async def test_empty_result_is_not_flagged_iserror(self):
+        # A genuine empty result is a valid answer, not an error
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(
+                    200, json={"success": True, "result": {"total": 0, "records": []}}
+                )
+            )
+            result = await self._call("heritage_search_artists", {"params": {"query": "zzz-none"}})
+        assert result.isError is False
+        assert "Keine Künstler" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_direct_call_raises_tool_error(self):
+        # The mechanism: tools raise ToolError (mapped to isError) rather than
+        # returning a 'Fehler:' string the client would read as a normal result.
+        with respx.mock:
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(503))
+            with pytest.raises(ToolError, match="Fehler"):
+                await heritage_search_helveticat(HelvticatSearchInput(query="x"))
 
 
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────

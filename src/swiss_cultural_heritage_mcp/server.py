@@ -21,7 +21,7 @@ import sys
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, contextmanager
 from enum import StrEnum
-from typing import Any, Final, Literal, TypeVar
+from typing import Any, Final, Literal, NoReturn, TypeVar
 
 import httpx
 import structlog
@@ -438,6 +438,19 @@ def _handle_error(e: Exception) -> str:
     return f"Fehler: Unerwarteter Fehler ({type(e).__name__}): {e}"
 
 
+def _raise_tool_error(e: Exception) -> NoReturn:
+    """Behandelten Upstream-Fehler als *isError*-Tool-Ergebnis melden (OBS-001).
+
+    ``_handle_error`` baut die handlungsorientierte deutsche Meldung (und loggt
+    strukturiert); diese wird als ``ToolError`` geworfen. ``mask_unexpected_errors``
+    reicht ``ToolError`` unverändert durch, und das MCP-SDK verpackt sie in ein
+    ``CallToolResult`` mit ``isError: true`` — so unterscheidet der Client einen
+    Fehler von einem normalen (leeren) Ergebnis, statt eine «Fehler: …»-Zeichen-
+    kette wie Inhalt zu lesen.
+    """
+    raise ToolError(_handle_error(e))
+
+
 def _parse_oai_records(xml_text: str) -> list[dict]:
     """Parsed OAI-PMH ListRecords/GetRecord-Antwort in eine Liste von Dicts."""
     root = ET.fromstring(xml_text)
@@ -660,7 +673,7 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
         return "\n".join(lines) + _attribution(SOURCE_SIKART)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 class ArtistDetailInput(BaseModel):
@@ -709,7 +722,7 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
         data = resp.json()
 
         if not data.get("success"):
-            return "Fehler: CKAN-DataStore-Anfrage fehlgeschlagen."
+            _raise_tool_error(ValueError("CKAN-DataStore-Anfrage fehlgeschlagen."))
 
         records = data.get("result", {}).get("records", [])
         if not records:
@@ -750,7 +763,7 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
         return "\n".join(lines) + _attribution(SOURCE_SIKART)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -907,7 +920,7 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
         return "\n".join(lines) + _attribution(SOURCE_SNM)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 class CollectionBrowseInput(BaseModel):
@@ -964,7 +977,9 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
         data = resp.json()
 
         if not data.get("success"):
-            return f"Fehler: DataStore-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}"
+            _raise_tool_error(
+                ValueError(f"DataStore-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}")
+            )
 
         result  = data.get("result", {})
         records = result.get("records", [])
@@ -1017,7 +1032,7 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
         return "\n".join(lines) + _attribution(SOURCE_SNM)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1176,7 +1191,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
         return "\n".join(lines) + _attribution(SOURCE_NB)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 class NbCollectionsInput(BaseModel):
@@ -1237,7 +1252,7 @@ async def heritage_list_nb_collections(
         return "\n".join(lines) + _attribution(SOURCE_NB)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 class PublicationDetailInput(BaseModel):
@@ -1322,7 +1337,7 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
         return "\n".join(lines) + _attribution(SOURCE_NB)
 
     except ExpectedUpstreamError as e:
-        return _handle_error(e)
+        _raise_tool_error(e)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
