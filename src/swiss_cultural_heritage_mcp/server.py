@@ -19,7 +19,7 @@ import logging
 import os
 import sys
 from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from enum import StrEnum
 from typing import Any, Final, Literal, TypeVar
 
@@ -59,6 +59,83 @@ def _configure_logging(stream=sys.stderr, level: int | None = None) -> None:
 
 _configure_logging()
 log = structlog.get_logger("swiss_cultural_heritage_mcp")
+
+
+# ─────────────────────────── Distributed Tracing (OBS-006) ─────────────────────
+# OpenTelemetry ist ein *optionales* Extra (`pip install '...[otel]'`) und wird
+# nur aktiv, wenn ``OTEL_EXPORTER_OTLP_ENDPOINT`` gesetzt ist. Ohne Endpoint (z. B.
+# stdio/lokal) bleibt Tracing komplett aus — kein Overhead, keine Pflichtabhängig-
+# keit. ``_otel_span`` ist entweder ``tracer.start_as_current_span`` oder ``None``.
+_otel_span = None
+
+
+def _init_tracing(*, exporter=None) -> bool:
+    """Aktiviert OpenTelemetry-Tracing (OBS-006); gated über Env-Var.
+
+    Setzt einen Span pro Tool-Call (siehe ``mask_unexpected_errors``) und
+    instrumentiert httpx automatisch, sodass jede Upstream-Anfrage (SIKART/SNM/NB)
+    als Child-Span erscheint. Es werden keine sensiblen Daten als Attribute
+    gesetzt — nur Tool-Name und ``is_error``. Fehlen die OTel-Pakete, wird eine
+    Warnung geloggt und ohne Tracing weitergemacht.
+    """
+    global _otel_span
+    if exporter is None and not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        return False
+    try:
+        from opentelemetry import trace
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
+    except ImportError:
+        log.warning(
+            "otel.unavailable",
+            reason="opentelemetry nicht installiert — `pip install '.[otel]'`",
+        )
+        return False
+
+    try:
+        from importlib.metadata import version as _pkg_version
+        svc_version = _pkg_version("swiss-cultural-heritage-mcp")
+    except Exception:
+        svc_version = "0.0.0+local"
+
+    resource = Resource.create({
+        "service.name":           "swiss-cultural-heritage-mcp",
+        "service.version":        svc_version,
+        "deployment.environment": os.getenv("DEPLOYMENT_ENV", "production"),
+    })
+    provider = TracerProvider(resource=resource)
+    if exporter is None:
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    else:
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    HTTPXClientInstrumentor().instrument()
+    _otel_span = trace.get_tracer("swiss_cultural_heritage_mcp").start_as_current_span
+    log.info("otel.enabled")
+    return True
+
+
+@contextmanager
+def _tool_span(name: str):
+    """Span pro Tool-Call (no-op, solange Tracing nicht aktiv ist)."""
+    if _otel_span is None:
+        yield None
+        return
+    with _otel_span(f"mcp.tool.{name}") as span:
+        span.set_attribute("mcp.tool.name", name)
+        yield span
+
+
+def _is_error_result(result: object) -> bool:
+    """True, wenn ein Tool eine (behandelte) Fehlermeldung als Text zurückgibt."""
+    return isinstance(result, str) and result.startswith("Fehler")
+
+
+# Beim Import aktivieren — no-op, solange OTEL_EXPORTER_OTLP_ENDPOINT nicht gesetzt ist.
+_init_tracing()
 
 # ─────────────────────────── Konstanten ────────────────────────────────────────
 # opendata.swiss bedient die CKAN-API unter dem kanonischen Host ckan.opendata.swiss;
@@ -161,18 +238,27 @@ def mask_unexpected_errors(fn: F) -> F:
         bound = log.bind(tool=name)
         # contextvars sorgen dafür, dass auch tief im Tool-Body emittierte Logs
         # (z. B. aus _handle_error) Tool-Name + Request-ID mittragen.
-        with structlog.contextvars.bound_contextvars(**_request_log_context(name)):
+        with structlog.contextvars.bound_contextvars(**_request_log_context(name)), \
+                _tool_span(name) as span:
             bound.info("tool.call")
             try:
-                return await fn(*args, **kwargs)
+                result = await fn(*args, **kwargs)
             except ToolError:
+                if span is not None:
+                    span.set_attribute("mcp.tool.is_error", True)
                 raise
             except Exception as e:
+                if span is not None:
+                    span.set_attribute("mcp.tool.is_error", True)
+                    span.set_attribute("error.type", type(e).__name__)
                 bound.error("tool.unexpected_error", error_type=type(e).__name__, exc_info=True)
                 raise ToolError(
                     "Interner Fehler bei der Tool-Ausführung. "
                     "Details wurden serverseitig protokolliert."
                 ) from None
+            if span is not None:
+                span.set_attribute("mcp.tool.is_error", _is_error_result(result))
+            return result
 
     return wrapper  # type: ignore[return-value]
 

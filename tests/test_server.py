@@ -1145,6 +1145,81 @@ class TestStructuredLogging:
         assert ctx == {"tool": "heritage_demo"}
 
 
+class TestTracing:
+    """OBS-006: OpenTelemetry-Spans pro Tool-Call, gated über Env-Var."""
+
+    def test_disabled_by_default(self):
+        import swiss_cultural_heritage_mcp.server as srv
+        # No OTEL endpoint configured in the test env → tracing is off (no overhead)
+        assert srv._otel_span is None
+        assert srv._init_tracing() is False
+
+    @pytest.mark.asyncio
+    async def test_tool_span_records_name_and_is_error(self):
+        pytest.importorskip("opentelemetry")
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        import swiss_cultural_heritage_mcp.server as srv
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        # inject directly (hermetic: no global provider / httpx instrumentation)
+        srv._otel_span = provider.get_tracer("test").start_as_current_span
+        try:
+            with respx.mock:
+                respx.get(f"{CKAN_API}/datastore_search").mock(
+                    return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+                )
+                await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+                respx.get(f"{CKAN_API}/datastore_search").mock(
+                    return_value=httpx.Response(503)
+                )
+                await heritage_search_artists(ArtistSearchInput(query="Boom"))
+        finally:
+            srv._otel_span = None
+
+        tool_spans = [
+            s for s in exporter.get_finished_spans()
+            if s.name == "mcp.tool.heritage_search_artists"
+        ]
+        assert len(tool_spans) == 2
+        assert tool_spans[0].attributes["mcp.tool.name"] == "heritage_search_artists"
+        assert tool_spans[0].attributes["mcp.tool.is_error"] is False  # success
+        assert tool_spans[1].attributes["mcp.tool.is_error"] is True   # upstream 503
+
+    @pytest.mark.asyncio
+    async def test_init_tracing_instruments_httpx(self):
+        pytest.importorskip("opentelemetry")
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        import swiss_cultural_heritage_mcp.server as srv
+
+        exporter = InMemorySpanExporter()
+        assert srv._init_tracing(exporter=exporter) is True
+        try:
+            with respx.mock:
+                respx.get(f"{CKAN_API}/datastore_search").mock(
+                    return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+                )
+                await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+            spans = exporter.get_finished_spans()
+            names = {s.name for s in spans}
+            assert "mcp.tool.heritage_search_artists" in names
+            # httpx auto-instrumentation produced a CLIENT child span
+            assert any(s.kind.name == "CLIENT" for s in spans)
+        finally:
+            HTTPXClientInstrumentor().uninstrument()
+            srv._otel_span = None
+
+
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
 @pytest.mark.live
