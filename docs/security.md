@@ -22,6 +22,7 @@ Residual risks the controls below mitigate:
 | Control | Location | Audit ref |
 |---|---|---|
 | Egress allow-list (`frozenset` of two upstreams) | `server.py:_assert_allowed` | SEC-021 |
+| HTTPS-only scheme enforcement (rejects `http://`/`file://` even for an allow-listed host) | `server.py:_assert_allowed` | SEC-004 |
 | Manual redirect following with a per-hop allow-list re-check (client keeps `follow_redirects=False`) | `server.py:_http_get` | SEC-021 |
 | `defusedxml.ElementTree` for OAI-PMH parsing | `server.py` imports | SEC (XML) |
 | Pydantic input models with `extra="forbid"`, length caps, regex date patterns | every `*Input` class | input validation |
@@ -32,6 +33,23 @@ Residual risks the controls below mitigate:
 | HTTP host defaults to `127.0.0.1`; only the container sets `MCP_HOST=0.0.0.0` | `server.py` entry point / `Dockerfile` | SEC-016 |
 
 See [`network-egress.md`](network-egress.md) for the allow-list contents and the update procedure.
+
+## SSRF & DNS rebinding (SEC-004 / SEC-005)
+
+The primary SSRF control is the **two-host egress allow-list**, re-checked on every redirect hop, combined with the fact that **no tool input controls the request host** — only query strings and CKAN `resource_id`s are user-supplied; every base URL is a module constant. A redirect to a metadata IP (e.g. `169.254.169.254`) is rejected because it is not in `ALLOWED_HOSTS`, and (since SEC-004) a scheme downgrade to `http://` or a `file://` URL is rejected even for an allow-listed host.
+
+The following are **defense-in-depth measures deliberately deferred** while the allow-list holds exactly two trusted Swiss-federal hosts. They carry low real-world risk today; the table records the trigger that would make them required.
+
+| Measure | Audit ref | Status | Trigger to implement |
+|---|---|---|---|
+| Resolved-IP blocklist for private / link-local / loopback ranges (incl. `169.254.169.254`, IPv6 `::1`, `fe80::/10`) before connecting | SEC-004 | Deferred | Any tool starts accepting a user-supplied URL/host, **or** the allow-list grows beyond trusted fixed hosts. |
+| DNS pinning — resolve the host once, pin the resolved IP for the TCP connection, keep the original hostname for SNI / `Host` / certificate validation (closes the TOCTOU window) | SEC-005 | Deferred | Same trigger as above; an attacker would otherwise need to control DNS for `ckan.opendata.swiss` or `helveticat.nb.admin.ch`. |
+
+**Why deferred:** with a closed two-host allow-list and no user-controlled host, the resolved-IP and DNS-rebinding vectors are not reachable in practice. Implementing them (a custom `httpx` transport/resolver) before they are reachable adds complexity and a maintenance surface for no live risk reduction. If either trigger above occurs, implement **both** before shipping the change, and add the corresponding `_assert_allowed` / transport tests.
+
+## Horizontal scaling (SCALE-002 / SCALE-003)
+
+The deployment is **single-instance by constraint**. The Streamable-HTTP transport keeps a per-session state (`Mcp-Session-Id`) in process, so scaling to more than one instance requires session affinity or a shared session backend first. The full constraint, session model, and the path to safe horizontal scaling are documented in [`scaling.md`](scaling.md).
 
 ## Lethal Trifecta assessment (SEC-019)
 

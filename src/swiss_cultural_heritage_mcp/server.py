@@ -371,10 +371,19 @@ ExpectedUpstreamError = (
 
 
 def _assert_allowed(url: str) -> None:
-    """SEC-021: Host muss in der statischen Allow-List sein."""
-    host = httpx.URL(url).host
-    if host not in ALLOWED_HOSTS:
-        raise ValueError(f"Host nicht in Allow-List: {host}")
+    """Egress-Guard: nur HTTPS und nur Hosts aus der statischen Allow-List.
+
+    - SEC-021: Host muss in ``ALLOWED_HOSTS`` sein (greift via ``_http_get`` auch
+      auf jedem Redirect-Hop).
+    - SEC-004: zusätzlich HTTPS erzwingen (Defense-in-Depth) — blockiert u. a.
+      einen Redirect-Downgrade auf ``http://`` oder ein ``file://``-Schema, selbst
+      wenn der Host erlaubt wäre.
+    """
+    parsed = httpx.URL(url)
+    if parsed.scheme != "https":
+        raise ValueError(f"Nur HTTPS erlaubt, nicht: {parsed.scheme or '(leer)'}")
+    if parsed.host not in ALLOWED_HOSTS:
+        raise ValueError(f"Host nicht in Allow-List: {parsed.host}")
 
 
 async def _http_get(url: str, params: dict | None = None) -> httpx.Response:

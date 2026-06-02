@@ -141,7 +141,7 @@ Für den Einsatz via **claude.ai im Browser** (z.B. auf verwalteten Arbeitsplät
 4. Start-Befehl setzen: `python -m swiss_cultural_heritage_mcp.server --http --port 8000`
 5. In claude.ai unter Settings → MCP Servers eintragen: `https://your-app.onrender.com/sse`
 
-Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository enthält ein gehärtetes `Dockerfile` (non-root UID 10001). Siehe [`docs/security.md`](docs/security.md) für empfohlene `SecurityContext`-Einstellungen und [`docs/network-egress.md`](docs/network-egress.md) für die Egress-Policy.
+Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository enthält ein gehärtetes `Dockerfile` (non-root UID 10001). Siehe [`docs/security.md`](docs/security.md) für empfohlene `SecurityContext`-Einstellungen und [`docs/network-egress.md`](docs/network-egress.md) für die Egress-Policy. Der Dienst läuft standardmässig als **Einzelinstanz**; vor horizontaler Skalierung siehe [`docs/scaling.md`](docs/scaling.md) für die Voraussetzungen zur Session-Affinität.
 
 > 💡 *«stdio für den Entwickler-Laptop, SSE für den Browser.»*
 
@@ -226,7 +226,7 @@ swiss-cultural-heritage-mcp/
 ├── .github/workflows/ci.yml     # GitHub Actions (Python 3.11/3.12/3.13)
 ├── .github/dependabot.yml       # Monatliche Dependency-/SDK-Update-PRs
 ├── Dockerfile                   # Multi-Stage, non-root, HEALTHCHECK
-├── docs/                        # security, network-egress, data-residency, roadmap
+├── docs/                        # security, network-egress, scaling, data-residency, roadmap
 ├── pyproject.toml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
