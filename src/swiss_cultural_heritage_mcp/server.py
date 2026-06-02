@@ -16,6 +16,7 @@ import asyncio
 import functools
 import json
 import logging
+import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from enum import StrEnum
@@ -1360,6 +1361,44 @@ async def health(_request):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  HTTP-APP (Streamable HTTP) — CORS (SDK-004)
+# ══════════════════════════════════════════════════════════════════════════════
+
+DEFAULT_HTTP_PORT: Final[int] = 8000
+
+
+def cors_origins_from_env() -> list[str]:
+    """Liest die erlaubten CORS-Origins aus ``MCP_CORS_ORIGINS`` (komma-separiert).
+
+    Default ist eine leere Liste — also keine Cross-Origin-Freigabe. Browser-Zugriff
+    erfordert das explizite Setzen der erlaubten Origins (kein Wildcard in Produktion).
+    """
+    raw = os.environ.get("MCP_CORS_ORIGINS", "")
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+def build_http_app(cors_origins: list[str] | None = None):
+    """Baut die Streamable-HTTP-Starlette-App inkl. CORS-Middleware (SDK-004).
+
+    ``Mcp-Session-Id`` wird via ``expose_headers`` freigegeben, damit Browser-Clients
+    die Session-ID über mehrere Requests hinweg lesen und mitsenden können — ohne das
+    bricht die Session-Kontinuität im Browser. ``allow_origins`` ist eine explizite
+    Allow-List (kein ``*`` in Produktion), konfigurierbar über ``MCP_CORS_ORIGINS``.
+    """
+    from starlette.middleware.cors import CORSMiddleware
+
+    app = mcp.streamable_http_app()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins or [],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Mcp-Session-Id", "Content-Type"],
+        expose_headers=["Mcp-Session-Id"],
+    )
+    return app
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -1367,8 +1406,17 @@ if __name__ == "__main__":
     import sys
 
     if "--http" in sys.argv:
+        import uvicorn
+
         port_idx = sys.argv.index("--port") + 1 if "--port" in sys.argv else None
-        port     = int(sys.argv[port_idx]) if port_idx else 8000
-        mcp.run(transport="streamable-http", port=port)
+        port = int(sys.argv[port_idx]) if port_idx else int(os.environ.get("MCP_PORT", DEFAULT_HTTP_PORT))
+        # SEC-016: default to loopback; the container image sets MCP_HOST=0.0.0.0
+        # explicitly so it is reachable behind the platform load balancer.
+        host = os.environ.get("MCP_HOST", "127.0.0.1")
+
+        mcp.settings.host = host
+        mcp.settings.port = port
+        app = build_http_app(cors_origins_from_env())
+        uvicorn.run(app, host=host, port=port, log_level=mcp.settings.log_level.lower())
     else:
         mcp.run()

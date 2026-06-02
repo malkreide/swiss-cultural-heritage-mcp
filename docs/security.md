@@ -26,17 +26,51 @@ Residual risks the controls below mitigate:
 | `defusedxml.ElementTree` for OAI-PMH parsing | `server.py` imports | SEC (XML) |
 | Pydantic input models with `extra="forbid"`, length caps, regex date patterns | every `*Input` class | input validation |
 | Narrow `except ExpectedUpstreamError` (httpx + XML + ValueError) | every tool body | OBS-001 |
+| Unexpected (programming) errors masked: full detail to stderr, generic `ToolError` to the client | `server.py:mask_unexpected_errors` | OBS-002 |
 | Shared httpx client owned by FastMCP `lifespan` | `server.py:lifespan` | SDK-001 |
+| CORS exposes `Mcp-Session-Id` with an explicit (non-wildcard) origin allow-list | `server.py:build_http_app` | SDK-004 |
+| HTTP host defaults to `127.0.0.1`; only the container sets `MCP_HOST=0.0.0.0` | `server.py` entry point / `Dockerfile` | SEC-016 |
 
 See [`network-egress.md`](network-egress.md) for the allow-list contents and the update procedure.
+
+## Lethal Trifecta assessment (SEC-019)
+
+The "lethal trifecta" is the combination of (1) access to **private** data, (2) exposure to **untrusted** content, and (3) the ability to **exfiltrate** (write/send externally). A server should hold at most two of the three.
+
+| Leg | Present? | Rationale |
+|---|---|---|
+| Private-data access | **No** | Only public open data (opendata.swiss CKAN, NB OAI-PMH). No auth, no PII, no internal systems. |
+| Untrusted-content exposure | Partial | Upstream responses are rendered for the LLM. The upstreams are Swiss federal services, but their content is still treated as data, not instructions. |
+| Exfiltration channel | **No** | Read-only: no write/send/mail/webhook tools. Outbound traffic is restricted to the two-host egress allow-list (`SEC-021`), declared as an immutable `frozenset`. |
+
+**Conclusion:** the server holds **at most one** leg of the trifecta, so the trifecta is **not present**. This assessment must be re-run if any tool gains a write/send side effect (see the Phase 1 → 2 gate in [`roadmap.md`](roadmap.md)).
+
+## Secret management (SEC-013)
+
+The server handles **no secrets**: no API keys, tokens, or credentials (all upstreams are anonymous public APIs). This corresponds to Level 1 (no secret material) — acceptable for the `Public Open Data` data class. If a future upstream requires a key, store it in a Secret Manager (Switzerland/EU region per [`data-residency.md`](data-residency.md)), load it as a Pydantic `SecretStr`, keep it out of logs, and never bake it into the container image layer.
+
+## Resource limits (SCALE-006)
+
+The container declares no limits itself; operators should set them at the platform level. Recommended starting points for this lightweight, stateless server:
+
+| Resource | Request | Limit |
+|---|---|---|
+| CPU | `100m` | `500m` |
+| Memory | `128Mi` | `256Mi` |
+| File descriptors (`ulimit -n`) | — | `≥ 4096` (the cross-search tool opens several concurrent upstream connections) |
+
+Set an explicit restart policy (`restartPolicy: Always` on k8s; Render restarts on crash by default) so an OOM or upstream-induced crash recovers cleanly. Requests are deliberately below limits to allow short bursts during `heritage_cross_search` fan-out.
 
 ## Container hardening (operators)
 
 A reference `Dockerfile` is shipped at the repo root. Key properties:
 
+- Multi-stage build: dependencies are installed in a `builder` stage and copied into the runtime stage, so no pip cache or build tooling ships in the final image (`SCALE-004`)
 - Non-root user, UID `10001`
-- Slim Python base image, no build tools in the final layer
+- Slim Python base image
 - `EXPOSE 8000` for Streamable HTTP mode
+- `HEALTHCHECK` probing the in-app `/health` route (`SCALE-004`)
+- `MCP_HOST=0.0.0.0` set only in the image so the container is reachable behind the LB while the code default stays loopback (`SEC-016`)
 
 When deploying to a Kubernetes-class platform (k8s, Cloud Run, Fly.io, Knative) apply the following `SecurityContext`:
 
