@@ -24,7 +24,7 @@ from typing import Any, Final, TypeVar
 
 import httpx
 from defusedxml import ElementTree as ET
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -1153,17 +1153,28 @@ class CrossSearchInput(BaseModel):
     },
 )
 @mask_unexpected_errors
-async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | str:
+async def heritage_cross_search(
+    params: CrossSearchInput, ctx: Context = None
+) -> ResultEnvelope | str:
     """Durchsucht SIK-ISEA, SNM und NB gleichzeitig nach einem Begriff.
+
+    Fächert auf drei Upstreams auf (i. d. R. > 2 s). Sofern der Client einen
+    Progress-Token gesendet hat, wird nach jeder abgeschlossenen Quelle
+    `ctx.report_progress()` gemeldet; fehlgeschlagene Quellen werden zusätzlich
+    über `ctx.warning()` als strukturierte Warnung signalisiert (SDK-003),
+    statt nur als Text im Ergebnis zu erscheinen.
 
     Args:
         params (CrossSearchInput):
             - query (str): Suchbegriff
             - sources (list[str]): ['sik_isea', 'snm', 'nb'] (Standard: alle)
             - limit_per_source (int): Max. Ergebnisse je Quelle (Standard: 5)
+            - response_format: 'markdown' (Standard) oder 'json'
+        ctx (Context): Vom MCP-SDK injiziert (Progress/Logging); bei direkten
+            Aufrufen ohne Request `None`.
 
     Returns:
-        str: Aggregierte Markdown-Ergebnisse aus allen gewählten Quellen.
+        ResultEnvelope | str: Aggregierte Ergebnisse aus allen gewählten Quellen.
     """
     n    = params.limit_per_source
     q    = params.query
@@ -1211,8 +1222,30 @@ async def heritage_cross_search(params: CrossSearchInput) -> ResultEnvelope | st
 
     task_map   = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
     source_map = {"sik_isea": SOURCE_SIKART, "snm": SOURCE_SNM, "nb": SOURCE_NB}
-    results      = await asyncio.gather(*(task_map[s]() for s in params.sources if s in task_map))
-    used_sources = [source_map[s] for s in params.sources if s in source_map]
+    keys       = [s for s in params.sources if s in task_map]
+    used_sources = [source_map[s] for s in keys]
+
+    # Fan-out mit Progress je abgeschlossener Quelle (SDK-003). as_completed
+    # erlaubt inkrementelle Fortschrittsmeldungen; die Ergebnisreihenfolge wird
+    # anschliessend wieder auf die angeforderte Quellenreihenfolge normalisiert.
+    async def _run(key: str) -> tuple[str, dict]:
+        return key, await task_map[key]()
+
+    pending   = [asyncio.create_task(_run(k)) for k in keys]
+    collected: dict[str, dict] = {}
+    for done, fut in enumerate(asyncio.as_completed(pending), start=1):
+        key, res = await fut
+        collected[key] = res
+        if ctx is not None:
+            label = res.get("source", key)
+            status = "Fehler" if "error" in res else f"{len(res.get('items', []))} Treffer"
+            await ctx.report_progress(
+                progress=done, total=len(keys), message=f"{label}: {status}"
+            )
+            if "error" in res:
+                await ctx.warning(f"Quelle '{label}' fehlgeschlagen: {res['error']}")
+
+    results = [collected[k] for k in keys]
 
     if params.response_format == ResponseFormat.JSON:
         return ResultEnvelope(
