@@ -917,6 +917,75 @@ class TestAttribution:
             assert section.get("url")
 
 
+class _RecordingCtx:
+    """Minimaler Context-Doppelgänger, der Progress-/Warning-Aufrufe mitschreibt."""
+    def __init__(self):
+        self.progress: list[tuple] = []
+        self.warnings: list[str] = []
+
+    async def report_progress(self, progress, total=None, message=None):
+        self.progress.append((progress, total, message))
+
+    async def warning(self, message, **extra):
+        self.warnings.append(message)
+
+
+class TestProgressReporting:
+    """SDK-003: cross_search meldet Progress je Quelle und warnt bei Fehlern."""
+
+    @pytest.mark.asyncio
+    async def test_progress_reported_per_source(self):
+        ctx = _RecordingCtx()
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
+            )
+            respx.get(f"{CKAN_API}/package_search").mock(
+                return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            )
+            respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
+            )
+            params = CrossSearchInput(query="Volksschule", limit_per_source=3)
+            await heritage_cross_search(params, ctx=ctx)
+
+        # one progress notification per queried source, counting up to the total
+        assert [p[0] for p in ctx.progress] == [1, 2, 3]
+        assert all(p[1] == 3 for p in ctx.progress)
+        assert ctx.warnings == []
+
+    @pytest.mark.asyncio
+    async def test_failing_source_emits_warning(self):
+        ctx = _RecordingCtx()
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(503)  # SIK-ISEA fails
+            )
+            respx.get(f"{CKAN_API}/package_search").mock(
+                return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            )
+            params = CrossSearchInput(query="Test", sources=["sik_isea", "snm"])
+            result = await heritage_cross_search(params, ctx=ctx)
+
+        # progress still reported for both sources, exactly one structured warning
+        assert len(ctx.progress) == 2
+        assert len(ctx.warnings) == 1
+        assert "SIK-ISEA" in ctx.warnings[0]
+        # the surviving source is still present in the rendered result
+        assert "SNM" in result
+
+    @pytest.mark.asyncio
+    async def test_no_ctx_is_tolerated(self):
+        # direct invocation without a Context (ctx=None) must not raise
+        with respx.mock:
+            respx.get(f"{CKAN_API}/package_search").mock(
+                return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
+            )
+            params = CrossSearchInput(query="Test", sources=["snm"])
+            result = await heritage_cross_search(params)
+        assert "SNM" in result
+
+
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
 @pytest.mark.live
