@@ -35,6 +35,7 @@ from swiss_cultural_heritage_mcp.server import (
     PublicationDetailInput,
     ResponseFormat,
     ResultEnvelope,
+    Settings,
     _assert_allowed,
     _extract_resumption_token,
     _handle_error,
@@ -54,6 +55,7 @@ from swiss_cultural_heritage_mcp.server import (
     heritage_search_museum_datasets,
     mask_unexpected_errors,
     mcp,
+    settings,
 )
 
 # ─────────────────────────── Fixtures ──────────────────────────────────────────
@@ -459,11 +461,12 @@ class TestHttpCors:
     """SDK-004: CORS exponiert Mcp-Session-Id für Browser-Clients."""
 
     def test_cors_origins_from_env_parsing(self, monkeypatch):
-        monkeypatch.setenv("MCP_CORS_ORIGINS", " https://a.example , https://b.example ,")
+        # ARCH-004: config now flows through the Settings object (MCP_CORS_ORIGINS)
+        monkeypatch.setattr(settings, "cors_origins", " https://a.example , https://b.example ,")
         assert cors_origins_from_env() == ["https://a.example", "https://b.example"]
 
     def test_cors_origins_default_empty(self, monkeypatch):
-        monkeypatch.delenv("MCP_CORS_ORIGINS", raising=False)
+        monkeypatch.setattr(settings, "cors_origins", "")
         assert cors_origins_from_env() == []
 
     def test_build_http_app_exposes_session_id(self):
@@ -473,6 +476,38 @@ class TestHttpCors:
         assert "Mcp-Session-Id" in cors.kwargs["allow_headers"]
         assert cors.kwargs["allow_origins"] == ["https://app.example"]
         assert "*" not in cors.kwargs["allow_origins"]
+
+
+class TestSettings:
+    """ARCH-004: single env-overridable config object."""
+
+    def test_module_constants_derive_from_settings(self):
+        # the public module constants are aliases of the Settings source of truth
+        assert CKAN_API == settings.ckan_api
+        assert ALLOWED_HOSTS == settings.allowed_hosts
+
+    def test_defaults(self):
+        s = Settings()
+        assert s.transport == "stdio"
+        assert s.host == "127.0.0.1"   # SEC-016 loopback default
+        assert s.port == 8000
+        assert s.http_timeout == 30.0
+
+    def test_env_overrides_without_code_change(self, monkeypatch):
+        # the whole point of ARCH-004: per-env override via MCP_* env vars
+        monkeypatch.setenv("MCP_HTTP_TIMEOUT", "12.5")
+        monkeypatch.setenv("MCP_TRANSPORT", "http")
+        monkeypatch.setenv("MCP_HOST", "0.0.0.0")
+        monkeypatch.setenv("MCP_DEFAULT_LIMIT", "7")
+        s = Settings()
+        assert s.http_timeout == 12.5
+        assert s.transport == "http"
+        assert s.host == "0.0.0.0"
+        assert s.default_limit == 7
+
+    def test_invalid_transport_rejected(self):
+        with pytest.raises(Exception):
+            Settings(transport="grpc")
 
 
 # ─────────────────────────── Unit Tests: Input Models ──────────────────────────
