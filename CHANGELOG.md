@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Audit finding `OBS-002`: unhandled (programming) errors no longer leak their internal exception text to the client/LLM. The official `mcp.server.fastmcp` SDK has no `mask_error_details` flag (that exists only in the standalone `fastmcp` package) and otherwise wraps every tool exception as `ToolError(f"Error executing tool {name}: {e}")`. A new `mask_unexpected_errors` decorator on every tool logs the full exception to stderr (server-side) and re-raises a generic `ToolError`, so the error is still surfaced as an error result (`OBS-001`) but with internals masked.
+
 ### Fixed
 - Test isolation: the shared `httpx.AsyncClient` is now reset between tests, fixing `RuntimeError: Event loop is closed` when live tests run in pytest's per-test event loops
 - HTTP redirects are followed again — a `302` from opendata.swiss previously surfaced to users as `Fehler: API-Anfrage fehlgeschlagen (HTTP 302)`
