@@ -13,16 +13,24 @@ Kein API-Schlüssel erforderlich. Alle Daten öffentlich zugänglich unter offen
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
-from collections.abc import AsyncIterator
+import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from enum import StrEnum
-from typing import Final
+from typing import Final, TypeVar
 
 import httpx
 from defusedxml import ElementTree as ET
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Library-style logger: relies on the stdlib last-resort handler, which writes
+# to stderr — keeping stdout reserved for the MCP protocol in stdio mode
+# (OBS-004). Host applications own handler/formatter configuration.
+logger = logging.getLogger("swiss_cultural_heritage_mcp")
 
 # ─────────────────────────── Konstanten ────────────────────────────────────────
 # opendata.swiss bedient die CKAN-API unter dem kanonischen Host ckan.opendata.swiss;
@@ -87,6 +95,38 @@ async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
 
 # ─────────────────────────── Server ────────────────────────────────────────────
 mcp = FastMCP("swiss_cultural_heritage_mcp", lifespan=lifespan)
+
+
+# ─────────────────────────── Fehler-Maskierung (OBS-002) ───────────────────────
+# Die offizielle mcp-SDK (mcp.server.fastmcp) kennt kein `mask_error_details`-Flag
+# (das gibt es nur im eigenständigen `fastmcp`-Paket). Stattdessen verpackt sie
+# jede Tool-Exception als ``ToolError(f"Error executing tool {name}: {e}")`` und
+# leitet den Original-Text an den Client/das LLM weiter.
+#
+# Erwartete Upstream-Fehler fangen die Tools selbst ab und geben saubere Meldungen
+# zurück (siehe ``_handle_error``). Programmierfehler sollen weiterhin als Fehler-
+# Ergebnis propagieren (OBS-001) — aber mit einer generischen, internen-frei
+# maskierten Meldung. Der vollständige Stacktrace landet nur im Server-Log (stderr).
+F = TypeVar("F", bound=Callable[..., Awaitable[str]])
+
+
+def mask_unexpected_errors(fn: F) -> F:
+    """Maskiert unerwartete Exceptions: Detail ins Server-Log, generisch an den Client."""
+
+    @functools.wraps(fn)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await fn(*args, **kwargs)
+        except ToolError:
+            raise
+        except Exception:
+            logger.exception("Unerwarteter Fehler in Tool %s", getattr(fn, "__name__", "?"))
+            raise ToolError(
+                "Interner Fehler bei der Tool-Ausführung. "
+                "Details wurden serverseitig protokolliert."
+            ) from None
+
+    return wrapper  # type: ignore[return-value]
 
 
 # ─────────────────────────── Enum ──────────────────────────────────────────────
@@ -275,6 +315,7 @@ class ArtistSearchInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_search_artists(params: ArtistSearchInput) -> str:
     """Sucht Schweizer Künstler·innen in den SIKART-Daten (~17'000 Einträge).
 
@@ -386,6 +427,7 @@ class ArtistDetailInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_get_artist(params: ArtistDetailInput) -> str:
     """Ruft den vollständigen SIKART-Datensatz zu einer Künstler·in ab.
 
@@ -485,6 +527,7 @@ class MuseumSearchInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_search_museum_datasets(params: MuseumSearchInput) -> str:
     """Sucht Datensätze des Schweizerischen Nationalmuseums (SNM) auf opendata.swiss.
 
@@ -606,6 +649,7 @@ class CollectionBrowseInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_browse_collection(params: CollectionBrowseInput) -> str:
     """Durchsucht Objekte innerhalb eines SNM-Sammlungsdatensatzes via CKAN DataStore.
 
@@ -734,6 +778,7 @@ class HelvticatSearchInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_search_helveticat(params: HelvticatSearchInput) -> str:
     """Durchsucht die Schweizerische Nationalbibliothek (Helveticat) via OAI-PMH.
 
@@ -861,6 +906,7 @@ class NbCollectionsInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_list_nb_collections(
     params: NbCollectionsInput | None = None,
 ) -> str:
@@ -925,6 +971,7 @@ class PublicationDetailInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_get_publication(params: PublicationDetailInput) -> str:
     """Ruft vollständige Dublin-Core-Metadaten einer Publikation der NB ab.
 
@@ -1032,6 +1079,7 @@ class CrossSearchInput(BaseModel):
         "openWorldHint":   True,
     },
 )
+@mask_unexpected_errors
 async def heritage_cross_search(params: CrossSearchInput) -> str:
     """Durchsucht SIK-ISEA, SNM und NB gleichzeitig nach einem Begriff.
 

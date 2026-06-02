@@ -16,6 +16,7 @@ import json
 import httpx
 import pytest
 import respx
+from mcp.server.fastmcp.exceptions import ToolError
 
 from swiss_cultural_heritage_mcp import __version__ as pkg_version
 from swiss_cultural_heritage_mcp.server import (
@@ -46,6 +47,7 @@ from swiss_cultural_heritage_mcp.server import (
     heritage_search_artists,
     heritage_search_helveticat,
     heritage_search_museum_datasets,
+    mask_unexpected_errors,
 )
 
 # ─────────────────────────── Fixtures ──────────────────────────────────────────
@@ -392,6 +394,52 @@ class TestHandleError:
         e = httpx.HTTPStatusError("rate limit", request=req, response=resp)
         msg = _handle_error(e)
         assert "Rate-Limit" in msg
+
+
+class TestErrorMasking:
+    """OBS-002: unerwartete (Programmier-)Fehler werden maskiert, nicht geleakt."""
+
+    @pytest.mark.asyncio
+    async def test_decorator_masks_internal_detail(self):
+        @mask_unexpected_errors
+        async def boom() -> str:
+            raise KeyError("SECRET_INTERNAL_FIELD")
+
+        with pytest.raises(ToolError) as exc:
+            await boom()
+        assert "SECRET_INTERNAL_FIELD" not in str(exc.value)
+        assert "KeyError" not in str(exc.value)
+        assert "Interner Fehler" in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_decorator_passes_through_normal_result(self):
+        @mask_unexpected_errors
+        async def ok() -> str:
+            return "alles gut"
+
+        assert await ok() == "alles gut"
+
+    @pytest.mark.asyncio
+    async def test_decorator_does_not_double_wrap_toolerror(self):
+        @mask_unexpected_errors
+        async def already() -> str:
+            raise ToolError("schon maskiert")
+
+        with pytest.raises(ToolError, match="schon maskiert"):
+            await already()
+
+    @pytest.mark.asyncio
+    async def test_tool_masks_unexpected_upstream_shape(self):
+        # CKAN liefert unerwartet eine Liste statt eines Objekts → AttributeError
+        # (kein ExpectedUpstreamError) im Tool-Body. Muss maskiert werden.
+        with respx.mock:
+            respx.get(f"{CKAN_API}/datastore_search").mock(
+                return_value=httpx.Response(200, json=["unexpected", "list"])
+            )
+            with pytest.raises(ToolError) as exc:
+                await heritage_search_artists(ArtistSearchInput(query="Hodler"))
+        assert "Interner Fehler" in str(exc.value)
+        assert "AttributeError" not in str(exc.value)
 
 
 # ─────────────────────────── Unit Tests: Input Models ──────────────────────────
