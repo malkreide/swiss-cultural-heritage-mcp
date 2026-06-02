@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-02
+
+This release lands the full **mcp-audit-skill** remediation series (PRs #19–#30) on top of the SIK-ISEA / NB data-source rebuild: typed structured output, optional distributed tracing, structured JSON logging, OGD licence attribution, fuzzy search fallback, `isError` error flagging, a single env-driven configuration object, and tool-prompt drift pinning. The audit board moves from `0 PASS / 17 PARTIAL / 4 FAIL` to **19 PASS / 2 accepted-risk / 0 open** — see [`audits/2026-06-02-swiss-cultural-heritage-mcp-rerun/report.md`](audits/2026-06-02-swiss-cultural-heritage-mcp-rerun/report.md).
+
+> **⚠️ Breaking for JSON consumers** (`response_format="json"`): see the Changed section. Markdown output (the default) is unchanged.
+
 ### Security
 - Audit finding `SEC-022`: tool-definition pinning for rug-pull / drift detection. `audits/tool-pins/current.json` now commits a SHA-256 of every tool's `name` + cleaned docstring (the LLM-facing `description`, plus a manifest hash); `scripts/pin_tools.py` regenerates it and a new `TestToolPins` fails CI on any silent change, forcing a conscious update + a CHANGELOG re-approval note. The pin intentionally excludes the pydantic/SDK-generated JSON schema, whose serialised form varies across dependency versions (so it stays stable across benign dependency bumps); the schema/IO contract is covered by the structured-output and input-validation tests. The `<server>__<tool>` namespacing half is breaking (every tool id changes → major bump) and is documented as a deferred Phase-2 decision in `docs/security.md`; the consistent `heritage_` prefix is retained. **Re-approval note:** this change does not alter any tool's name, description, or schema — the pin records the existing definitions, so no client re-approval is required.
 - Audit finding `OBS-001`: handled upstream failures (HTTP error, timeout, network, XML-parse, CKAN `success:false`) are now **raised as `ToolError`** via a new `_raise_tool_error` helper instead of being returned as plain `Fehler: …` strings. The masking decorator passes `ToolError` through and the MCP SDK wraps it in a `CallToolResult` with `isError: true`, so the client/LLM can distinguish a failure from a successful (or empty) result. Genuine empty results ("Keine … gefunden") remain normal, non-error responses. The structured `upstream.error` warning (`OBS-003`) is still logged on the way out.
@@ -30,16 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Breaking (JSON consumers):** `response_format="json"` now returns the typed `ResultEnvelope` (fields `source`/`count`/`total`/`offset`/`has_more`/`results`/`meta`) instead of the previous ad-hoc keys (`artists`/`datasets`/`records`/`sets`). Record lists moved under `results`; provenance and licence are under `source`. Markdown output is unchanged.
-
-### Fixed
-- HTTP entry point: `--http` mode previously called `mcp.run(transport="streamable-http", port=port)`, but the official SDK's `run()` takes no `port` argument — the server now configures host/port on `mcp.settings` and serves the CORS-wrapped app via uvicorn (`SDK-004` / `SCALE-001`).
-- Documentation drift: both READMEs said "9 tools"; the server registers 8 (`OPS-002`).
-- Test isolation: the shared `httpx.AsyncClient` is now reset between tests, fixing `RuntimeError: Event loop is closed` when live tests run in pytest's per-test event loops
-- HTTP redirects are followed again — a `302` from opendata.swiss previously surfaced to users as `Fehler: API-Anfrage fehlgeschlagen (HTTP 302)`
-- SIK-ISEA module pointed at a non-existent host (`api.sik-isea.ch`); it now uses the real SIKART artist dataset (~17'000 records) on opendata.swiss
-- Nationalbibliothek module pointed at a non-existent OAI-PMH endpoint (`www.nb.admin.ch/oai/oai-provider`); it now uses the real Helveticat OAI-PMH provider
-
-### Changed
 - `_http_get` follows redirects manually and re-checks the egress allow-list (`ALLOWED_HOSTS`) on every hop; the client keeps `follow_redirects=False` so per-hop validation still closes the redirect-chain SSRF vector
 - `nightly-live.yml` no longer hard-fails on upstream API breakage — it opens or updates a `nightly-live-failure` GitHub issue instead, matching the workflow's documented intent
 - SIK-ISEA: `heritage_search_artists` / `heritage_get_artist` now query the CKAN DataStore API (`datastore_search` on the SIKART resource) with server-side full-text search and pagination
@@ -51,6 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - `heritage_search_artists` parameters `period` and `technique` — the SIKART dataset has no structured fields for them; `query` covers professions via the biography line
 - Unused `_paginate` helper (artist search now paginates server-side via CKAN)
+
+### Fixed
+- HTTP entry point: `--http` mode previously called `mcp.run(transport="streamable-http", port=port)`, but the official SDK's `run()` takes no `port` argument — the server now configures host/port on `mcp.settings` and serves the CORS-wrapped app via uvicorn (`SDK-004` / `SCALE-001`).
+- Documentation drift: both READMEs said "9 tools"; the server registers 8 (`OPS-002`).
+- Test isolation: the shared `httpx.AsyncClient` is now reset between tests, fixing `RuntimeError: Event loop is closed` when live tests run in pytest's per-test event loops
+- HTTP redirects are followed again — a `302` from opendata.swiss previously surfaced to users as `Fehler: API-Anfrage fehlgeschlagen (HTTP 302)`
+- SIK-ISEA module pointed at a non-existent host (`api.sik-isea.ch`); it now uses the real SIKART artist dataset (~17'000 records) on opendata.swiss
+- Nationalbibliothek module pointed at a non-existent OAI-PMH endpoint (`www.nb.admin.ch/oai/oai-provider`); it now uses the real Helveticat OAI-PMH provider
 
 ## [0.2.0] - 2026-05-21
 
