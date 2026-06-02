@@ -1314,8 +1314,7 @@ class TestErrorIsFlagged:
 class TestToolPins:
     """SEC-022: committed tool-definition hash detects silent drift / rug pulls."""
 
-    @pytest.mark.asyncio
-    async def test_tool_definitions_match_committed_pin(self):
+    def test_tool_definitions_match_committed_pin(self):
         import json
         import pathlib
 
@@ -1326,7 +1325,7 @@ class TestToolPins:
             / "audits" / "tool-pins" / "current.json"
         )
         committed = json.loads(pin_file.read_text())
-        live = await compute_tool_pins(mcp)
+        live = compute_tool_pins(mcp)
 
         # version is environment-dependent and intentionally not compared
         assert live["tools"] == committed["tools"], (

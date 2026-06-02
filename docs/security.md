@@ -49,13 +49,16 @@ The following are **defense-in-depth measures deliberately deferred** while the 
 
 ## Tool-definition pinning & namespacing (SEC-022)
 
-To guard against a **"rug pull"** — a silently changed tool description or schema
-that re-tasks the LLM — the repository commits a hash snapshot of every tool's
-`name` + `description` + `input`/`output` schema at
+To guard against a **"rug pull"** — a silently changed tool name or prompt that
+re-tasks the LLM — the repository commits a hash snapshot of every tool's
+`name` + cleaned docstring (the LLM-facing `description`) at
 [`audits/tool-pins/current.json`](../audits/tool-pins/current.json). A CI test
 (`TestToolPins`) recomputes the live hashes on every run and fails on any drift,
 forcing a conscious regeneration (`scripts/pin_tools.py`) plus a CHANGELOG
-**re-approval** note when a tool definition changes. See
+**re-approval** note when a tool definition changes. The pin deliberately
+excludes the pydantic/SDK-generated JSON schema (whose serialised form varies
+across dependency versions, which would cause false positives); the schema/IO
+contract is covered by the structured-output and input-validation tests. See
 [`audits/tool-pins/README.md`](../audits/tool-pins/README.md) for the process.
 
 **Deferred (breaking):** SEC-022 also suggests a `<server>__<tool>` server-identity

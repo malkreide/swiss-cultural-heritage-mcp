@@ -11,7 +11,6 @@ CHANGELOG note (re-approval prompt) describing what changed and why.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import pathlib
 from importlib.metadata import PackageNotFoundError, version
@@ -22,8 +21,8 @@ from swiss_cultural_heritage_mcp.server import mcp
 OUT = pathlib.Path(__file__).resolve().parents[1] / "audits" / "tool-pins" / "current.json"
 
 
-async def main() -> None:
-    pins = await compute_tool_pins(mcp)
+def main() -> None:
+    pins = compute_tool_pins(mcp)
     try:
         pkg_version = version("swiss-cultural-heritage-mcp")
     except PackageNotFoundError:
@@ -39,4 +38,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
