@@ -317,3 +317,5 @@ Hayal Oezkan · [malkreide](https://github.com/malkreide)
 - **Related:** [fedlex-mcp](https://github.com/malkreide/fedlex-mcp) — Cultural heritage law + primary legislation
 - **Related:** [zurich-opendata-mcp](https://github.com/malkreide/zurich-opendata-mcp) — Spatial-historical: museum objects + Zurich geodata
 - **Portfolio:** [Swiss Public Data MCP Portfolio](https://github.com/malkreide)
+
+<!-- mcp-name: io.github.malkreide/swiss-cultural-heritage-mcp -->

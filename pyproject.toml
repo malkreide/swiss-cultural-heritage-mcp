@@ -54,7 +54,6 @@ otel = [
 swiss-cultural-heritage-mcp = "swiss_cultural_heritage_mcp.server:mcp.run"
 
 [project.urls]
-"mcp-name" = "io.github.malkreide/swiss-cultural-heritage-mcp"
 Homepage   = "https://github.com/malkreide/swiss-cultural-heritage-mcp"
 Repository = "https://github.com/malkreide/swiss-cultural-heritage-mcp"
 Issues     = "https://github.com/malkreide/swiss-cultural-heritage-mcp/issues"
