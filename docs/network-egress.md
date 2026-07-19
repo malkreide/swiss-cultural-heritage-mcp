@@ -10,8 +10,15 @@ The list is declared as an immutable `frozenset` in `src/swiss_cultural_heritage
 ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
     "ckan.opendata.swiss",     # CKAN API — SIKART artist data + Nationalmuseum datasets
     "helveticat.nb.admin.ch",  # OAI-PMH provider — Nationalbibliothek (Helveticat)
+    "api.memobase.ch",         # Linked-Open-Data API — Memoriav / Memobase (JSON-LD)
+    "beta.dodis.ch",           # JSON-REST / Solr backend — Diplomatic Documents (Dodis)
 })
 ```
+
+The Swiss memory-institution facade (`search_heritage` / `get_heritage_item`) only
+ever contacts `api.memobase.ch` and `beta.dodis.ch`. Human-facing permalinks
+(`memobase.ch`, `dodis.ch`) are returned as links but never fetched, so they are
+deliberately **not** on the allow-list.
 
 Every HTTP request passes through `_assert_allowed(url)` in `_http_get`. Any other host raises `ValueError` *before* the request leaves the process. The shared `httpx.AsyncClient` keeps `follow_redirects=False`; redirects are followed manually in `_http_get` and **every hop is re-checked** against the allow-list, so an upstream cannot redirect us off-list.
 

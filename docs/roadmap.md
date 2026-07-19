@@ -8,7 +8,7 @@ This server follows the read-only-first phase architecture (audit finding `OPS-0
 
 ## Phase 1 scope (done / in scope)
 
-- 8 read-only tools across SIK-ISEA, Nationalmuseum (SNM) and Nationalbibliothek (NB)
+- 11 read-only tools across SIK-ISEA, Nationalmuseum (SNM), Nationalbibliothek (NB) and the federated memory-institution facade (Memobase + Dodis)
 - 2 resources, 2 prompts
 - Dual transport (stdio + Streamable HTTP)
 - Security controls: egress allow-list, `defusedxml`, Pydantic input validation, error masking, container hardening (see [`security.md`](security.md))

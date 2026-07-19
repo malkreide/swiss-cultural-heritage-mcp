@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name        = "swiss-cultural-heritage-mcp"
-version     = "0.3.3"
+version     = "0.4.0"
 description = "MCP Server for Swiss cultural heritage data — SIK-ISEA, Nationalmuseum, Nationalbibliothek"
 readme      = "README.md"
 license     = { file = "LICENSE" }
