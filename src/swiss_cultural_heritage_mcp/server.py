@@ -17,6 +17,7 @@ import functools
 import json
 import logging
 import os
+import re
 import sys
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, contextmanager
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
     snm_org:            str = "schweizerisches-nationalmuseum"
     sikart_resource_id: str = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
     nb_oai_pmh:         str = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
+    # Gedächtnisinstitutionen — föderierte Fassade (Live-Probe 2026-07-19):
+    #   Memobase = Linked-Open-Data-API (JSON-LD/Hydra, RiC-O), No-Auth.
+    #   Dodis    = JSON-REST (Solr-Backend der neuen Angular-App), No-Auth.
+    memobase_api:       str = "https://api.memobase.ch"
+    dodis_api:          str = "https://beta.dodis.ch/api"
 
     # HTTP-Verhalten
     http_timeout:  float = 30.0
@@ -53,10 +59,19 @@ class Settings(BaseSettings):
     max_limit:     int = 100
     max_redirects: int = 5
 
+    # Retry mit exponentiellem Backoff (Resilienz-Leitplanke): 5xx/429/Netzwerk-
+    # fehler werden bis zu ``retry_attempts``-mal wiederholt; die Wartezeit ist
+    # ``retry_backoff_base * 2**(versuch-1)`` (Default 2s/4s/8s). 4xx (ausser 429)
+    # werden nie wiederholt.
+    retry_attempts:     int = 4
+    retry_backoff_base: float = 2.0
+
     # Egress-Allow-List (SEC-021)
     allowed_hosts: frozenset[str] = frozenset({
         "ckan.opendata.swiss",
         "helveticat.nb.admin.ch",
+        "api.memobase.ch",
+        "beta.dodis.ch",
     })
 
     # Transport / Netzwerk
@@ -183,6 +198,8 @@ CKAN_API           = settings.ckan_api
 SNM_ORG            = settings.snm_org
 SIKART_RESOURCE_ID = settings.sikart_resource_id
 NB_OAI_PMH         = settings.nb_oai_pmh
+MEMOBASE_API       = settings.memobase_api
+DODIS_API          = settings.dodis_api
 
 HTTP_TIMEOUT  = settings.http_timeout
 DEFAULT_LIMIT = settings.default_limit
@@ -349,6 +366,21 @@ SOURCE_NB: Final = SourceInfo(
     name="Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
     license="offen / pro Datensatz", url="https://www.nb.admin.ch",
 )
+# Gedächtnisinstitutionen (föderierte Fassade). Für diese Quellen ist die
+# Divergenz zwischen Metadaten- und Digitalisat-Lizenz der kritische Punkt:
+# die Metadaten sind offen (LOD), die Digitalisate/Dokumente tragen je Objekt
+# eigene Rechte. Die pro-Objekt-Rechte werden in den Ergebnissen zusätzlich
+# ausgewiesen (Memobase: rightsstatements.org; Dodis: je Dokument).
+SOURCE_MEMOBASE: Final = SourceInfo(
+    name="Memoriav / Memobase",
+    license="Metadaten: offen (Linked Open Data) · Digitalisate: je Rechteinhaber",
+    url="https://memobase.ch",
+)
+SOURCE_DODIS: Final = SourceInfo(
+    name="Diplomatische Dokumente der Schweiz (Dodis)",
+    license="Metadaten: offen (Zitierpflicht) · Dokumente: je Dokument",
+    url="https://dodis.ch",
+)
 
 
 def _attribution(source: SourceInfo | list[SourceInfo]) -> str:
@@ -418,16 +450,22 @@ def _assert_allowed(url: str) -> None:
         raise ValueError(f"Host nicht in Allow-List: {parsed.host}")
 
 
-async def _http_get(url: str, params: dict | None = None) -> httpx.Response:
+async def _http_get(
+    url: str, params: dict | None = None, headers: dict | None = None
+) -> httpx.Response:
     """HTTP-GET über den geteilten Client, mit Egress-Allow-List.
 
     Redirects werden manuell verfolgt, damit die Allow-List (SEC-021) bei
     *jedem* Hop greift. Automatisches ``follow_redirects`` würde nur die
     Start-URL prüfen und so ein SSRF-Schlupfloch über einen Redirect öffnen.
+
+    ``headers`` erlaubt Quell-spezifische Header (z. B. Content-Negotiation:
+    Memobase liefert nur mit ``Accept: application/ld+json`` JSON-LD statt der
+    HTML-App). Die Header werden auf jedem Redirect-Hop mitgesendet.
     """
     _assert_allowed(url)
     client = _get_http_client()
-    resp   = await client.get(url, params=params)
+    resp   = await client.get(url, params=params, headers=headers)
     for _ in range(MAX_REDIRECTS):
         if not resp.is_redirect:
             break
@@ -437,8 +475,57 @@ async def _http_get(url: str, params: dict | None = None) -> httpx.Response:
         next_url = str(resp.url.join(location))
         _assert_allowed(next_url)
         await resp.aclose()
-        resp = await client.get(next_url)
+        resp = await client.get(next_url, headers=headers)
     return resp
+
+
+async def _http_post(
+    url: str, json_body: dict | list | None = None, headers: dict | None = None
+) -> httpx.Response:
+    """HTTP-POST (JSON) über den geteilten Client, mit Egress-Allow-List.
+
+    Wird für die Dodis-Solr-Suche gebraucht (``POST /api/solr/query``). Anders
+    als GET folgen wir hier bewusst *keinem* Redirect — ein POST, der umgeleitet
+    wird, ist ein Fehlersignal und soll nicht still auf eine andere URL wandern.
+    """
+    _assert_allowed(url)
+    client = _get_http_client()
+    return await client.post(url, json=json_body, headers=headers)
+
+
+# Retry mit exponentiellem Backoff (Resilienz-Leitplanke). Eigene Indirektion
+# für das Sleep, damit Tests den Backoff auf 0 setzen können, ohne echte Wartezeit.
+async def _retry_sleep(seconds: float) -> None:
+    await asyncio.sleep(seconds)
+
+
+async def _fetch_with_retry(
+    make_request: Callable[[], Awaitable[httpx.Response]],
+) -> httpx.Response:
+    """Führt einen Request mit Retry aus und ruft ``raise_for_status`` auf.
+
+    Wiederholt bei 5xx, 429 und Netzwerk-/Timeout-Fehlern (bis zu
+    ``settings.retry_attempts`` Versuche, Wartezeit ``base * 2**(n-1)``).
+    4xx (ausser 429) werden sofort durchgereicht — ein Client-Fehler wird durch
+    Wiederholen nicht besser.
+    """
+    last_error: Exception | None = None
+    for attempt in range(max(1, settings.retry_attempts)):
+        if attempt:
+            await _retry_sleep(settings.retry_backoff_base * (2 ** (attempt - 1)))
+        try:
+            resp = await make_request()
+            resp.raise_for_status()
+            return resp
+        except httpx.HTTPStatusError as e:
+            last_error = e
+            code = e.response.status_code
+            if not (code == 429 or 500 <= code < 600):
+                raise
+        except (httpx.TimeoutException, httpx.RequestError) as e:
+            last_error = e
+    assert last_error is not None
+    raise last_error
 
 
 def _handle_error(e: Exception) -> str:
@@ -1566,6 +1653,675 @@ async def heritage_cross_search(
         lines.append("")
 
     return "\n".join(lines) + _attribution(used_sources)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  MODUL 5 — GEDÄCHTNISINSTITUTIONEN (föderierte Fassade: Memobase + Dodis)
+# ══════════════════════════════════════════════════════════════════════════════
+# Architektur-Entscheid (Live-Probe 2026-07-19, siehe README «Architektur-Entscheid»):
+# Von den vier evaluierten Gedächtnisinstitutionen sind nur zwei sauber und ohne
+# Auth maschinell zugänglich:
+#   · Memobase  → Linked-Open-Data-API (JSON-LD/Hydra, RiC-O-Ontologie), Suche via
+#                 ``GET /?q=…&size=&offset=`` (Accept: application/ld+json),
+#                 Einzelrecord via ``GET /record/<id>``.
+#   · Dodis     → JSON-REST (Solr-Backend), Suche via ``POST /api/solr/query``,
+#                 Einzelobjekt via ``GET /api/solr/full/<id>``; stabile Permalinks
+#                 ``dodis.ch/<id>`` (Dokument), ``/P<id>`` Person, ``/G<id>`` Organisation.
+# Bundesarchiv (eIAM + reCAPTCHA) und Landesmuseum (keine öffentliche API) sind
+# bewusst NICHT angebunden; ``list_heritage_collections`` weist ihren Status offen aus.
+#
+# Statt vier Tool-Familien (Budget!) eine föderierte Fassade mit drei Tools. Jedes
+# Ergebnis trägt Quelle, Permalink und Lizenz — und zwar getrennt für Metadaten und
+# Digitalisat, weil beide bei diesen Quellen auseinanderfallen (der kritische Punkt).
+# Es werden ausschliesslich Metadaten + Links geliefert; urheberrechtlich geschützte
+# Volltexte (z. B. Dodis-Transkriptionen) werden NICHT reproduziert.
+
+
+class HeritageCollection(StrEnum):
+    """Zielsammlung der föderierten Suche."""
+    MEMOBASE = "memobase"
+    DODIS    = "dodis"
+    ALL      = "all"
+
+
+class HeritageItemCollection(StrEnum):
+    """Zielsammlung für den Einzelabruf (kein ``all``)."""
+    MEMOBASE = "memobase"
+    DODIS    = "dodis"
+
+
+_HERITAGE_SOURCE = {
+    HeritageCollection.MEMOBASE: SOURCE_MEMOBASE,
+    HeritageCollection.DODIS:    SOURCE_DODIS,
+}
+
+
+# ─────────────── Kleine, quellenneutrale Helfer ────────────────────────────────
+def _as_list(x) -> list:
+    """None → [], Skalar → [x], Liste → Liste (für die multi-valued LOD-Felder)."""
+    if x is None:
+        return []
+    return x if isinstance(x, list) else [x]
+
+
+def _first(x):
+    """Erstes Element einer Liste bzw. den Wert selbst (JSON-LD-Felder sind mal Liste, mal Skalar)."""
+    if isinstance(x, list):
+        return x[0] if x else None
+    return x
+
+
+_YEAR_RE = re.compile(r"\d{4}")
+
+
+def _date_passes(date_str, date_from: str | None, date_to: str | None) -> bool:
+    """Best-effort Datumsfilter (clientseitig).
+
+    Beide Quellen liefern uneinheitliche Datumsformate (Memobase ISO bzw.
+    ISO-Range, Dodis ``D.M.YYYY``). Wir extrahieren daher nur die Jahreszahl(en)
+    und prüfen Überlappung mit dem angefragten Fenster. Undatierte Objekte werden
+    NICHT ausgeschlossen (lieber ein falsch-positiver Treffer als ein verlorener).
+    """
+    if not date_from and not date_to:
+        return True
+    years = [int(y) for y in _YEAR_RE.findall(str(date_str or ""))]
+    if not years:
+        return True
+    lo, hi = min(years), max(years)
+    if date_from and hi < int(date_from[:4]):
+        return False
+    if date_to and lo > int(date_to[:4]):
+        return False
+    return True
+
+
+def _post_filter(items: list[dict], date_from, date_to, media_type) -> list[dict]:
+    """Wendet die clientseitigen Filter (Datum, Medientyp) auf normalisierte Treffer an."""
+    out = items
+    if date_from or date_to:
+        out = [i for i in out if _date_passes(i.get("date"), date_from, date_to)]
+    if media_type:
+        mt = media_type.lower()
+        out = [i for i in out if mt in str(i.get("type") or "").lower()]
+    return out
+
+
+# ─────────────── Memobase (Linked Open Data / Hydra) ───────────────────────────
+def _memobase_rights(rec: dict) -> tuple[str | None, str | None]:
+    """Extrahiert die Nutzungsrechte des Digitalisats (rightsstatements.org).
+
+    Der kritische Punkt: die Metadaten sind offen, das Digitalisat trägt eigene
+    Rechte. Diese stecken in ``hasInstantiation[].isOrWasRegulatedBy`` mit
+    ``type == 'usage'`` (z. B. «In Copyright (InC)» + ``sameAs``-Vokabular-URL).
+    """
+    for inst in _as_list(rec.get("hasInstantiation")):
+        for rule in _as_list(inst.get("isOrWasRegulatedBy")):
+            if rule.get("type") == "usage":
+                return rule.get("name"), rule.get("sameAs")
+    return None, None
+
+
+def _memobase_local_id(curie_or_id: str) -> str:
+    """``mbr:snp-007-…`` → ``snp-007-…`` (CURIE-Präfix entfernen)."""
+    cid = str(curie_or_id or "")
+    return cid.split("mbr:", 1)[-1] if cid.startswith("mbr:") else cid
+
+
+def _memobase_norm(rec: dict) -> dict:
+    """Normalisiert einen rico:Record auf das föderierte Treffer-Schema."""
+    local = _memobase_local_id(rec.get("@id", ""))
+    rights_label, rights_url = _memobase_rights(rec)
+    created = rec.get("created")
+    date = created.get("normalizedDateValue") if isinstance(created, dict) else None
+    return {
+        "collection":       "memobase",
+        "id":               local,
+        "title":            _first(rec.get("title")) or "(ohne Titel)",
+        "type":             rec.get("type"),
+        "date":             date,
+        "permalink":        f"https://memobase.ch/de/document/{local}" if local else SOURCE_MEMOBASE.url,
+        "source":           SOURCE_MEMOBASE.name,
+        "license_metadata": "offen (Linked Open Data)",
+        "license_item":     rights_label or "je Rechteinhaber (siehe Permalink)",
+        "rights_url":       rights_url,
+    }
+
+
+async def _search_memobase(q: str, limit: int, offset: int) -> tuple[list[dict], int]:
+    """Volltextsuche in Memobase (``GET /?q=…``); gibt (Treffer, Gesamtzahl) zurück."""
+    resp = await _fetch_with_retry(lambda: _http_get(
+        f"{MEMOBASE_API}/",
+        params={"q": q, "size": limit, "offset": offset},
+        headers={"Accept": "application/ld+json"},
+    ))
+    data    = resp.json()
+    members = data.get("hydra:member", [])
+    total   = data.get("hydra:totalItems", len(members))
+    return [_memobase_norm(m) for m in members], total
+
+
+# ─────────────── Dodis (JSON-REST / Solr) ──────────────────────────────────────
+def _dodis_norm(hit: dict) -> dict:
+    """Normalisiert einen Dodis-Solr-Treffer (Dokument/Person/Organisation)."""
+    hid   = str(hit.get("id", ""))
+    start = hit.get("startDate")
+    end   = hit.get("endDate")
+    if start and end and end != start:
+        date = f"{start}–{end}"
+    else:
+        date = start or end
+    return {
+        "collection":       "dodis",
+        "id":               hid,
+        "title":            hit.get("name") or hit.get("title") or "(ohne Titel)",
+        "type":             hit.get("type"),
+        "date":             date,
+        "permalink":        f"https://dodis.ch/{hid}" if hid else SOURCE_DODIS.url,
+        "source":           SOURCE_DODIS.name,
+        "license_metadata": "offen (Zitierpflicht Dodis)",
+        "license_item":     "je Dokument (siehe Permalink)",
+        "rights_url":       None,
+    }
+
+
+async def _search_dodis(q: str, limit: int, offset: int) -> tuple[list[dict], int]:
+    """Volltextsuche in Dodis (``POST /api/solr/query``); Gesamtzahl liefert die API nicht (→ -1)."""
+    resp = await _fetch_with_retry(lambda: _http_post(
+        f"{DODIS_API}/solr/query",
+        json_body={"query": q, "start": offset, "rows": limit},
+        headers={"Accept": "application/json"},
+    ))
+    data = resp.json()
+    hits = data if isinstance(data, list) else data.get("results", [])
+    return [_dodis_norm(h) for h in hits], -1
+
+
+# ─────────────── Suche (föderierte Fassade) ────────────────────────────────────
+_HERITAGE_SEARCH_FN = {
+    HeritageCollection.MEMOBASE: _search_memobase,
+    HeritageCollection.DODIS:    _search_dodis,
+}
+
+
+class HeritageSearchInput(BaseModel):
+    """Input für die quellenübergreifende Suche in den Gedächtnisinstitutionen."""
+    model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
+
+    query: str = Field(
+        ..., min_length=2, max_length=200,
+        description="Suchbegriff (z. B. 'Volksschule Zürich', 'Escher', 'Landesstreik')",
+    )
+    collection: HeritageCollection = Field(
+        default=HeritageCollection.ALL,
+        description="Quelle: 'memobase', 'dodis' oder 'all' (beide, Standard)",
+    )
+    date_from: str | None = Field(
+        default=None, description="Nur ab diesem Jahr (YYYY oder YYYY-MM-DD, clientseitig)",
+        pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
+    )
+    date_to: str | None = Field(
+        default=None, description="Nur bis zu diesem Jahr (YYYY oder YYYY-MM-DD, clientseitig)",
+        pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
+    )
+    media_type: str | None = Field(
+        default=None, max_length=40,
+        description=(
+            "Medientyp-/Objekttyp-Filter (clientseitig, Teilstring). Memobase: "
+            "'Foto', 'Ton', 'Video', 'Text'. Dodis: 'Document', 'Person', 'Organization'."
+        ),
+    )
+    limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max. Treffer pro Quelle")
+    offset: int = Field(default=0, ge=0, description="Paginierungs-Offset (pro Quelle)")
+    response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
+
+
+@mcp.tool(
+    name="search_heritage",
+    annotations={
+        "title": "Schweizer Gedächtnisinstitutionen durchsuchen (Memobase + Dodis)",
+        "readOnlyHint":    True,
+        "destructiveHint": False,
+        "idempotentHint":  True,
+        "openWorldHint":   True,
+    },
+)
+@mask_unexpected_errors
+async def search_heritage(
+    params: HeritageSearchInput, ctx: Context = None
+) -> ResultEnvelope | str:
+    """Durchsucht Schweizer Gedächtnisinstitutionen (Memobase, Dodis) föderiert.
+
+    Föderierte Fassade über zwei Quellen mit offenen, standardisierten
+    Schnittstellen: **Memobase** (audiovisuelles Kulturerbe, Linked-Open-Data-API)
+    und **Dodis** (Diplomatische Dokumente der Schweiz, JSON-REST/Solr). Bei
+    ``collection='all'`` wird parallel gesucht; fällt eine Quelle aus, liefern die
+    übrigen trotzdem (die Fehlerquelle wird im ``meta.errors`` und — sofern ein
+    Progress-Token vorliegt — via ``ctx.warning`` gemeldet).
+
+    Jeder Treffer trägt **Quelle, Permalink und Lizenz**, wobei Metadaten- und
+    Digitalisat-Lizenz getrennt ausgewiesen werden (sie fallen bei diesen Quellen
+    auseinander). Es werden nur Metadaten und Links geliefert — keine geschützten
+    Volltexte.
+
+    ``date_from``/``date_to``/``media_type`` werden **clientseitig** auf die je
+    Quelle abgerufene Seite angewandt (die Upstreams bieten hierfür keine
+    verlässlichen Serverfilter); die Trefferzahl kann dadurch kleiner als ``limit``
+    sein — ggf. ``offset`` erhöhen.
+
+    Args:
+        params (HeritageSearchInput):
+            - query (str):        Suchbegriff
+            - collection:         'memobase' | 'dodis' | 'all'
+            - date_from/date_to:  Jahr-Filter (clientseitig)
+            - media_type (str):   Typ-Filter (clientseitig)
+            - limit/offset:       Paginierung pro Quelle
+            - response_format:    'markdown' oder 'json'
+        ctx (Context): vom MCP-SDK injiziert (Progress/Warnungen); bei direktem
+            Aufruf ``None``.
+
+    Returns:
+        ResultEnvelope | str: Aggregierte, normalisierte Treffer inkl. Provenienz.
+    """
+    if params.collection == HeritageCollection.ALL:
+        keys = [HeritageCollection.MEMOBASE, HeritageCollection.DODIS]
+    else:
+        keys = [params.collection]
+    used_sources = [_HERITAGE_SOURCE[k] for k in keys]
+
+    async def _run(key: HeritageCollection) -> tuple[HeritageCollection, list[dict], int, str | None]:
+        try:
+            items, total = await _HERITAGE_SEARCH_FN[key](params.query, params.limit, params.offset)
+            return key, items, total, None
+        except ExpectedUpstreamError as e:
+            return key, [], 0, _handle_error(e)
+
+    pending = [asyncio.create_task(_run(k)) for k in keys]
+    collected: dict[HeritageCollection, tuple[list[dict], int, str | None]] = {}
+    for done, fut in enumerate(asyncio.as_completed(pending), start=1):
+        key, items, total, error = await fut
+        collected[key] = (items, total, error)
+        if ctx is not None:
+            src = _HERITAGE_SOURCE[key].name
+            await ctx.report_progress(
+                progress=done, total=len(keys),
+                message=f"{src}: {'Fehler' if error else f'{len(items)} Treffer'}",
+            )
+            if error:
+                await ctx.warning(f"Quelle '{src}' fehlgeschlagen: {error}")
+
+    # Ergebnisreihenfolge auf die angeforderte Quellenreihenfolge normalisieren
+    per_source_counts: dict[str, int] = {}
+    errors:   dict[str, str] = {}
+    combined: list[dict] = []
+    known_total = 0
+    for key in keys:
+        items, total, error = collected[key]
+        if error:
+            errors[key.value] = error
+            continue
+        filtered = _post_filter(items, params.date_from, params.date_to, params.media_type)
+        per_source_counts[key.value] = len(filtered)
+        if total and total > 0:
+            known_total += total
+        combined.extend(filtered)
+
+    filters_applied = [
+        f for f, on in (
+            ("date_from", params.date_from), ("date_to", params.date_to),
+            ("media_type", params.media_type),
+        ) if on
+    ]
+    meta = {
+        "per_source":               per_source_counts,
+        "clientside_filters":       filters_applied,
+        "errors":                   errors,
+    }
+
+    if not combined and errors and len(errors) == len(keys):
+        # Alle angefragten Quellen sind ausgefallen → als Fehler melden (isError).
+        _raise_tool_error(ValueError("Alle angefragten Quellen sind derzeit nicht erreichbar."))
+
+    if params.response_format == ResponseFormat.JSON:
+        return ResultEnvelope(
+            source=used_sources,
+            count=len(combined),
+            total=known_total or None,
+            offset=params.offset,
+            has_more=any(
+                len(collected[k][0]) >= params.limit for k in keys if not collected[k][2]
+            ),
+            results=combined,
+            match_type="exact" if combined else "none",
+            meta=meta,
+        )
+
+    lines = [f"# Gedächtnisinstitutionen — Suche: *{params.query}*\n"]
+    scope = "Memobase + Dodis" if params.collection == HeritageCollection.ALL else params.collection.value
+    lines.append(f"**Quelle(n):** {scope}")
+    if filters_applied:
+        crit = []
+        if params.date_from or params.date_to:
+            crit.append(f"Zeitraum {params.date_from or '…'}–{params.date_to or '…'}")
+        if params.media_type:
+            crit.append(f"Typ *{params.media_type}*")
+        lines.append("**Filter (clientseitig):** " + " · ".join(crit))
+    lines.append(f"\nGefunden: {len(combined)} Treffer\n")
+    for key in keys:
+        if key.value in errors:
+            lines.append(f"> ⚠️ *{_HERITAGE_SOURCE[key].name}: {errors[key.value]}*")
+    lines.append("---\n")
+
+    if not combined:
+        lines.append("*Keine Treffer für die angegebenen Kriterien.*")
+        return "\n".join(lines) + _attribution(used_sources)
+
+    for item in combined:
+        tag  = item["collection"]
+        meta_bits = []
+        if item.get("type"):
+            meta_bits.append(str(item["type"]))
+        if item.get("date"):
+            meta_bits.append(str(item["date"]))
+        suffix = f"  ·  {' · '.join(meta_bits)}" if meta_bits else ""
+        lines.append(f"## `[{tag}]` {item['title']}{suffix}")
+        lines.append(f"**Permalink:** {item['permalink']}")
+        lic = f"**Lizenz:** Metadaten: {item['license_metadata']} · Digitalisat: {item['license_item']}"
+        if item.get("rights_url"):
+            lic += f" (<{item['rights_url']}>)"
+        lines.append(lic)
+        lines.append("")
+
+    return "\n".join(lines) + _attribution(used_sources)
+
+
+# ─────────────── Einzelabruf ───────────────────────────────────────────────────
+class HeritageItemInput(BaseModel):
+    """Input für den Einzelabruf eines Objekts."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    collection: HeritageItemCollection = Field(
+        ..., description="Quelle des Objekts: 'memobase' oder 'dodis'",
+    )
+    item_id: str = Field(
+        ..., min_length=1, max_length=120,
+        description=(
+            "Objekt-ID aus search_heritage. Memobase: Record-ID (z. B. "
+            "'snp-007-213072_03'). Dodis: numerische Dokument-ID (z. B. '44755') "
+            "oder Entität ('P17363' Person, 'G12' Organisation)."
+        ),
+    )
+    response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
+
+
+# Dodis-Felder, die urheberrechtlich geschützten Volltext enthalten könnten und
+# daher NIE ausgegeben werden (nur Metadaten + Links, kein Volltext-Reprint).
+_DODIS_FULLTEXT_FIELDS: Final = frozenset({
+    "doc_att_file_content", "doc_att_xmlTranscription_ids",
+})
+
+
+def _dodis_item_markdown(rec: dict) -> list[str]:
+    """Kuratierte, mehrsprachige Metadaten-Ansicht eines Dodis-Objekts (kein Volltext).
+
+    Bewusst eine Whitelist: geschützte Volltext-/Transkriptionsfelder
+    (``_DODIS_FULLTEXT_FIELDS``) werden nie gerendert. Das Regest (``doc_summary``)
+    ist die zitierfähige Zusammenfassung (Metadatum) und wird gekürzt gezeigt.
+    """
+    def loc(base: str):
+        return _first(rec.get(f"{base}_de")) or _first(rec.get(f"{base}_en")) or _first(rec.get(base))
+
+    hid   = str(rec.get("id", ""))
+    typ   = _first(rec.get("doc_type_names_de")) or rec.get("type") or "Objekt"
+    title = (
+        rec.get("doc_title")
+        or rec.get("prs_name_de") or rec.get("org_name_de")
+        or rec.get("name") or f"Dodis {hid}"
+    )
+    lines = [f"# {title}\n", f"**Typ:** {typ}  ·  **Dodis-ID:** `{hid}`"]
+
+    date = rec.get("doc_date_s") or rec.get("doc_dateRange")
+    if not date and (rec.get("prs_life_dateStart_s") or rec.get("prs_life_dateEnd_s")):
+        date = f"{rec.get('prs_life_dateStart_s', '?')}–{rec.get('prs_life_dateEnd_s', '?')}"
+    if date:
+        lines.append(f"**Datum:** {date}")
+    if rec.get("doc_langCode_s"):
+        lines.append(f"**Sprache:** {rec['doc_langCode_s']}")
+    if rec.get("doc_comment"):
+        lines.append(f"**Signatur / Fundort:** {rec['doc_comment']}")
+
+    summary = rec.get("doc_summary") or ""
+    if summary:
+        short = summary[:600] + "…" if len(summary) > 600 else summary
+        lines.append(f"\n**Regest (Zusammenfassung):** {short}")
+
+    persons = _as_list(rec.get("doc_prs_names_de"))
+    if persons:
+        lines.append(f"\n**Beteiligte Personen:** {', '.join(persons[:12])}")
+    places = _as_list(rec.get("doc_geo_names_de"))
+    if places:
+        lines.append(f"**Orte:** {', '.join(str(p) for p in places[:12] if p)}")
+    tags = _as_list(rec.get("doc_tag_d_names_de"))
+    if tags:
+        lines.append(f"**Themen:** {', '.join(tags[:12])}")
+
+    lines.append(f"\n**Permalink:** https://dodis.ch/{hid}")
+    lines.append(
+        "**Volltext:** Transkription (TEI-XML) und PDF sind über den Permalink "
+        "abrufbar. Rechte je Dokument prüfen — hier werden nur Metadaten geliefert."
+    )
+    lines.append(
+        "\n**Lizenz:** Metadaten: offen (Zitierpflicht Dodis) · Dokument: je Dokument."
+    )
+    return lines
+
+
+def _memobase_item_markdown(rec: dict) -> list[str]:
+    """Metadaten-Ansicht eines Memobase-Records inkl. getrennter Rechteangabe."""
+    local = _memobase_local_id(rec.get("@id", ""))
+    title = _first(rec.get("title")) or "(ohne Titel)"
+    lines = [f"# {title}\n", f"**Typ:** {rec.get('type') or '—'}  ·  **Record-ID:** `{local}`"]
+
+    created = rec.get("created")
+    if isinstance(created, dict) and created.get("normalizedDateValue"):
+        lines.append(f"**Datum:** {created['normalizedDateValue']}")
+    abstract = _first(rec.get("abstract")) or _first(rec.get("descriptiveNote"))
+    if abstract:
+        text = re.sub(r"<[^>]+>", "", str(abstract)).strip()
+        if text:
+            lines.append(f"\n**Beschreibung:** {text[:600] + '…' if len(text) > 600 else text}")
+    holder = _first(rec.get("hasOrHadHolder"))
+    if isinstance(holder, dict):
+        holder = holder.get("name") or _first(holder.get("nameDe"))
+    if holder:
+        lines.append(f"**Bestandshalter:** {holder}")
+
+    cou = _as_list(rec.get("conditionsOfUse"))
+    if cou:
+        lines.append(f"**Nutzungsbedingungen:** {'; '.join(str(c) for c in cou[:3])}")
+
+    rights_label, rights_url = _memobase_rights(rec)
+    lines.append(f"\n**Permalink:** https://memobase.ch/de/document/{local}")
+    same = _as_list(rec.get("sameAs"))
+    if same:
+        lines.append(f"**Original-Katalog:** {same[0]}")
+    item_lic = rights_label or "je Rechteinhaber (siehe Permalink)"
+    lic = f"\n**Lizenz:** Metadaten: offen (Linked Open Data) · Digitalisat: {item_lic}"
+    if rights_url:
+        lic += f" (<{rights_url}>)"
+    lines.append(lic)
+    return lines
+
+
+@mcp.tool(
+    name="get_heritage_item",
+    annotations={
+        "title": "Objekt-Details aus einer Gedächtnisinstitution abrufen",
+        "readOnlyHint":    True,
+        "destructiveHint": False,
+        "idempotentHint":  True,
+        "openWorldHint":   True,
+    },
+)
+@mask_unexpected_errors
+async def get_heritage_item(params: HeritageItemInput) -> ResultEnvelope | str:
+    """Ruft die vollständigen Metadaten eines Objekts aus Memobase oder Dodis ab.
+
+    Liefert Metadaten, Permalink und Lizenz (Metadaten- und Digitalisat-/Dokument-
+    recht getrennt). Geschützte Volltexte (Dodis-Transkriptionen) werden **nicht**
+    reproduziert — dafür verweist die Antwort auf den Permalink.
+
+    Args:
+        params (HeritageItemInput):
+            - collection: 'memobase' oder 'dodis'
+            - item_id (str): Objekt-ID aus search_heritage
+            - response_format: 'markdown' oder 'json'
+
+    Returns:
+        ResultEnvelope | str: Objekt-Metadaten inkl. Provenienz und Lizenz.
+    """
+    try:
+        if params.collection == HeritageItemCollection.MEMOBASE:
+            local = _memobase_local_id(params.item_id)
+            resp  = await _fetch_with_retry(lambda: _http_get(
+                f"{MEMOBASE_API}/record/{local}",
+                headers={"Accept": "application/ld+json"},
+            ))
+            rec = resp.json()
+            if not rec or not rec.get("@id"):
+                return f"Kein Memobase-Record gefunden für ID `{params.item_id}`."
+            if params.response_format == ResponseFormat.JSON:
+                return ResultEnvelope(source=SOURCE_MEMOBASE, count=1, total=1, results=[rec])
+            return "\n".join(_memobase_item_markdown(rec)) + _attribution(SOURCE_MEMOBASE)
+
+        # Dodis
+        resp = await _fetch_with_retry(lambda: _http_get(
+            f"{DODIS_API}/solr/full/{params.item_id}",
+            headers={"Accept": "application/json"},
+        ))
+        rec = resp.json()
+        if not rec or not rec.get("id"):
+            return f"Kein Dodis-Objekt gefunden für ID `{params.item_id}`."
+        if params.response_format == ResponseFormat.JSON:
+            # geschützte Volltextfelder aus dem strukturierten Output entfernen
+            safe = {k: v for k, v in rec.items() if k not in _DODIS_FULLTEXT_FIELDS}
+            return ResultEnvelope(source=SOURCE_DODIS, count=1, total=1, results=[safe])
+        return "\n".join(_dodis_item_markdown(rec)) + _attribution(SOURCE_DODIS)
+
+    except ExpectedUpstreamError as e:
+        _raise_tool_error(e)
+
+
+# ─────────────── Discovery ─────────────────────────────────────────────────────
+class HeritageCollectionsInput(BaseModel):
+    """Input für das Discovery-Tool."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
+
+
+# Statisches Ergebnis der Live-Probe (2026-07-19). Angebunden sind nur Quellen mit
+# offener, No-Auth-Schnittstelle; die geprüften, aber nicht angebundenen Quellen
+# werden mit Grund offen ausgewiesen (Ehrlichkeit statt Scraping/Session-Emulation).
+_HERITAGE_COLLECTIONS: Final = [
+    {
+        "id": "memobase", "name": "Memoriav / Memobase", "status": "active",
+        "protocol": "Linked Open Data API (JSON-LD, Hydra, RiC-O)", "auth": "keine",
+        "content": "Audiovisuelles Kulturerbe (Foto, Ton, Video, Text) aus Schweizer Institutionen",
+        "license_metadata": "offen (Linked Open Data)",
+        "license_digitisate": "je Rechteinhaber (rightsstatements.org, teils «onsite»)",
+        "url": "https://memobase.ch",
+    },
+    {
+        "id": "dodis", "name": "Diplomatische Dokumente der Schweiz (Dodis)", "status": "active",
+        "protocol": "JSON-REST (Solr) · stabile Permalinks · TEI/PDF", "auth": "keine",
+        "content": "Diplomatische Dokumente, Personen, Organisationen (19.–20. Jh.)",
+        "license_metadata": "offen (Zitierpflicht)",
+        "license_digitisate": "je Dokument (Volltext via Permalink)",
+        "url": "https://dodis.ch",
+    },
+    {
+        "id": "bar", "name": "Schweizerisches Bundesarchiv", "status": "not_connected",
+        "protocol": "CMI-AIS (JSON-REST, proprietär)",
+        "auth": "eIAM-Login + Google reCAPTCHA → nicht maschinell zugänglich",
+        "content": "Bestände, Verzeichnungseinheiten, Digitalisate",
+        "license_metadata": "n/a (zugangsgesperrt)", "license_digitisate": "je Bestand / Schutzfristen",
+        "url": "https://www.recherche.bar.admin.ch",
+    },
+    {
+        "id": "landesmuseum", "name": "Schweizerisches Landesmuseum (Sammlung online)",
+        "status": "not_connected",
+        "protocol": "keine öffentliche API (nur interne Ajax/HTML)",
+        "auth": "keine — aber keine maschinenlesbare Schnittstelle",
+        "content": "Objektsammlung (Sammlung Online)",
+        "license_metadata": "n/a", "license_digitisate": "je Objekt",
+        "url": "https://sammlung.nationalmuseum.ch",
+    },
+]
+
+
+@mcp.tool(
+    name="list_heritage_collections",
+    annotations={
+        "title": "Verfügbare Gedächtnisinstitutionen auflisten (Discovery)",
+        "readOnlyHint":    True,
+        "destructiveHint": False,
+        "idempotentHint":  True,
+        "openWorldHint":   False,
+    },
+)
+@mask_unexpected_errors
+async def list_heritage_collections(
+    params: HeritageCollectionsInput | None = None,
+) -> ResultEnvelope | str:
+    """Listet die Gedächtnisinstitutionen der föderierten Fassade und ihren Status auf.
+
+    Discovery-Tool für ``search_heritage`` / ``get_heritage_item``: welche
+    ``collection``-Werte gibt es, welches Protokoll, welche Auth, welche Lizenz
+    (Metadaten vs. Digitalisat)? Auch die geprüften, aber bewusst nicht
+    angebundenen Quellen (Bundesarchiv, Landesmuseum) werden mit Grund ausgewiesen.
+
+    Args:
+        params (HeritageCollectionsInput | None):
+            - response_format: 'markdown' (Standard) oder 'json'
+
+    Returns:
+        ResultEnvelope | str: Sammlungen mit Status, Protokoll, Auth und Lizenzen.
+    """
+    params = params or HeritageCollectionsInput()
+
+    if params.response_format == ResponseFormat.JSON:
+        return ResultEnvelope(
+            source=[SOURCE_MEMOBASE, SOURCE_DODIS],
+            count=len(_HERITAGE_COLLECTIONS),
+            results=list(_HERITAGE_COLLECTIONS),
+            meta={"usable_collections": ["memobase", "dodis"]},
+        )
+
+    lines = ["# Schweizer Gedächtnisinstitutionen — Verfügbarkeit\n"]
+    lines.append(
+        "Föderierte Suche über `search_heritage` (collection = `memobase` | `dodis` | `all`).\n"
+    )
+    active = [c for c in _HERITAGE_COLLECTIONS if c["status"] == "active"]
+    other  = [c for c in _HERITAGE_COLLECTIONS if c["status"] != "active"]
+
+    lines.append("## ✅ Angebunden\n")
+    for c in active:
+        lines.append(f"### {c['name']}  (`{c['id']}`)")
+        lines.append(f"- **Inhalt:** {c['content']}")
+        lines.append(f"- **Protokoll:** {c['protocol']}")
+        lines.append(f"- **Auth:** {c['auth']}")
+        lines.append(f"- **Lizenz Metadaten:** {c['license_metadata']}")
+        lines.append(f"- **Lizenz Digitalisate:** {c['license_digitisate']}")
+        lines.append(f"- **Web:** {c['url']}\n")
+
+    lines.append("## ⚠️ Geprüft, aber nicht angebunden\n")
+    for c in other:
+        lines.append(f"### {c['name']}  (`{c['id']}`)")
+        lines.append(f"- **Grund:** {c['auth']}")
+        lines.append(f"- **Protokoll:** {c['protocol']}")
+        lines.append(f"- **Web:** {c['url']}\n")
+
+    return "\n".join(lines) + _attribution([SOURCE_MEMOBASE, SOURCE_DODIS])
 
 
 # ══════════════════════════════════════════════════════════════════════════════

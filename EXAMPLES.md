@@ -28,6 +28,12 @@ Hier finden Sie praxisnahe Anwendungsbeispiele für verschiedene Zielgruppen.
 → `heritage_search_helveticat(query="Volksschule Zürich", from_date="2020")`
 *Warum nützlich:* Eltern können sich gezielt in aktuelle Literatur und Berichte zu regionalen Bildungsthemen einlesen, um fundierte Entscheidungen zu treffen.
 
+**Gedächtnisinstitutionen-Recherche (Memobase + Dodis)**
+«Welche Quellen zur Entwicklung der Zürcher Volksschule im 19. Jahrhundert finden sich in den Schweizer Gedächtnisinstitutionen?»
+→ `search_heritage(query="Volksschule Zürich", collection="all", date_from="1800", date_to="1899")`
+→ Details zu einem Treffer: `get_heritage_item(collection="dodis", item_id="<ID aus dem Suchergebnis>")`
+*Warum nützlich:* Föderierte Suche über audiovisuelles Kulturerbe (Memobase) und diplomatische Dokumente (Dodis) in einem Aufruf. Jeder Treffer nennt Quelle, Permalink und Lizenz — getrennt für Metadaten und Digitalisat; geschützte Volltexte werden nicht reproduziert. Welche Sammlungen verfügbar sind (und warum Bundesarchiv/Landesmuseum nicht), zeigt `list_heritage_collections()`.
+
 **Kulturelle Ausflugsziele in der Region**
 «Gibt es in den Sammlungen des Nationalmuseums Objekte aus der Region Winterthur, die wir mit den Kindern besichtigen könnten?»
 → `heritage_search_museum_datasets(query="Winterthur")`

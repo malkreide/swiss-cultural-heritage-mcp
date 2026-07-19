@@ -17,17 +17,30 @@
 
 ## Übersicht
 
-`swiss-cultural-heritage-mcp` ermöglicht KI-Assistenten den direkten Zugang zu drei grossen Schweizer Kulturerbe-Quellen — alle ohne Authentifizierung:
+`swiss-cultural-heritage-mcp` ermöglicht KI-Assistenten den direkten Zugang zu Schweizer Kulturerbe-Quellen — alle ohne Authentifizierung:
 
 | Quelle | Daten | API |
 |--------|-------|-----|
 | **SIK-ISEA (SIKART)** | ~17'000 Schweizer Künstler·innen — SIKART-Biografiedaten | opendata.swiss CKAN |
 | **Nationalmuseum (SNM)** | Sammlungsdaten (Numismatik, Siegel, Spezialsammlungen) | opendata.swiss CKAN |
 | **Nationalbibliothek (NB)** | Schweizerische Nationalbibliografie (Helveticat) | OAI-PMH |
+| **Memoriav / Memobase** | Audiovisuelles Kulturerbe (Foto, Ton, Video) | Linked Open Data (JSON-LD / Hydra) |
+| **Dodis** | Diplomatische Dokumente der Schweiz (Dokumente, Personen, Organisationen) | JSON-REST (Solr) + Permalinks |
 
 Dieser Server ergänzt das Schweizer Open-Data-Portfolio um die geisteswissenschaftliche Dimension — Geschichte, Literatur und Kunst — neben bestehenden Servern für Recht ([fedlex-mcp](https://github.com/malkreide/fedlex-mcp)), Verkehr, Statistik und mehr.
 
-**Anker-Demo-Abfrage:** *«Finde Werke von Zürcher Malern des 19. Jahrhunderts im Nationalmuseum und verknüpfe sie mit ihren Biografien in der SIK-ISEA-Künstlerdatenbank.»*
+Die **Gedächtnisinstitutionen-Fassade** (Memobase + Dodis) wird über drei
+föderierte Tools bereitgestellt — `search_heritage`, `get_heritage_item`,
+`list_heritage_collections` — statt einer Tool-Familie pro Quelle. Jedes Ergebnis
+trägt **Quelle, Permalink und Lizenz**, wobei die Lizenz **getrennt für Metadaten
+und Digitalisat** ausgewiesen wird (sie fallen auseinander: Metadaten sind offene
+Linked Open Data, das Digitalisat kann *In Copyright* sein). Es werden nur
+Metadaten und Links geliefert — urheberrechtlich geschützte Volltexte (z. B.
+Dodis-Transkriptionen) werden nicht reproduziert.
+
+**Anker-Demo-Abfrage (Kunst):** *«Finde Werke von Zürcher Malern des 19. Jahrhunderts im Nationalmuseum und verknüpfe sie mit ihren Biografien in der SIK-ISEA-Künstlerdatenbank.»*
+
+**Anker-Demo-Abfrage (Gedächtnisinstitutionen):** *«Welche Quellen zur Entwicklung der Zürcher Volksschule im 19. Jahrhundert finden sich in den Schweizer Gedächtnisinstitutionen?»* → `search_heritage(query="Volksschule Zürich", collection="all", date_from="1800", date_to="1899")`.
 
 ### Demo
 
@@ -37,8 +50,9 @@ Dieser Server ergänzt das Schweizer Open-Data-Portfolio um die geisteswissensch
 
 ## Funktionen
 
-- 🏛️ **8 Tools, 2 Resources, 2 Prompts** über drei Datenquellen
-- 🔍 **`heritage_cross_search`** — parallele Suche über alle drei Quellen in einem Aufruf
+- 🏛️ **11 Tools, 2 Resources, 2 Prompts** über fünf Datenquellen
+- 🔍 **`heritage_cross_search`** — parallele Suche über SIK-ISEA + SNM + NB in einem Aufruf
+- 🏛️ **`search_heritage`** — föderierte Fassade über Memobase + Dodis, jeder Treffer mit Quelle, Permalink und getrennter Metadaten-/Digitalisat-Lizenz
 - 🌐 **Zweisprachige Ausgabe** (Markdown / JSON)
 - 🔓 **Kein API-Schlüssel erforderlich** — alle Daten unter offenen Lizenzen
 - ☁️ **Dualer Transport** — stdio (Claude Desktop) + Streamable HTTP (Cloud)
@@ -177,6 +191,14 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 |------|-------------|
 | `heritage_cross_search` | Parallele Suche über SIK-ISEA + SNM + NB |
 
+### Gedächtnisinstitutionen (Memobase + Dodis) — föderierte Fassade
+
+| Tool | Beschreibung |
+|------|-------------|
+| `search_heritage` | Föderierte Suche über Memobase + Dodis (`collection = memobase \| dodis \| all`), mit `date_from` / `date_to` / `media_type`. Jeder Treffer trägt Quelle, Permalink und getrennte Metadaten-/Digitalisat-Lizenz |
+| `get_heritage_item` | Vollständige Metadaten eines Objekts (`collection`, `item_id`). Nur Metadaten + Links — geschützte Volltexte werden nie reproduziert |
+| `list_heritage_collections` | Discovery: welche Sammlungen es gibt, ihr Protokoll, Auth und Lizenzen — inkl. der geprüften, aber nicht angebundenen Quellen (Bundesarchiv, Landesmuseum) und *warum* |
+
 ### Beispiel-Abfragen
 
 | Abfrage | Tool |
@@ -186,6 +208,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 | *«Welche Münzen aus Zürich hat das Nationalmuseum?»* | `heritage_browse_collection` |
 | *«Finde Publikationen zur Volksschule»* | `heritage_search_helveticat` |
 | *«Suche alles über Sophie Taeuber-Arp»* | `heritage_cross_search` |
+| *«Quellen zur Zürcher Volksschule des 19. Jh. in Gedächtnisinstitutionen»* | `search_heritage` |
 
 ---
 
@@ -196,11 +219,14 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 │   Claude / KI   │────▶│  Swiss Cultural Heritage MCP  │────▶│  SIK-ISEA                │
 │   (MCP Host)    │◀────│  (MCP Server)                │◀────│  opendata.swiss / CKAN   │
 └─────────────────┘     │                              │     ├──────────────────────────┤
-                        │  9 Tools · 2 Resources       │────▶│  Nationalmuseum (SNM)    │
+                        │  11 Tools · 2 Resources      │────▶│  Nationalmuseum (SNM)    │
                         │  2 Prompts                   │◀────│  opendata.swiss / CKAN   │
                         │  Stdio | SSE                 │     ├──────────────────────────┤
                         │                              │────▶│  Nationalbibliothek (NB) │
                         │  Keine Authentifizierung     │◀────│  OAI-PMH (Helveticat)    │
+                        │                              │     ├──────────────────────────┤
+                        │  search_heritage-Fassade     │────▶│  Memobase (JSON-LD/Hydra)│
+                        │                              │◀────│  Dodis (JSON-REST/Solr)  │
                         └──────────────────────────────┘     └──────────────────────────┘
 ```
 
@@ -211,6 +237,26 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 | SIK-ISEA (SIKART) | CKAN DataStore | ~17'000 Schweizer Künstler·innen | Keine |
 | Nationalmuseum | CKAN DataStore | Museumssammlungen | Keine |
 | Nationalbibliothek | OAI-PMH | Schweizerische Nationalbibliografie | Keine |
+| Memoriav / Memobase | Linked Open Data (JSON-LD / Hydra, RiC-O) | Audiovisuelles Kulturerbe (~460k Records) | Keine |
+| Dodis | JSON-REST (Solr) + stabile Permalinks | Diplomatische Dokumente, Personen, Organisationen | Keine |
+
+### Architektur-Entscheid — Gedächtnisinstitutionen-Fassade
+
+Verifiziert per Live-Probe am **19.07.2026** (Methodik: *mcp-data-source-probe*).
+Von vier evaluierten Gedächtnisinstitutionen bieten nur zwei eine saubere,
+No-Auth-, standardisierte Schnittstelle und sind angebunden:
+
+| Quelle | Ergebnis | Grund |
+|--------|----------|-------|
+| **Memobase** | ✅ angebunden | Linked-Open-Data-API (`api.memobase.ch`, JSON-LD/Hydra); Volltextsuche via `?q=`, Einzelrecord via `/record/<id>`; Paginierung via `offset`/`size`. Metadaten offen; Digitalisate mit objekteigenen `rightsstatements.org`-Rechten (z. B. «In Copyright», Zugang «onsite»). |
+| **Dodis** | ✅ angebunden | JSON-REST/Solr (`beta.dodis.ch/api`): Suche via `POST /api/solr/query`, Objekt via `GET /api/solr/full/<id>`; stabile Permalinks `dodis.ch/<id>`. Metadaten offen (Zitierpflicht); Dokumente mit dokumenteigenen Rechten (TEI/PDF hinter dem Permalink). |
+| **Bundesarchiv** | ⛔ nicht angebunden | Das `recherche.bar.admin.ch`-Backend (CMI AIS) liegt hinter **eIAM**-Login und **Google reCAPTCHA** — ohne Session-Emulation nicht maschinell zugänglich (fragil, gegen die Betreiberabsicht). |
+| **Landesmuseum** | ⛔ nicht angebunden | `sammlung.nationalmuseum.ch` hat **keine öffentliche API** (nur eine interne, undokumentierte Ajax/HTML-Fläche) — Anbindung nur per Scraping, was die Resilienz-Leitplanken verletzt. |
+
+Konsequenzen: drei föderierte Tools statt vier Tool-Familien; jeder Treffer trägt
+Quelle + Permalink + **getrennte** Metadaten-/Digitalisat-Lizenz; kein Reprint
+geschützter Volltexte (nur Metadaten + Links); `bar` und `landesmuseum` werden über
+`list_heritage_collections` als gesperrt dokumentiert, nicht gescrapt.
 
 ---
 
@@ -220,7 +266,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 swiss-cultural-heritage-mcp/
 ├── src/swiss_cultural_heritage_mcp/
 │   ├── __init__.py              # Package
-│   └── server.py                # 8 Tools, 2 Resources, 2 Prompts
+│   └── server.py                # 11 Tools, 2 Resources, 2 Prompts
 ├── tests/
 │   └── test_server.py           # Unit + Integrationstests (gemockt)
 ├── .github/workflows/ci.yml     # GitHub Actions (Python 3.11/3.12/3.13)
@@ -235,7 +281,7 @@ swiss-cultural-heritage-mcp/
 └── README.de.md                 # Diese Datei (Deutsch)
 ```
 
-> **Einzeldatei-Server:** Die 8 Tools liegen in einer `server.py` statt in einem `tools/`-Paket. Bei dieser Grösse ist ein einzelnes, lineares Modul leichter zu lesen und zu reviewen als eine Aufteilung; wächst die Tool-Zahl deutlich, sind die Blöcke SIK-ISEA / SNM / NB / Cross-Search die natürlichen Schnittstellen.
+> **Einzeldatei-Server:** Die 11 Tools liegen in einer `server.py` statt in einem `tools/`-Paket. Bei dieser Grösse ist ein einzelnes, lineares Modul leichter zu lesen und zu reviewen als eine Aufteilung; wächst die Tool-Zahl deutlich, sind die Blöcke SIK-ISEA / SNM / NB / Cross-Search die natürlichen Schnittstellen.
 
 ---
 

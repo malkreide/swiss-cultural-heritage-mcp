@@ -23,6 +23,8 @@ from swiss_cultural_heritage_mcp import __version__ as pkg_version
 from swiss_cultural_heritage_mcp.server import (
     ALLOWED_HOSTS,
     CKAN_API,
+    DODIS_API,
+    MEMOBASE_API,
     NB_OAI_PMH,
     SIKART_RESOURCE_ID,
     ArtistDetailInput,
@@ -30,6 +32,9 @@ from swiss_cultural_heritage_mcp.server import (
     CollectionBrowseInput,
     CrossSearchInput,
     HelvticatSearchInput,
+    HeritageCollectionsInput,
+    HeritageItemInput,
+    HeritageSearchInput,
     MuseumSearchInput,
     NbCollectionsInput,
     PublicationDetailInput,
@@ -37,14 +42,17 @@ from swiss_cultural_heritage_mcp.server import (
     ResultEnvelope,
     Settings,
     _assert_allowed,
+    _date_passes,
     _extract_resumption_token,
     _handle_error,
     _http_get,
+    _memobase_local_id,
     _normalize_ckan_title,
     _parse_oai_records,
     _request_log_context,
     build_http_app,
     cors_origins_from_env,
+    get_heritage_item,
     heritage_browse_collection,
     heritage_cross_search,
     heritage_get_artist,
@@ -53,8 +61,10 @@ from swiss_cultural_heritage_mcp.server import (
     heritage_search_artists,
     heritage_search_helveticat,
     heritage_search_museum_datasets,
+    list_heritage_collections,
     mask_unexpected_errors,
     mcp,
+    search_heritage,
     settings,
 )
 
@@ -1337,6 +1347,332 @@ class TestToolPins:
         assert live["tool_count"] == committed["tool_count"]
 
 
+# ─────────────────────────── Gedächtnisinstitutionen (MODUL 5) ─────────────────
+
+# Memobase Linked-Open-Data-Antwort (Hydra Collection, RiC-O). Enthält die
+# Metadaten-vs-Digitalisat-Divergenz: offene Metadaten, aber InC-Rechte + onsite.
+MOCK_MEMOBASE_SEARCH = {
+    "@type": "hydra:Collection",
+    "hydra:totalItems": 4871,
+    "hydra:member": [
+        {
+            "@id": "mbr:snp-007-213072_03", "@type": "rico:Record",
+            "type": "Ton", "title": "Kneebus",
+            "conditionsOfUse": ["Es gelten die üblichen Urheber- und anverwandten Schutzrechte"],
+            "created": {"@type": "rico:SingleDate", "normalizedDateValue": "1885-01-01"},
+            "hasInstantiation": [{
+                "isOrWasRegulatedBy": [
+                    {"type": "usage", "name": "In Copyright (InC)",
+                     "sameAs": "http://rightsstatements.org/vocab/InC/1.0/"},
+                    {"type": "access", "name": "onsite"},
+                ],
+            }],
+            "sameAs": ["https://www.fonoteca.ch/catalog/FILE911"],
+        },
+        {
+            "@id": "mbr:kek-001-KAE_F6_0_0120", "@type": "rico:Record",
+            "type": "Foto", "title": "Schule, Klassenporträt",
+            "created": {"normalizedDateValue": "1950-06-01"},
+            "hasInstantiation": [{"isOrWasRegulatedBy": [
+                {"type": "usage", "name": "Public Domain Mark",
+                 "sameAs": "http://creativecommons.org/publicdomain/mark/1.0/"},
+            ]}],
+        },
+    ],
+}
+
+MOCK_MEMOBASE_RECORD = {
+    "@id": "mbr:snp-007-213072_03", "@type": "rico:Record",
+    "@context": "https://api.memobase.ch/context/record.json",
+    "type": "Ton", "title": "Kneebus",
+    "abstract": ["<p>Einmalige Direktproduktion</p>"],
+    "conditionsOfUse": ["Es gelten die üblichen Urheber- und anverwandten Schutzrechte"],
+    "created": {"normalizedDateValue": "1885-01-01"},
+    "hasInstantiation": [{"isOrWasRegulatedBy": [
+        {"type": "usage", "name": "In Copyright (InC)",
+         "sameAs": "http://rightsstatements.org/vocab/InC/1.0/"},
+    ]}],
+    "sameAs": ["https://www.fonoteca.ch/catalog/FILE911"],
+}
+
+# Dodis-Solr-Suche liefert ein Array gemischter Entitäten (Dokument/Person/Org).
+MOCK_DODIS_SEARCH = [
+    {"id": "44755", "type": "Document",
+     "name": "No 2395. Action internationale de secours", "description": "Regest…",
+     "startDate": "1899", "endDate": "1899",
+     "thumbnails": ["public/pdf/44000/thumb.jpg"]},
+    {"id": "P17363", "type": "Person", "name": "Chuard Ernest",
+     "startDate": "1857", "endDate": "1942"},
+]
+
+# Dodis-Volldokument mit geschütztem Volltextfeld, das NIE ausgegeben werden darf.
+MOCK_DODIS_FULL = {
+    "id": "44755", "type": "Document",
+    "doc_title": "No 2395. Action internationale de secours",
+    "doc_type_names_de": ["Bundesratsprotokoll"],
+    "doc_date_s": "12.8.1889", "doc_langCode_s": "fr",
+    "doc_comment": "BarNo: E 1004 1/280",
+    "doc_summary": "Kurzregest der Sitzung. " * 40,   # >600 Zeichen → wird gekürzt
+    "doc_prs_names_de": ["Ador Gustave", "Chuard Ernest"],
+    "doc_geo_names_de": ["Genf", "Paris"],
+    "doc_tag_d_names_de": ["Russland (Andere)"],
+    "doc_att_file_content": "GESCHUETZTER VOLLTEXT DARF NICHT ERSCHEINEN",
+}
+
+
+def _no_retry_delay(monkeypatch):
+    """Backoff auf 0 setzen — Retry-Logik ohne echte Wartezeit testen."""
+    monkeypatch.setattr(settings, "retry_backoff_base", 0.0)
+
+
+class TestHeritageHelpers:
+    def test_memobase_local_id_strips_prefix(self):
+        assert _memobase_local_id("mbr:snp-007-213072_03") == "snp-007-213072_03"
+        assert _memobase_local_id("snp-007") == "snp-007"
+
+    def test_date_passes_year_window(self):
+        assert _date_passes("1885-01-01", "1800", "1899") is True
+        assert _date_passes("1950-06-01", "1800", "1899") is False
+        assert _date_passes("12.8.1889", "1800", "1899") is True
+        # undated items are not excluded (best-effort)
+        assert _date_passes(None, "1800", "1899") is True
+        # no filter → always True
+        assert _date_passes("2020", None, None) is True
+
+
+class TestSearchHeritage:
+    @pytest.mark.asyncio
+    async def test_search_all_sources_json(self):
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+            )
+            respx.post(f"{DODIS_API}/solr/query").mock(
+                return_value=httpx.Response(200, json=MOCK_DODIS_SEARCH)
+            )
+            result = await search_heritage(HeritageSearchInput(
+                query="Volksschule", collection="all", response_format=ResponseFormat.JSON,
+            ))
+        assert isinstance(result, ResultEnvelope)
+        assert result.count == 4  # 2 memobase + 2 dodis
+        assert {s.name for s in result.source} == {
+            "Memoriav / Memobase",
+            "Diplomatische Dokumente der Schweiz (Dodis)",
+        }
+        assert result.meta["per_source"] == {"memobase": 2, "dodis": 2}
+        # every hit carries source, permalink and a split licence
+        for hit in result.results:
+            assert hit["permalink"].startswith("https://")
+            assert hit["license_metadata"]
+            assert hit["license_item"]
+
+    @pytest.mark.asyncio
+    async def test_search_markdown_tags_and_rights(self):
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+            )
+            respx.post(f"{DODIS_API}/solr/query").mock(
+                return_value=httpx.Response(200, json=MOCK_DODIS_SEARCH)
+            )
+            md = await search_heritage(HeritageSearchInput(query="Volksschule", collection="all"))
+        assert "`[memobase]`" in md
+        assert "`[dodis]`" in md
+        assert "rightsstatements.org" in md          # per-item digitisate right surfaced
+        assert "Datenquelle & Lizenz:" in md         # attribution footer
+
+    @pytest.mark.asyncio
+    async def test_search_single_collection_only_queries_one(self):
+        with respx.mock:
+            mb = respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+            )
+            dodis = respx.post(f"{DODIS_API}/solr/query").mock(
+                return_value=httpx.Response(200, json=MOCK_DODIS_SEARCH)
+            )
+            result = await search_heritage(HeritageSearchInput(
+                query="Schule", collection="memobase", response_format=ResponseFormat.JSON,
+            ))
+        assert mb.called
+        assert not dodis.called
+        assert result.meta["per_source"] == {"memobase": 2}
+
+    @pytest.mark.asyncio
+    async def test_search_clientside_date_filter(self):
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+            )
+            result = await search_heritage(HeritageSearchInput(
+                query="Schule", collection="memobase",
+                date_from="1800", date_to="1899", response_format=ResponseFormat.JSON,
+            ))
+        # only the 1885 record passes; the 1950 record is filtered out
+        assert result.count == 1
+        assert result.results[0]["date"].startswith("1885")
+        assert "date_from" in result.meta["clientside_filters"]
+
+    @pytest.mark.asyncio
+    async def test_search_media_type_filter(self):
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+            )
+            result = await search_heritage(HeritageSearchInput(
+                query="Schule", collection="memobase",
+                media_type="Foto", response_format=ResponseFormat.JSON,
+            ))
+        assert result.count == 1
+        assert result.results[0]["type"] == "Foto"
+
+    @pytest.mark.asyncio
+    async def test_search_partial_failure_returns_survivor(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+            )
+            respx.post(f"{DODIS_API}/solr/query").mock(return_value=httpx.Response(503))
+            result = await search_heritage(HeritageSearchInput(
+                query="Schule", collection="all", response_format=ResponseFormat.JSON,
+            ))
+        assert result.count == 2                    # memobase survives
+        assert "dodis" in result.meta["errors"]
+
+    @pytest.mark.asyncio
+    async def test_search_all_sources_down_raises(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(return_value=httpx.Response(503))
+            respx.post(f"{DODIS_API}/solr/query").mock(return_value=httpx.Response(503))
+            with pytest.raises(ToolError, match="nicht erreichbar"):
+                await search_heritage(HeritageSearchInput(query="Schule", collection="all"))
+
+    @pytest.mark.asyncio
+    async def test_search_retries_transient_5xx(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(503)          # first attempt fails
+            return httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
+
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(side_effect=handler)
+            result = await search_heritage(HeritageSearchInput(
+                query="Schule", collection="memobase", response_format=ResponseFormat.JSON,
+            ))
+        assert calls["n"] == 2                       # retried once, then succeeded
+        assert result.count == 2
+
+    @pytest.mark.asyncio
+    async def test_search_timeout_is_handled(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
+        with respx.mock:
+            respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
+                side_effect=httpx.TimeoutException("timeout")
+            )
+            with pytest.raises(ToolError, match="nicht erreichbar"):
+                await search_heritage(HeritageSearchInput(query="Schule", collection="memobase"))
+
+
+class TestGetHeritageItem:
+    @pytest.mark.asyncio
+    async def test_memobase_item_markdown(self):
+        with respx.mock:
+            respx.get(f"{MEMOBASE_API}/record/snp-007-213072_03").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_RECORD)
+            )
+            md = await get_heritage_item(HeritageItemInput(
+                collection="memobase", item_id="snp-007-213072_03",
+            ))
+        assert "Kneebus" in md
+        assert "memobase.ch/de/document/snp-007-213072_03" in md
+        assert "rightsstatements.org" in md          # digitisate right shown
+        assert "fonoteca.ch" in md                   # sameAs original catalogue
+
+    @pytest.mark.asyncio
+    async def test_memobase_item_accepts_curie_id(self):
+        with respx.mock:
+            route = respx.get(f"{MEMOBASE_API}/record/snp-007-213072_03").mock(
+                return_value=httpx.Response(200, json=MOCK_MEMOBASE_RECORD)
+            )
+            await get_heritage_item(HeritageItemInput(
+                collection="memobase", item_id="mbr:snp-007-213072_03",
+            ))
+        assert route.called                          # prefix stripped before request
+
+    @pytest.mark.asyncio
+    async def test_dodis_item_never_leaks_fulltext_markdown(self):
+        with respx.mock:
+            respx.get(f"{DODIS_API}/solr/full/44755").mock(
+                return_value=httpx.Response(200, json=MOCK_DODIS_FULL)
+            )
+            md = await get_heritage_item(HeritageItemInput(collection="dodis", item_id="44755"))
+        assert "Bundesratsprotokoll" in md
+        assert "dodis.ch/44755" in md
+        assert "GESCHUETZTER VOLLTEXT" not in md     # protected fulltext excluded
+        assert "…" in md                             # regest truncated
+
+    @pytest.mark.asyncio
+    async def test_dodis_item_json_strips_protected_field(self):
+        with respx.mock:
+            respx.get(f"{DODIS_API}/solr/full/44755").mock(
+                return_value=httpx.Response(200, json=MOCK_DODIS_FULL)
+            )
+            result = await get_heritage_item(HeritageItemInput(
+                collection="dodis", item_id="44755", response_format=ResponseFormat.JSON,
+            ))
+        assert isinstance(result, ResultEnvelope)
+        assert "doc_att_file_content" not in result.results[0]
+        assert result.results[0]["doc_title"]
+
+    @pytest.mark.asyncio
+    async def test_item_not_found(self):
+        with respx.mock:
+            respx.get(f"{MEMOBASE_API}/record/nope").mock(
+                return_value=httpx.Response(200, json={})
+            )
+            md = await get_heritage_item(HeritageItemInput(collection="memobase", item_id="nope"))
+        assert "Kein Memobase-Record" in md
+
+
+class TestListHeritageCollections:
+    @pytest.mark.asyncio
+    async def test_markdown_lists_active_and_gated(self):
+        md = await list_heritage_collections()
+        assert "memobase" in md and "dodis" in md
+        # the probed-but-excluded sources are surfaced with their reason
+        assert "reCAPTCHA" in md or "eIAM" in md
+        assert "Landesmuseum" in md
+        assert "Datenquelle & Lizenz:" in md
+
+    @pytest.mark.asyncio
+    async def test_json_marks_usable_collections(self):
+        result = await list_heritage_collections(
+            HeritageCollectionsInput(response_format=ResponseFormat.JSON)
+        )
+        assert isinstance(result, ResultEnvelope)
+        assert result.meta["usable_collections"] == ["memobase", "dodis"]
+        ids = {c["id"] for c in result.results}
+        assert {"memobase", "dodis", "bar", "landesmuseum"} <= ids
+
+    def test_input_forbids_extra(self):
+        assert HeritageCollectionsInput.model_config.get("extra") == "forbid"
+
+
+class TestHeritageEgress:
+    def test_new_hosts_allow_listed(self):
+        assert "api.memobase.ch" in ALLOWED_HOSTS
+        assert "beta.dodis.ch" in ALLOWED_HOSTS
+
+    def test_assert_allowed_accepts_new_upstreams(self):
+        _assert_allowed(f"{MEMOBASE_API}/")
+        _assert_allowed(f"{DODIS_API}/solr/query")
+
+
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
 @pytest.mark.live
@@ -1370,3 +1706,29 @@ class TestLiveNB:
     async def test_live_list_sets(self):
         result = await heritage_list_nb_collections()
         assert "Fehler" not in result
+
+
+@pytest.mark.live
+class TestLiveHeritageInstitutions:
+    """Live-Tests gegen Memobase (LOD-API) und Dodis (Solr) — nur mit -m live."""
+
+    @pytest.mark.asyncio
+    async def test_live_search_memobase(self):
+        result = await search_heritage(HeritageSearchInput(
+            query="Volksschule", collection="memobase", limit=3,
+        ))
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_live_search_dodis(self):
+        result = await search_heritage(HeritageSearchInput(
+            query="Volksschule", collection="dodis", limit=3,
+        ))
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_live_get_dodis_document(self):
+        result = await get_heritage_item(HeritageItemInput(collection="dodis", item_id="44755"))
+        assert "44755" in result
+        # metadata only — the transcription fulltext field is never reproduced
+        assert "doc_att_file_content" not in result

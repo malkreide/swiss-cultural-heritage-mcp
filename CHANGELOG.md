@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-19
+
+Adds a **federated memory-institution facade** over two newly probed Swiss sources —
+**Memoriav / Memobase** and **Dodis** (Diplomatic Documents of Switzerland) — bringing
+the server to **11 tools across five data sources**. The server stays in **Phase 1
+(read-only)**: all three new tools are annotated `readOnlyHint: true` and only issue
+HTTP GET/POST reads against public, no-auth upstreams.
+
+### Added
+- **Three federated tools** (`MODUL 5` in `server.py`), following the task's requested
+  signatures:
+  - `search_heritage(query, collection, date_from, date_to, media_type)` — `collection`
+    is an enum (`memobase | dodis | all`). For `all`, both sources are queried in
+    parallel with per-source progress/warnings via the injected `Context`; if one
+    source fails the other still returns (surfaced in `meta.errors`), and only a
+    total outage raises `isError`.
+  - `get_heritage_item(collection, item_id)` — full metadata for one object.
+  - `list_heritage_collections()` — discovery tool listing each source's protocol,
+    auth and licence, **including the probed-but-not-connected sources** (Bundesarchiv,
+    Landesmuseum) and the reason each is excluded.
+- **Provenance + split licence in every result.** Each hit carries `source`, a
+  `permalink`, and the licence reported **separately for metadata and for the digitised
+  object** — they diverge (metadata is open Linked Open Data; a Memobase digitised
+  object may be `In Copyright` / access `onsite`, exposed from
+  `rightsstatements.org`). Only metadata and links are returned; **copyright-protected
+  full texts are never reproduced** — Dodis transcription/fulltext fields
+  (`doc_att_file_content`, `doc_att_xmlTranscription_ids`) are excluded from both the
+  markdown view and the JSON envelope, and the Dodis regest is length-capped.
+- **Resilience: retry with exponential backoff.** New `_fetch_with_retry` wraps the
+  memory-institution fetches (5xx / 429 / network / timeout → up to `retry_attempts`
+  tries with `retry_backoff_base * 2**(n-1)` waits, default 2s/4s/8s; 4xx except 429
+  never retried). `_http_post` (JSON) and an optional `headers` argument on `_http_get`
+  were added (Memobase requires `Accept: application/ld+json` content-negotiation).
+- Egress allow-list extended with `api.memobase.ch` and `beta.dodis.ch` (see
+  `docs/network-egress.md`); permalink hosts are linked but never fetched, so they are
+  deliberately not allow-listed.
+- Architecture-decision section (bilingual READMEs) documenting the **live probe of
+  2026-07-19**: why Memobase and Dodis are connected and why Bundesarchiv (eIAM +
+  reCAPTCHA) and Landesmuseum (no public API) are not.
+- New unit tests (happy path, single/all collection, client-side date & media-type
+  filters, partial failure, retry-on-503, timeout, fulltext-non-leak, discovery) and
+  `@pytest.mark.live` tests against the real Memobase and Dodis APIs.
+
+### Security
+- **`SEC-022` tool-pin re-approval note:** `audits/tool-pins/current.json` was
+  regenerated (8 → 11 tools) to record the three new tools `search_heritage`,
+  `get_heritage_item`, `list_heritage_collections`. No existing tool's name,
+  description, or schema changed; the pin update reflects only the added tools.
+
 ## [0.3.0] - 2026-06-02
 
 This release lands the full **mcp-audit-skill** remediation series (PRs #19–#30) on top of the SIK-ISEA / NB data-source rebuild: typed structured output, optional distributed tracing, structured JSON logging, OGD licence attribution, fuzzy search fallback, `isError` error flagging, a single env-driven configuration object, and tool-prompt drift pinning. The audit board moves from `0 PASS / 17 PARTIAL / 4 FAIL` to **19 PASS / 2 accepted-risk / 0 open** — see [`audits/2026-06-02-swiss-cultural-heritage-mcp-rerun/report.md`](audits/2026-06-02-swiss-cultural-heritage-mcp-rerun/report.md).
