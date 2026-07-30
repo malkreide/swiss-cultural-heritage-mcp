@@ -1399,13 +1399,24 @@ class TestToolPins:
         ``0.0.0+local`` under the documented invocation and the test above would
         start failing for the wrong reason — or worse, pass in CI and fail
         locally. So the generator's own version source is pinned here.
+
+        Loaded by path rather than as ``scripts.pin_tools``: ``scripts/`` is not
+        a package and not on ``sys.path``. An ``import scripts.pin_tools`` only
+        works when the repo root happens to be on the path — which
+        ``python -m pytest`` arranges by prepending the cwd, and a bare
+        ``pytest`` (what CI runs) does not.
         """
+        import importlib.util
         import tomllib
         from pathlib import Path
 
-        import scripts.pin_tools as pin_tools  # type: ignore[import-not-found]
-
         root = Path(__file__).resolve().parents[1]
+        script = root / "scripts" / "pin_tools.py"
+        spec = importlib.util.spec_from_file_location("_pin_tools_under_test", script)
+        assert spec and spec.loader, f"could not load {script}"
+        pin_tools = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pin_tools)
+
         declared = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
         assert pin_tools._declared_version() == declared
         assert "+local" not in pin_tools._declared_version()
