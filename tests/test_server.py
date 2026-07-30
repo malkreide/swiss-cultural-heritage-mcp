@@ -1208,7 +1208,11 @@ class TestTracing:
 
     @pytest.mark.asyncio
     async def test_tool_span_records_name_and_is_error(self):
-        pytest.importorskip("opentelemetry")
+        # Probe the SDK, not the `opentelemetry` namespace. mcp 2.x depends on
+        # `opentelemetry-api`, so the namespace is importable without the
+        # `otel` extra — a namespace probe stops skipping and the SDK import
+        # on the next line raises instead. CI installs `.[dev]` only.
+        pytest.importorskip("opentelemetry.sdk")
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -1248,7 +1252,12 @@ class TestTracing:
 
     @pytest.mark.asyncio
     async def test_init_tracing_instruments_httpx(self):
-        pytest.importorskip("opentelemetry")
+        # Two separate distributions are needed here, so both are probed:
+        # `opentelemetry-sdk` and `opentelemetry-instrumentation-httpx`. Probing
+        # only the `opentelemetry` namespace would skip nothing under mcp 2.x,
+        # which depends on `opentelemetry-api`.
+        pytest.importorskip("opentelemetry.sdk")
+        pytest.importorskip("opentelemetry.instrumentation.httpx")
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
             InMemorySpanExporter,
