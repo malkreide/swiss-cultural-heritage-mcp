@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Migrated to the `mcp` 2.x server API.** Pin `>=1.28.1,<2` → `>=2.0.0,<3`;
+  `FastMCP` → `MCPServer` (`mcp.server.mcpserver`). The floor is hard: 2.0.0
+  removed `mcp.server.fastmcp` with no compatibility shim, so this code cannot
+  run on 1.x, and a `>=1.x` range would let a resolver pick a version that
+  fails at import.
+
+  Existing clients see no difference — the legacy `initialize` handshake still
+  caps at 2025-11-25. mcp 2.x does additionally serve a "modern" per-request
+  envelope era that reaches 2026-07-28, so a 2.x-aware client negotiates the
+  newer revision. Not a break, but not a protocol no-op either.
+
+- **The OBS-001 error-flag test now goes through the real protocol path.** It
+  reached into `mcp._mcp_server.request_handlers[CallToolRequest]`, a mapping
+  2.x no longer has. The replacement uses the in-process `mcp.client.Client`,
+  which is closer to what a real client does: `is_error` is set by the server's
+  CallTool handler, not by the tool function, so `MCPServer.call_tool()` alone
+  would not have exercised it.
+
+  Verified: 2 failed / 122 passed / 7 deselected — identical to the 1.x
+  baseline, and the two failures are the pre-existing `TestTracing` ones
+  (missing optional OpenTelemetry packages), confirmed to fail the same way
+  under mcp 1.x. `ruff check src/ tests/` clean, fresh-venv install clean.
+
+  **No tool contract moved:** `scripts/pin_tools.py` regenerates a
+  byte-identical `manifest_sha256` (`fc22092d79e4…`, 11 tools). Unrelated
+  observation, left alone: `generated_for_version` in the committed pin still
+  reads `0.3.3` while the package is at `0.4.0`.
+
 ## [0.4.0] - 2026-07-19
 
 Adds a **federated memory-institution facade** over two newly probed Swiss sources —

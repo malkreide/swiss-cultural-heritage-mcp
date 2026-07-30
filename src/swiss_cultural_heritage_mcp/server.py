@@ -27,8 +27,8 @@ from typing import Any, Final, Literal, NoReturn, TypeVar
 import httpx
 import structlog
 from defusedxml import ElementTree as ET
-from mcp.server.fastmcp import Context, FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -235,7 +235,7 @@ def _get_http_client() -> httpx.AsyncClient:
 
 
 @asynccontextmanager
-async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
+async def lifespan(_server: MCPServer) -> AsyncIterator[None]:
     """Erzeugt einen geteilten httpx-Client für die Lebensdauer des Servers."""
     global _http_client
     _http_client = _new_client()
@@ -248,7 +248,7 @@ async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
 
 
 # ─────────────────────────── Server ────────────────────────────────────────────
-mcp = FastMCP("swiss_cultural_heritage_mcp", lifespan=lifespan)
+mcp = MCPServer("swiss_cultural_heritage_mcp", lifespan=lifespan)
 
 
 # ─────────────────────────── Fehler-Maskierung (OBS-002) ───────────────────────
@@ -2549,8 +2549,9 @@ if __name__ == "__main__":
         import uvicorn
 
         # SEC-016: loopback-Default; der Container setzt MCP_HOST=0.0.0.0 explizit.
-        mcp.settings.host = settings.host
-        mcp.settings.port = settings.port
+        # Bind-Adresse geht direkt an uvicorn — unter mcp 2.x traegt
+        # MCPServer.settings kein host/port mehr, und die Zuweisung war hier
+        # ohnehin redundant.
         app = build_http_app(cors_origins_from_env())
         uvicorn.run(
             app, host=settings.host, port=settings.port,
