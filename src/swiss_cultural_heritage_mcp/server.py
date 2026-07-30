@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     host:         str = "127.0.0.1"   # SEC-016: loopback-Default; Container setzt 0.0.0.0
     port:         int = 8000
     cors_origins: str = ""            # komma-separiert; leer = keine Cross-Origin-Freigabe
+    # SEC-005, eingehend: Hostnamen, unter denen dieser Server erreichbar ist —
+    # nötig für die Host/Origin-Prüfung des Transports, sobald nicht auf Loopback
+    # gebunden wird. Bewusst NICHT `allowed_hosts`: das oben ist die
+    # Egress-Allow-List (SEC-021) und meint die Gegenrichtung.
+    inbound_allowed_hosts: str = ""   # komma-separiert, via MCP_INBOUND_ALLOWED_HOSTS
     log_level:    str = "INFO"
 
 
@@ -2517,17 +2522,79 @@ def cors_origins_from_env() -> list[str]:
     return [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 
 
-def build_http_app(cors_origins: list[str] | None = None):
+def inbound_allowed_hosts_from_env() -> list[str]:
+    """Liest ``MCP_INBOUND_ALLOWED_HOSTS`` (komma-separiert)."""
+    return [h.strip() for h in settings.inbound_allowed_hosts.split(",") if h.strip()]
+
+
+def build_transport_security(host: str, port: int):
+    """Host/Origin-Allow-List für den HTTP-Transport (SEC-005, eingehend).
+
+    Unter mcp 2.x ist das ein per-App-Kwarg, und ihn *weglassen* ist nicht
+    neutral: das SDK leitet aus dem ``host``-Argument der App einen Default ab und
+    aktiviert bei loopback-artigem Wert automatisch ``127.0.0.1:*``. Da ``host``
+    selbst auf ``127.0.0.1`` defaultet, traf das jeden Container mit
+    ``MCP_HOST=0.0.0.0`` — jede Anfrage unter einem echten Hostnamen bekam
+    HTTP 421. Vor der Migration ging ``host`` an den ``FastMCP``-Konstruktor, wo
+    dieselbe Logik den echten Bind sah und den Schutz korrekt ausliess.
+
+    Rückgabe ``None``, wenn keine Allow-List ableitbar ist — Nicht-Loopback-Bind
+    ohne ``MCP_INBOUND_ALLOWED_HOSTS``. Eine geratene Liste reproduziert genau
+    dieses 421, der Aufrufer warnt stattdessen.
+    """
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    loopback = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+    allowed = inbound_allowed_hosts_from_env()
+    if allowed:
+        # Loopback bleibt für Container-Health-Checks und Debugging erreichbar.
+        hosts = set(allowed) | loopback
+    elif host in ("127.0.0.1", "localhost", "::1"):
+        hosts = loopback | {f"{host}:{port}"}
+    else:
+        return None
+
+    # Konfigurierte CORS-Origins müssen auch die Transport-Prüfung passieren,
+    # sonst weist der Server genau die Browser-Clients ab, die CORS erlaubt.
+    # ``*`` ist hier nicht ausdrückbar (Origins werden literal verglichen).
+    origins = {o for o in cors_origins_from_env() if o != "*"}
+    origins |= {f"http://{h}" for h in hosts}
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=sorted(hosts),
+        allowed_origins=sorted(origins),
+    )
+
+
+def build_http_app(
+    cors_origins: list[str] | None = None,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+):
     """Baut die Streamable-HTTP-Starlette-App inkl. CORS-Middleware (SDK-004).
 
     ``Mcp-Session-Id`` wird via ``expose_headers`` freigegeben, damit Browser-Clients
     die Session-ID über mehrere Requests hinweg lesen und mitsenden können — ohne das
     bricht die Session-Kontinuität im Browser. ``allow_origins`` ist eine explizite
     Allow-List (kein ``*`` in Produktion), konfigurierbar über ``MCP_CORS_ORIGINS``.
+
+    ``host`` muss die Adresse sein, an die uvicorn tatsächlich bindet — siehe
+    :func:`build_transport_security`.
     """
+    import logging
+
     from starlette.middleware.cors import CORSMiddleware
 
-    app = mcp.streamable_http_app()
+    security = build_transport_security(host, port)
+    if security is None:
+        logging.getLogger("swiss_cultural_heritage_mcp").warning(
+            "DNS-Rebinding-Schutz ist AUS: Bind auf %s ist nicht Loopback und "
+            "MCP_INBOUND_ALLOWED_HOSTS ist leer. Setze die Variable auf die "
+            "Hostnamen, unter denen dieser Server erreichbar ist, damit Host und "
+            "Origin geprüft werden.",
+            host,
+        )
+    app = mcp.streamable_http_app(transport_security=security, host=host)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins or [],
@@ -2549,10 +2616,10 @@ if __name__ == "__main__":
         import uvicorn
 
         # SEC-016: loopback-Default; der Container setzt MCP_HOST=0.0.0.0 explizit.
-        # Bind-Adresse geht direkt an uvicorn — unter mcp 2.x traegt
-        # MCPServer.settings kein host/port mehr, und die Zuweisung war hier
-        # ohnehin redundant.
-        app = build_http_app(cors_origins_from_env())
+        # Der Bind geht an uvicorn *und* in die App: unter mcp 2.x leitet das SDK
+        # seine Host-Allow-List aus dem App-Argument ab, weglassen hiess also
+        # HTTP 421 auf jede echte Anfrage.
+        app = build_http_app(cors_origins_from_env(), settings.host, settings.port)
         uvicorn.run(
             app, host=settings.host, port=settings.port,
             log_level=mcp.settings.log_level.lower(),
