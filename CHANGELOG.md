@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **HTTP-Modus wies unter jedem echten Hostnamen mit 421 ab (SEC-005).**
+  `build_http_app()` rief `mcp.streamable_http_app()` ohne `host` auf. Unter
+  mcp 2.x ist das kein neutraler Default: das SDK leitet daraus seine
+  Host-Allow-List ab und aktiviert bei loopback-artigem Wert automatisch
+  `127.0.0.1:*`. Da das Argument selbst auf `127.0.0.1` defaultet, traf das jeden
+  Container mit `MCP_HOST=0.0.0.0` — also den dokumentierten Deployment-Fall.
+  Vor der Migration ging `host` an den `FastMCP`-Konstruktor, wo dieselbe Logik
+  den echten Bind sah und den Schutz korrekt ausliess.
+
+  Der Bind reist jetzt in die App, und eine echte Allow-List wird aus dem neuen
+  `MCP_INBOUND_ALLOWED_HOSTS` gebaut. Ohne diese Variable bleibt der Schutz auf
+  einem Nicht-Loopback-Bind bewusst aus und der Aufrufer warnt — eine geratene
+  Liste wäre genau der 421-Fall.
+
+  Die Einstellung heisst bewusst `inbound_allowed_hosts` und nicht
+  `allowed_hosts`: letzteres ist in diesem Server die **Egress**-Allow-List
+  (SEC-021) und meint die Gegenrichtung. Ein Test hält fest, dass ein Upstream
+  wie `ckan.opendata.swiss` nicht in die eingehende Liste gerät.
+
+  13 neue Tests, darunter der tragende Fall „richtiger Hostname, falscher Port"
+  — nur er unterscheidet eine portgenaue Allow-List von einer, die alles
+  durchlässt. Mutationsgetestet: nimmt man den `host`-Kwarg wieder weg,
+  reproduziert der Test das 421.
+
+  Geprüft mit dem wörtlichen CI-Kommando: 137 passed, 2 skipped, 7 deselected;
+  `ruff check src/ tests/` clean.
+
 - **The tool pin recorded the wrong release, and could not have recorded the
   right one (SEC-022).** `audits/tool-pins/current.json` said
   `generated_for_version: 0.3.3` while the package was at `0.4.0`, so the pin
