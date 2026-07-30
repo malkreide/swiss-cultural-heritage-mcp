@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The tool pin recorded the wrong release, and could not have recorded the
+  right one (SEC-022).** `audits/tool-pins/current.json` said
+  `generated_for_version: 0.3.3` while the package was at `0.4.0`, so the pin
+  documented *which* tool surface was approved but not *for which* release.
+
+  The cause was in the generator, not the file: `scripts/pin_tools.py` read
+  `importlib.metadata.version()`, which returns `0.0.0+local` under the
+  documented `PYTHONPATH=src` invocation. The value therefore depended on
+  whatever happened to be installed in the caller's environment — which is why
+  the pin test carried the comment *"version is environment-dependent and
+  intentionally not compared"*. Uncomparable meant unchecked, and it drifted.
+
+  The generator now reads the version from `pyproject.toml`. That makes the
+  output deterministic — correct even with nothing installed, which the old
+  code could not manage — and makes the field safe to assert. Two tests do:
+  one compares the pin against `pyproject.toml`, one pins the generator's own
+  version source so a regression there cannot make the first test fail for the
+  wrong reason. Both are mutation-tested.
+
+  **No tool contract moved:** `manifest_sha256` stays `fc22092d79e4…` and every
+  per-tool hash is byte-identical; the version line is the whole diff.
+  Regeneration is idempotent.
+
 ### Changed
 
 - **Migrated to the `mcp` 2.x server API.** Pin `>=1.28.1,<2` → `>=2.0.0,<3`;

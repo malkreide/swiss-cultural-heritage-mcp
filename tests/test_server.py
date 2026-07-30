@@ -1351,7 +1351,6 @@ class TestToolPins:
         committed = json.loads(pin_file.read_text())
         live = compute_tool_pins(mcp)
 
-        # version is environment-dependent and intentionally not compared
         assert live["tools"] == committed["tools"], (
             "Tool definitions changed (SEC-022). If intentional, regenerate the "
             "pin with `PYTHONPATH=src python scripts/pin_tools.py` and add a "
@@ -1359,6 +1358,68 @@ class TestToolPins:
         )
         assert live["manifest_sha256"] == committed["manifest_sha256"]
         assert live["tool_count"] == committed["tool_count"]
+
+    def test_pin_records_the_declared_version(self):
+        """``generated_for_version`` must match ``pyproject.toml``.
+
+        This field was left uncompared because it used to be
+        environment-dependent: ``pin_tools.py`` read
+        ``importlib.metadata.version()``, which yields ``0.0.0+local`` under the
+        documented ``PYTHONPATH=src`` invocation. Uncomparable meant unchecked,
+        and it duly went stale — the pin claimed 0.3.3 while the package was at
+        0.4.0, so it recorded which tool surface was approved but not for which
+        release.
+
+        The generator now reads ``pyproject.toml``, which makes the field
+        deterministic and this comparison safe in any environment. Note this
+        does *not* require regenerating the pin on every release for its own
+        sake — the version bump and the pin regeneration belong in the same
+        commit, and this is what says so out loud.
+        """
+        import json
+        import pathlib
+        import tomllib
+
+        root = pathlib.Path(__file__).resolve().parents[1]
+        committed = json.loads((root / "audits" / "tool-pins" / "current.json").read_text())
+        declared = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+
+        assert committed["generated_for_version"] == declared, (
+            f"The tool pin was generated for {committed['generated_for_version']} "
+            f"but pyproject.toml says {declared}. Regenerate it with "
+            "`PYTHONPATH=src python scripts/pin_tools.py` in the same commit as "
+            "the version bump, so the record says which release the approved "
+            "tool surface belongs to."
+        )
+
+    def test_the_generator_needs_no_install_to_get_the_version_right(self):
+        """Guards the reason the field is now comparable at all.
+
+        If ``pin_tools.py`` went back to installed metadata, it would write
+        ``0.0.0+local`` under the documented invocation and the test above would
+        start failing for the wrong reason — or worse, pass in CI and fail
+        locally. So the generator's own version source is pinned here.
+
+        Loaded by path rather than as ``scripts.pin_tools``: ``scripts/`` is not
+        a package and not on ``sys.path``. An ``import scripts.pin_tools`` only
+        works when the repo root happens to be on the path — which
+        ``python -m pytest`` arranges by prepending the cwd, and a bare
+        ``pytest`` (what CI runs) does not.
+        """
+        import importlib.util
+        import tomllib
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        script = root / "scripts" / "pin_tools.py"
+        spec = importlib.util.spec_from_file_location("_pin_tools_under_test", script)
+        assert spec and spec.loader, f"could not load {script}"
+        pin_tools = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pin_tools)
+
+        declared = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+        assert pin_tools._declared_version() == declared
+        assert "+local" not in pin_tools._declared_version()
 
 
 # ─────────────────────────── Gedächtnisinstitutionen (MODUL 5) ─────────────────
