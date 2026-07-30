@@ -36,9 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Geprüft mit dem wörtlichen CI-Kommando: 137 passed, 2 skipped, 7 deselected;
   `ruff check src/ tests/` clean.
 
-
-### Fixed
-
 - **The tool pin recorded the wrong release, and could not have recorded the
   right one (SEC-022).** `audits/tool-pins/current.json` said
   `generated_for_version: 0.3.3` while the package was at `0.4.0`, so the pin
