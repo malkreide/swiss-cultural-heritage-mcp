@@ -16,7 +16,7 @@ import json
 import httpx
 import pytest
 import respx
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 from structlog.testing import capture_logs
 
 from swiss_cultural_heritage_mcp import __version__ as pkg_version
@@ -894,7 +894,7 @@ class TestStructuredOutput:
     @pytest.mark.asyncio
     async def test_tool_exposes_output_schema(self):
         tools = {t.name: t for t in await mcp.list_tools()}
-        schema = tools["heritage_search_artists"].outputSchema
+        schema = tools["heritage_search_artists"].output_schema
         assert schema is not None
         # the envelope model is referenced in the (union) output schema
         assert "ResultEnvelope" in json.dumps(schema)
@@ -1208,7 +1208,11 @@ class TestTracing:
 
     @pytest.mark.asyncio
     async def test_tool_span_records_name_and_is_error(self):
-        pytest.importorskip("opentelemetry")
+        # Probe the SDK, not the `opentelemetry` namespace. mcp 2.x depends on
+        # `opentelemetry-api`, so the namespace is importable without the
+        # `otel` extra — a namespace probe stops skipping and the SDK import
+        # on the next line raises instead. CI installs `.[dev]` only.
+        pytest.importorskip("opentelemetry.sdk")
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -1248,7 +1252,12 @@ class TestTracing:
 
     @pytest.mark.asyncio
     async def test_init_tracing_instruments_httpx(self):
-        pytest.importorskip("opentelemetry")
+        # Two separate distributions are needed here, so both are probed:
+        # `opentelemetry-sdk` and `opentelemetry-instrumentation-httpx`. Probing
+        # only the `opentelemetry` namespace would skip nothing under mcp 2.x,
+        # which depends on `opentelemetry-api`.
+        pytest.importorskip("opentelemetry.sdk")
+        pytest.importorskip("opentelemetry.instrumentation.httpx")
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
             InMemorySpanExporter,
@@ -1279,14 +1288,19 @@ class TestErrorIsFlagged:
 
     @staticmethod
     async def _call(name: str, arguments: dict):
-        """Invoke a tool through the SDK's low-level CallTool handler."""
-        import mcp.types as types
-        handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-        req = types.CallToolRequest(
-            method="tools/call",
-            params=types.CallToolRequestParams(name=name, arguments=arguments),
-        )
-        return (await handler(req)).root  # CallToolResult
+        """Invoke a tool through the real protocol path.
+
+        mcp 2.x dropped the ``request_handlers`` mapping the 1.x version of
+        this helper reached into, so the call now goes through the in-process
+        client. That is closer to what a real client does anyway: the
+        ``is_error`` flag is set by the server's CallTool handler, not by the
+        tool function, so ``MCPServer.call_tool()`` alone would not exercise
+        it — this path does.
+        """
+        from mcp.client import Client
+
+        async with Client(mcp) as client:  # initialises on __aenter__
+            return await client.call_tool(name, arguments)
 
     @pytest.mark.asyncio
     async def test_upstream_failure_is_flagged_iserror(self):
@@ -1295,7 +1309,7 @@ class TestErrorIsFlagged:
                 return_value=httpx.Response(503)
             )
             result = await self._call("heritage_search_artists", {"params": {"query": "Hodler"}})
-        assert result.isError is True
+        assert result.is_error is True
         assert "Fehler" in result.content[0].text  # German guidance preserved
 
     @pytest.mark.asyncio
@@ -1308,7 +1322,7 @@ class TestErrorIsFlagged:
                 )
             )
             result = await self._call("heritage_search_artists", {"params": {"query": "zzz-none"}})
-        assert result.isError is False
+        assert result.is_error is False
         assert "Keine Künstler" in result.content[0].text
 
     @pytest.mark.asyncio
