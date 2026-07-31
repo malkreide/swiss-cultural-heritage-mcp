@@ -32,7 +32,12 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from . import __version__
 
+# Wer fragt hier an? Ohne eigenen User-Agent geht der httpx-Default
+# hinaus und der Betreiber der Datenquelle sieht bloss eine Bibliothek.
+# Die Version stammt aus den Paket-Metadaten und kann nicht driften.
+USER_AGENT = f"swiss-cultural-heritage-mcp/{__version__} (+https://github.com/malkreide/swiss-cultural-heritage-mcp)"
 # ─────────────────────────── Konfiguration (ARCH-004) ──────────────────────────
 # Einziger Konfig-Ladepunkt: alle Endpunkte, Timeouts, die Egress-Allow-List sowie
 # Host/Port/Transport/Log-Level kommen aus diesem Settings-Objekt (statt aus frei
@@ -229,7 +234,7 @@ _http_client: httpx.AsyncClient | None = None
 
 
 def _new_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=False)
+    return httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=False, headers={"User-Agent": USER_AGENT})
 
 
 def _get_http_client() -> httpx.AsyncClient:

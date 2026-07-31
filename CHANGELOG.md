@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-31
+
+### Hinzugefuegt
+
+- **Der Server nennt jetzt seinen Namen.** Bisher ging gegenueber jedem
+  Upstream der httpx-Default hinaus: der Betreiber der Datenquelle sah
+  eine Bibliothek, nicht uns, und hatte keinen Weg, uns bei Fehlverhalten
+  zu erreichen. Neu traegt den HTTP-Client
+  `swiss-cultural-heritage-mcp/<version> (+github.com/malkreide/swiss-cultural-heritage-mcp)`.
+
+  Die Version stammt aus `importlib.metadata` und kann nicht getrennt vom
+  Paket driften.
+
 ### Fixed
 
 - **HTTP-Modus wies unter jedem echten Hostnamen mit 421 ab (SEC-005).**
