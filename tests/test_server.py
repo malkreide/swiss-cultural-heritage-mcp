@@ -84,29 +84,53 @@ MOCK_SIKART_DATASTORE = {
         ],
         "records": [
             {
-                "_id": 1, "HAUPTNR": "4000123",
-                "NAME": "Hodler", "VORNAME": "Ferdinand", "NAMIDENT": "Hodler, Ferdinand",
-                "GEBURTSJAHR": "1853", "GEBURTSDATUM": "14.3.1853", "GEBURTSORT": "Bern",
-                "GEBURTSKANTON": "BE", "GEBURTSLAND": "CH",
-                "STERBEJAHR": "1918", "STERBEDATUM": "19.5.1918", "STERBEORT": "Genf",
-                "STERBEKANTON": "GE", "STERBELAND": "CH",
+                "_id": 1,
+                "HAUPTNR": "4000123",
+                "NAME": "Hodler",
+                "VORNAME": "Ferdinand",
+                "NAMIDENT": "Hodler, Ferdinand",
+                "GEBURTSJAHR": "1853",
+                "GEBURTSDATUM": "14.3.1853",
+                "GEBURTSORT": "Bern",
+                "GEBURTSKANTON": "BE",
+                "GEBURTSLAND": "CH",
+                "STERBEJAHR": "1918",
+                "STERBEDATUM": "19.5.1918",
+                "STERBEORT": "Genf",
+                "STERBEKANTON": "GE",
+                "STERBELAND": "CH",
                 "LEBENSDATEN": "* 14.3.1853 Bern, + 19.5.1918 Genf",
                 "VITAZEILE": "Maler. Landschaften, Figurenbilder, Historienbilder.",
-                "TYPUS": "Künstler", "NUTZUNGSLIZENZ": "Nutzungslizenz: CC-BY-NC-SA",
-                "GND": "118552155", "HLS_ID": None, "WEBSITE": None,
+                "TYPUS": "Künstler",
+                "NUTZUNGSLIZENZ": "Nutzungslizenz: CC-BY-NC-SA",
+                "GND": "118552155",
+                "HLS_ID": None,
+                "WEBSITE": None,
                 "SIKART_LINK": "https://recherche.sik-isea.ch/de/sik:person-4000123/in/sikisea/actor/list",
             },
             {
-                "_id": 2, "HAUPTNR": "4000456",
-                "NAME": "Taeuber-Arp", "VORNAME": "Sophie", "NAMIDENT": "Taeuber-Arp, Sophie",
-                "GEBURTSJAHR": "1889", "GEBURTSDATUM": "19.1.1889", "GEBURTSORT": "Davos",
-                "GEBURTSKANTON": "GR", "GEBURTSLAND": "CH",
-                "STERBEJAHR": "1943", "STERBEDATUM": "13.1.1943", "STERBEORT": "Zürich",
-                "STERBEKANTON": "ZH", "STERBELAND": "CH",
+                "_id": 2,
+                "HAUPTNR": "4000456",
+                "NAME": "Taeuber-Arp",
+                "VORNAME": "Sophie",
+                "NAMIDENT": "Taeuber-Arp, Sophie",
+                "GEBURTSJAHR": "1889",
+                "GEBURTSDATUM": "19.1.1889",
+                "GEBURTSORT": "Davos",
+                "GEBURTSKANTON": "GR",
+                "GEBURTSLAND": "CH",
+                "STERBEJAHR": "1943",
+                "STERBEDATUM": "13.1.1943",
+                "STERBEORT": "Zürich",
+                "STERBEKANTON": "ZH",
+                "STERBELAND": "CH",
                 "LEBENSDATEN": "* 19.1.1889 Davos, + 13.1.1943 Zürich",
                 "VITAZEILE": "Malerin, Bildhauerin, Textilkünstlerin, Tänzerin.",
-                "TYPUS": "Künstlerin", "NUTZUNGSLIZENZ": "Nutzungslizenz: CC-BY-NC-SA",
-                "GND": "118620916", "HLS_ID": None, "WEBSITE": None,
+                "TYPUS": "Künstlerin",
+                "NUTZUNGSLIZENZ": "Nutzungslizenz: CC-BY-NC-SA",
+                "GND": "118620916",
+                "HLS_ID": None,
+                "WEBSITE": None,
                 "SIKART_LINK": "https://recherche.sik-isea.ch/de/sik:person-4000456/in/sikisea/actor/list",
             },
         ],
@@ -129,28 +153,28 @@ MOCK_CKAN_RESPONSE = {
         "count": 2,
         "results": [
             {
-                "name":      "snm-numismatik",
-                "title":     {"de": "Numismatische Sammlung SNM", "en": "SNM Numismatic Collection"},
-                "notes":     {"de": "Münzen und Medaillen, ca. 100'000 Objekte"},
+                "name": "snm-numismatik",
+                "title": {"de": "Numismatische Sammlung SNM", "en": "SNM Numismatic Collection"},
+                "notes": {"de": "Münzen und Medaillen, ca. 100'000 Objekte"},
                 "resources": [
                     {
-                        "name":   "Münzsammlung CSV",
+                        "name": "Münzsammlung CSV",
                         "format": "CSV",
-                        "url":    "https://opendata.swiss/dataset/snm-numismatik/resource/abc123",
-                        "id":     "abc123-uuid",
+                        "url": "https://opendata.swiss/dataset/snm-numismatik/resource/abc123",
+                        "id": "abc123-uuid",
                     }
                 ],
             },
             {
-                "name":      "snm-siegelsammlung",
-                "title":     {"de": "Siegelsammlung SNM"},
-                "notes":     {"de": "Siegel und Stempel, ca. 80'000 Objekte"},
+                "name": "snm-siegelsammlung",
+                "title": {"de": "Siegelsammlung SNM"},
+                "notes": {"de": "Siegel und Stempel, ca. 80'000 Objekte"},
                 "resources": [
                     {
-                        "name":   "Siegelsammlung CSV",
+                        "name": "Siegelsammlung CSV",
                         "format": "CSV",
-                        "url":    "https://opendata.swiss/dataset/snm-siegel/resource/def456",
-                        "id":     "def456-uuid",
+                        "url": "https://opendata.swiss/dataset/snm-siegel/resource/def456",
+                        "id": "def456-uuid",
                     }
                 ],
             },
@@ -170,9 +194,27 @@ MOCK_DATASTORE_RESPONSE = {
             {"id": "Herkunft"},
         ],
         "records": [
-            {"_id": 1, "Titel": "Goldmünze Zürich", "Jahr": "1350",  "Material": "Gold",   "Herkunft": "Zürich"},
-            {"_id": 2, "Titel": "Silbermünze Bern",  "Jahr": "1400",  "Material": "Silber", "Herkunft": "Bern"},
-            {"_id": 3, "Titel": "Kupfermünze Basel", "Jahr": "1500",  "Material": "Kupfer", "Herkunft": "Basel"},
+            {
+                "_id": 1,
+                "Titel": "Goldmünze Zürich",
+                "Jahr": "1350",
+                "Material": "Gold",
+                "Herkunft": "Zürich",
+            },
+            {
+                "_id": 2,
+                "Titel": "Silbermünze Bern",
+                "Jahr": "1400",
+                "Material": "Silber",
+                "Herkunft": "Bern",
+            },
+            {
+                "_id": 3,
+                "Titel": "Kupfermünze Basel",
+                "Jahr": "1500",
+                "Material": "Kupfer",
+                "Herkunft": "Basel",
+            },
         ],
     },
 }
@@ -271,6 +313,7 @@ MOCK_OAI_GET_RECORD = """<?xml version="1.0" encoding="UTF-8"?>
 
 # ─────────────────────────── Unit Tests: Utilities ─────────────────────────────
 
+
 class TestOaiParsing:
     def test_parse_records(self):
         records = _parse_oai_records(MOCK_OAI_RECORDS)
@@ -326,6 +369,7 @@ class TestHealthEndpoint:
     @pytest.mark.asyncio
     async def test_health_route_registered(self):
         from swiss_cultural_heritage_mcp.server import mcp
+
         paths = [r.path for r in mcp._custom_starlette_routes]
         assert "/health" in paths
 
@@ -334,6 +378,7 @@ class TestHealthEndpoint:
         from httpx import ASGITransport, AsyncClient
 
         from swiss_cultural_heritage_mcp.server import mcp
+
         app = mcp.streamable_http_app()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             r = await ac.get("/health")
@@ -346,28 +391,34 @@ class TestHealthEndpoint:
 class TestInputModelConsistency:
     """ARCH (PR 2): jedes Tool-Input-Modell verwendet extra='forbid' und ResponseFormat-Enum."""
 
-    @pytest.mark.parametrize("model_cls", [
-        ArtistSearchInput,
-        ArtistDetailInput,
-        MuseumSearchInput,
-        CollectionBrowseInput,
-        HelvticatSearchInput,
-        PublicationDetailInput,
-        CrossSearchInput,
-        NbCollectionsInput,
-    ])
+    @pytest.mark.parametrize(
+        "model_cls",
+        [
+            ArtistSearchInput,
+            ArtistDetailInput,
+            MuseumSearchInput,
+            CollectionBrowseInput,
+            HelvticatSearchInput,
+            PublicationDetailInput,
+            CrossSearchInput,
+            NbCollectionsInput,
+        ],
+    )
     def test_forbids_extra_fields(self, model_cls):
         assert model_cls.model_config.get("extra") == "forbid"
 
-    @pytest.mark.parametrize("model_cls", [
-        ArtistSearchInput,
-        ArtistDetailInput,
-        MuseumSearchInput,
-        CollectionBrowseInput,
-        HelvticatSearchInput,
-        PublicationDetailInput,
-        NbCollectionsInput,
-    ])
+    @pytest.mark.parametrize(
+        "model_cls",
+        [
+            ArtistSearchInput,
+            ArtistDetailInput,
+            MuseumSearchInput,
+            CollectionBrowseInput,
+            HelvticatSearchInput,
+            PublicationDetailInput,
+            NbCollectionsInput,
+        ],
+    )
     def test_response_format_field_is_enum(self, model_cls):
         field = model_cls.model_fields.get("response_format")
         assert field is not None
@@ -499,7 +550,7 @@ class TestSettings:
     def test_defaults(self):
         s = Settings()
         assert s.transport == "stdio"
-        assert s.host == "127.0.0.1"   # SEC-016 loopback default
+        assert s.host == "127.0.0.1"  # SEC-016 loopback default
         assert s.port == 8000
         assert s.http_timeout == 30.0
 
@@ -521,6 +572,7 @@ class TestSettings:
 
 
 # ─────────────────────────── Unit Tests: Input Models ──────────────────────────
+
 
 class TestArtistSearchInput:
     def test_valid_all_fields(self):
@@ -583,6 +635,7 @@ class TestCrossSearchInput:
 
 # ─────────────────────────── Integration Tests (mocked HTTP) ──────────────────
 
+
 class TestHeritageSIKISEA:
     @pytest.mark.asyncio
     async def test_search_artists_json_response(self):
@@ -616,10 +669,13 @@ class TestHeritageSIKISEA:
     async def test_search_artists_empty(self):
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(
-                return_value=httpx.Response(200, json={
-                    "success": True,
-                    "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
-                })
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        "success": True,
+                        "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
+                    },
+                )
             )
             params = ArtistSearchInput(query="UnbekannterName12345")
             result = await heritage_search_artists(params)
@@ -642,10 +698,13 @@ class TestHeritageSIKISEA:
     async def test_get_artist_not_found(self):
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(
-                return_value=httpx.Response(200, json={
-                    "success": True,
-                    "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
-                })
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        "success": True,
+                        "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
+                    },
+                )
             )
             params = ArtistDetailInput(artist_id="99999999")
             result = await heritage_get_artist(params)
@@ -655,9 +714,7 @@ class TestHeritageSIKISEA:
     @pytest.mark.asyncio
     async def test_get_artist_http_error(self):
         with respx.mock:
-            respx.get(f"{CKAN_API}/datastore_search").mock(
-                return_value=httpx.Response(404)
-            )
+            respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(404))
             params = ArtistDetailInput(artist_id="99999999")
             # OBS-001: a handled upstream error raises (→ isError), not a plain string
             with pytest.raises(ToolError, match="nicht gefunden"):
@@ -707,10 +764,9 @@ class TestHeritageSNM:
     async def test_browse_collection_empty(self):
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(
-                return_value=httpx.Response(200, json={
-                    "success": True,
-                    "result": {"total": 0, "fields": [], "records": []}
-                })
+                return_value=httpx.Response(
+                    200, json={"success": True, "result": {"total": 0, "fields": [], "records": []}}
+                )
             )
             params = CollectionBrowseInput(resource_id="xyz-empty")
             result = await heritage_browse_collection(params)
@@ -723,7 +779,9 @@ class TestHeritageNB:
     async def test_search_helveticat_markdown(self):
         with respx.mock:
             respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS, headers={"content-type": "text/xml"})
+                return_value=httpx.Response(
+                    200, text=MOCK_OAI_RECORDS, headers={"content-type": "text/xml"}
+                )
             )
             params = HelvticatSearchInput(query="Volksschule")
             result = await heritage_search_helveticat(params)
@@ -734,9 +792,7 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_search_helveticat_json(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             params = HelvticatSearchInput(response_format=ResponseFormat.JSON)
             result = await heritage_search_helveticat(params)
 
@@ -748,9 +804,7 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_search_helveticat_query_filter(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             # query that matches only first record
             params = HelvticatSearchInput(query="Volksschule")
             result = await heritage_search_helveticat(params)
@@ -763,9 +817,7 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_list_nb_collections(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_SETS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_SETS))
             result = await heritage_list_nb_collections()
 
         assert "helveticat" in result
@@ -775,9 +827,7 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_get_publication_markdown(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD))
             params = PublicationDetailInput(identifier="oai:helveticat.ch:123456")
             result = await heritage_get_publication(params)
 
@@ -788,9 +838,7 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_get_publication_json(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD))
             params = PublicationDetailInput(
                 identifier="oai:helveticat.ch:123456",
                 response_format=ResponseFormat.JSON,
@@ -813,9 +861,7 @@ class TestHeritageCrossSearch:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             params = CrossSearchInput(query="Hodler", limit_per_source=3)
             result = await heritage_cross_search(params)
 
@@ -839,9 +885,7 @@ class TestHeritageCrossSearch:
     async def test_cross_search_partial_failure(self):
         """Wenn eine Quelle fehlschlägt, sollen die anderen weiter angezeigt werden."""
         with respx.mock:
-            respx.get(f"{CKAN_API}/datastore_search").mock(
-                return_value=httpx.Response(503)
-            )
+            respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
@@ -874,9 +918,7 @@ class TestStructuredOutput:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             params = CrossSearchInput(
                 query="Hodler", limit_per_source=3, response_format=ResponseFormat.JSON
             )
@@ -918,9 +960,7 @@ class TestAttribution:
     @pytest.mark.asyncio
     async def test_markdown_detail_has_attribution_footer(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_GET_RECORD))
             params = PublicationDetailInput(identifier="oai:helveticat.ch:123456")
             result = await heritage_get_publication(params)
         assert "Datenquelle & Lizenz:" in result
@@ -935,9 +975,7 @@ class TestAttribution:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             # "Volksschule" matches the NB fixture so all three sections have items
             result = await heritage_cross_search(
                 CrossSearchInput(query="Volksschule", limit_per_source=3)
@@ -959,9 +997,7 @@ class TestAttribution:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             result = await heritage_cross_search(
                 CrossSearchInput(query="Hodler", response_format=ResponseFormat.JSON)
             )
@@ -973,6 +1009,7 @@ class TestAttribution:
 
 class _RecordingCtx:
     """Minimaler Context-Doppelgänger, der Progress-/Warning-Aufrufe mitschreibt."""
+
     def __init__(self):
         self.progress: list[tuple] = []
         self.warnings: list[str] = []
@@ -997,9 +1034,7 @@ class TestProgressReporting:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             params = CrossSearchInput(query="Volksschule", limit_per_source=3)
             await heritage_cross_search(params, ctx=ctx)
 
@@ -1056,8 +1091,10 @@ class TestFuzzyMatch:
 
     @pytest.mark.asyncio
     async def test_artists_fuzzy_retry(self):
-        empty = {"success": True, "result": {"resource_id": SIKART_RESOURCE_ID,
-                                             "total": 0, "records": []}}
+        empty = {
+            "success": True,
+            "result": {"resource_id": SIKART_RESOURCE_ID, "total": 0, "records": []},
+        }
 
         def handler(request):
             q = request.url.params.get("q", "")
@@ -1082,14 +1119,11 @@ class TestFuzzyMatch:
 
         def handler(request):
             q = request.url.params.get("q", "")
-            return httpx.Response(200, json=empty if q == "Hodler Bern"
-                                  else MOCK_SIKART_DATASTORE)
+            return httpx.Response(200, json=empty if q == "Hodler Bern" else MOCK_SIKART_DATASTORE)
 
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(side_effect=handler)
-            result = await heritage_search_artists(
-                ArtistSearchInput(query="Hodler", region="Bern")
-            )
+            result = await heritage_search_artists(ArtistSearchInput(query="Hodler", region="Bern"))
         assert "match_type: fuzzy" in result
 
     @pytest.mark.asyncio
@@ -1130,9 +1164,7 @@ class TestFuzzyMatch:
     @pytest.mark.asyncio
     async def test_helveticat_none_is_structured(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
-                return_value=httpx.Response(200, text=MOCK_OAI_RECORDS)
-            )
+            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
             params = HelvticatSearchInput(
                 query="zzz-kein-treffer", response_format=ResponseFormat.JSON
             )
@@ -1162,9 +1194,7 @@ class TestStructuredLogging:
     async def test_upstream_error_logged_at_warning(self):
         with capture_logs() as logs:
             with respx.mock:
-                respx.get(f"{CKAN_API}/datastore_search").mock(
-                    return_value=httpx.Response(503)
-                )
+                respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
                 # the error is raised (→ isError downstream), and logged on the way out
                 with pytest.raises(ToolError, match="Fehler"):
                     await heritage_search_artists(ArtistSearchInput(query="Hodler"))
@@ -1202,6 +1232,7 @@ class TestTracing:
 
     def test_disabled_by_default(self):
         import swiss_cultural_heritage_mcp.server as srv
+
         # No OTEL endpoint configured in the test env → tracing is off (no overhead)
         assert srv._otel_span is None
         assert srv._init_tracing() is False
@@ -1232,9 +1263,7 @@ class TestTracing:
                     return_value=httpx.Response(200, json=MOCK_SIKART_DATASTORE)
                 )
                 await heritage_search_artists(ArtistSearchInput(query="Hodler"))
-                respx.get(f"{CKAN_API}/datastore_search").mock(
-                    return_value=httpx.Response(503)
-                )
+                respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
                 # OBS-001: the error path raises; the span still closes with is_error=True
                 with pytest.raises(ToolError):
                     await heritage_search_artists(ArtistSearchInput(query="Boom"))
@@ -1242,13 +1271,12 @@ class TestTracing:
             srv._otel_span = None
 
         tool_spans = [
-            s for s in exporter.get_finished_spans()
-            if s.name == "mcp.tool.heritage_search_artists"
+            s for s in exporter.get_finished_spans() if s.name == "mcp.tool.heritage_search_artists"
         ]
         assert len(tool_spans) == 2
         assert tool_spans[0].attributes["mcp.tool.name"] == "heritage_search_artists"
         assert tool_spans[0].attributes["mcp.tool.is_error"] is False  # success
-        assert tool_spans[1].attributes["mcp.tool.is_error"] is True   # upstream 503
+        assert tool_spans[1].attributes["mcp.tool.is_error"] is True  # upstream 503
 
     @pytest.mark.asyncio
     async def test_init_tracing_instruments_httpx(self):
@@ -1305,9 +1333,7 @@ class TestErrorIsFlagged:
     @pytest.mark.asyncio
     async def test_upstream_failure_is_flagged_iserror(self):
         with respx.mock:
-            respx.get(f"{CKAN_API}/datastore_search").mock(
-                return_value=httpx.Response(503)
-            )
+            respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
             result = await self._call("heritage_search_artists", {"params": {"query": "Hodler"}})
         assert result.is_error is True
         assert "Fehler" in result.content[0].text  # German guidance preserved
@@ -1345,8 +1371,7 @@ class TestToolPins:
         from swiss_cultural_heritage_mcp._toolpins import compute_tool_pins
 
         pin_file = (
-            pathlib.Path(__file__).resolve().parents[1]
-            / "audits" / "tool-pins" / "current.json"
+            pathlib.Path(__file__).resolve().parents[1] / "audits" / "tool-pins" / "current.json"
         )
         committed = json.loads(pin_file.read_text())
         live = compute_tool_pins(mcp)
@@ -1431,63 +1456,100 @@ MOCK_MEMOBASE_SEARCH = {
     "hydra:totalItems": 4871,
     "hydra:member": [
         {
-            "@id": "mbr:snp-007-213072_03", "@type": "rico:Record",
-            "type": "Ton", "title": "Kneebus",
+            "@id": "mbr:snp-007-213072_03",
+            "@type": "rico:Record",
+            "type": "Ton",
+            "title": "Kneebus",
             "conditionsOfUse": ["Es gelten die üblichen Urheber- und anverwandten Schutzrechte"],
             "created": {"@type": "rico:SingleDate", "normalizedDateValue": "1885-01-01"},
-            "hasInstantiation": [{
-                "isOrWasRegulatedBy": [
-                    {"type": "usage", "name": "In Copyright (InC)",
-                     "sameAs": "http://rightsstatements.org/vocab/InC/1.0/"},
-                    {"type": "access", "name": "onsite"},
-                ],
-            }],
+            "hasInstantiation": [
+                {
+                    "isOrWasRegulatedBy": [
+                        {
+                            "type": "usage",
+                            "name": "In Copyright (InC)",
+                            "sameAs": "http://rightsstatements.org/vocab/InC/1.0/",
+                        },
+                        {"type": "access", "name": "onsite"},
+                    ],
+                }
+            ],
             "sameAs": ["https://www.fonoteca.ch/catalog/FILE911"],
         },
         {
-            "@id": "mbr:kek-001-KAE_F6_0_0120", "@type": "rico:Record",
-            "type": "Foto", "title": "Schule, Klassenporträt",
+            "@id": "mbr:kek-001-KAE_F6_0_0120",
+            "@type": "rico:Record",
+            "type": "Foto",
+            "title": "Schule, Klassenporträt",
             "created": {"normalizedDateValue": "1950-06-01"},
-            "hasInstantiation": [{"isOrWasRegulatedBy": [
-                {"type": "usage", "name": "Public Domain Mark",
-                 "sameAs": "http://creativecommons.org/publicdomain/mark/1.0/"},
-            ]}],
+            "hasInstantiation": [
+                {
+                    "isOrWasRegulatedBy": [
+                        {
+                            "type": "usage",
+                            "name": "Public Domain Mark",
+                            "sameAs": "http://creativecommons.org/publicdomain/mark/1.0/",
+                        },
+                    ]
+                }
+            ],
         },
     ],
 }
 
 MOCK_MEMOBASE_RECORD = {
-    "@id": "mbr:snp-007-213072_03", "@type": "rico:Record",
+    "@id": "mbr:snp-007-213072_03",
+    "@type": "rico:Record",
     "@context": "https://api.memobase.ch/context/record.json",
-    "type": "Ton", "title": "Kneebus",
+    "type": "Ton",
+    "title": "Kneebus",
     "abstract": ["<p>Einmalige Direktproduktion</p>"],
     "conditionsOfUse": ["Es gelten die üblichen Urheber- und anverwandten Schutzrechte"],
     "created": {"normalizedDateValue": "1885-01-01"},
-    "hasInstantiation": [{"isOrWasRegulatedBy": [
-        {"type": "usage", "name": "In Copyright (InC)",
-         "sameAs": "http://rightsstatements.org/vocab/InC/1.0/"},
-    ]}],
+    "hasInstantiation": [
+        {
+            "isOrWasRegulatedBy": [
+                {
+                    "type": "usage",
+                    "name": "In Copyright (InC)",
+                    "sameAs": "http://rightsstatements.org/vocab/InC/1.0/",
+                },
+            ]
+        }
+    ],
     "sameAs": ["https://www.fonoteca.ch/catalog/FILE911"],
 }
 
 # Dodis-Solr-Suche liefert ein Array gemischter Entitäten (Dokument/Person/Org).
 MOCK_DODIS_SEARCH = [
-    {"id": "44755", "type": "Document",
-     "name": "No 2395. Action internationale de secours", "description": "Regest…",
-     "startDate": "1899", "endDate": "1899",
-     "thumbnails": ["public/pdf/44000/thumb.jpg"]},
-    {"id": "P17363", "type": "Person", "name": "Chuard Ernest",
-     "startDate": "1857", "endDate": "1942"},
+    {
+        "id": "44755",
+        "type": "Document",
+        "name": "No 2395. Action internationale de secours",
+        "description": "Regest…",
+        "startDate": "1899",
+        "endDate": "1899",
+        "thumbnails": ["public/pdf/44000/thumb.jpg"],
+    },
+    {
+        "id": "P17363",
+        "type": "Person",
+        "name": "Chuard Ernest",
+        "startDate": "1857",
+        "endDate": "1942",
+    },
 ]
 
 # Dodis-Volldokument mit geschütztem Volltextfeld, das NIE ausgegeben werden darf.
 MOCK_DODIS_FULL = {
-    "id": "44755", "type": "Document",
+    "id": "44755",
+    "type": "Document",
     "doc_title": "No 2395. Action internationale de secours",
     "doc_type_names_de": ["Bundesratsprotokoll"],
-    "doc_date_s": "12.8.1889", "doc_langCode_s": "fr",
+    "doc_date_s": "12.8.1889",
+    "doc_langCode_s": "fr",
     "doc_comment": "BarNo: E 1004 1/280",
-    "doc_summary": "Kurzregest der Sitzung. " * 40,   # >600 Zeichen → wird gekürzt
+    "doc_summary": "Kurzregest der Sitzung. " * 40,  # >600 Zeichen → wird gekürzt
     "doc_prs_names_de": ["Ador Gustave", "Chuard Ernest"],
     "doc_geo_names_de": ["Genf", "Paris"],
     "doc_tag_d_names_de": ["Russland (Andere)"],
@@ -1525,9 +1587,13 @@ class TestSearchHeritage:
             respx.post(f"{DODIS_API}/solr/query").mock(
                 return_value=httpx.Response(200, json=MOCK_DODIS_SEARCH)
             )
-            result = await search_heritage(HeritageSearchInput(
-                query="Volksschule", collection="all", response_format=ResponseFormat.JSON,
-            ))
+            result = await search_heritage(
+                HeritageSearchInput(
+                    query="Volksschule",
+                    collection="all",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
         assert isinstance(result, ResultEnvelope)
         assert result.count == 4  # 2 memobase + 2 dodis
         assert {s.name for s in result.source} == {
@@ -1553,8 +1619,8 @@ class TestSearchHeritage:
             md = await search_heritage(HeritageSearchInput(query="Volksschule", collection="all"))
         assert "`[memobase]`" in md
         assert "`[dodis]`" in md
-        assert "rightsstatements.org" in md          # per-item digitisate right surfaced
-        assert "Datenquelle & Lizenz:" in md         # attribution footer
+        assert "rightsstatements.org" in md  # per-item digitisate right surfaced
+        assert "Datenquelle & Lizenz:" in md  # attribution footer
 
     @pytest.mark.asyncio
     async def test_search_single_collection_only_queries_one(self):
@@ -1565,9 +1631,13 @@ class TestSearchHeritage:
             dodis = respx.post(f"{DODIS_API}/solr/query").mock(
                 return_value=httpx.Response(200, json=MOCK_DODIS_SEARCH)
             )
-            result = await search_heritage(HeritageSearchInput(
-                query="Schule", collection="memobase", response_format=ResponseFormat.JSON,
-            ))
+            result = await search_heritage(
+                HeritageSearchInput(
+                    query="Schule",
+                    collection="memobase",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
         assert mb.called
         assert not dodis.called
         assert result.meta["per_source"] == {"memobase": 2}
@@ -1578,10 +1648,15 @@ class TestSearchHeritage:
             respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
                 return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
             )
-            result = await search_heritage(HeritageSearchInput(
-                query="Schule", collection="memobase",
-                date_from="1800", date_to="1899", response_format=ResponseFormat.JSON,
-            ))
+            result = await search_heritage(
+                HeritageSearchInput(
+                    query="Schule",
+                    collection="memobase",
+                    date_from="1800",
+                    date_to="1899",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
         # only the 1885 record passes; the 1950 record is filtered out
         assert result.count == 1
         assert result.results[0]["date"].startswith("1885")
@@ -1593,10 +1668,14 @@ class TestSearchHeritage:
             respx.get(url__startswith=f"{MEMOBASE_API}/").mock(
                 return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
             )
-            result = await search_heritage(HeritageSearchInput(
-                query="Schule", collection="memobase",
-                media_type="Foto", response_format=ResponseFormat.JSON,
-            ))
+            result = await search_heritage(
+                HeritageSearchInput(
+                    query="Schule",
+                    collection="memobase",
+                    media_type="Foto",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
         assert result.count == 1
         assert result.results[0]["type"] == "Foto"
 
@@ -1608,10 +1687,14 @@ class TestSearchHeritage:
                 return_value=httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
             )
             respx.post(f"{DODIS_API}/solr/query").mock(return_value=httpx.Response(503))
-            result = await search_heritage(HeritageSearchInput(
-                query="Schule", collection="all", response_format=ResponseFormat.JSON,
-            ))
-        assert result.count == 2                    # memobase survives
+            result = await search_heritage(
+                HeritageSearchInput(
+                    query="Schule",
+                    collection="all",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
+        assert result.count == 2  # memobase survives
         assert "dodis" in result.meta["errors"]
 
     @pytest.mark.asyncio
@@ -1631,15 +1714,19 @@ class TestSearchHeritage:
         def handler(request):
             calls["n"] += 1
             if calls["n"] == 1:
-                return httpx.Response(503)          # first attempt fails
+                return httpx.Response(503)  # first attempt fails
             return httpx.Response(200, json=MOCK_MEMOBASE_SEARCH)
 
         with respx.mock:
             respx.get(url__startswith=f"{MEMOBASE_API}/").mock(side_effect=handler)
-            result = await search_heritage(HeritageSearchInput(
-                query="Schule", collection="memobase", response_format=ResponseFormat.JSON,
-            ))
-        assert calls["n"] == 2                       # retried once, then succeeded
+            result = await search_heritage(
+                HeritageSearchInput(
+                    query="Schule",
+                    collection="memobase",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
+        assert calls["n"] == 2  # retried once, then succeeded
         assert result.count == 2
 
     @pytest.mark.asyncio
@@ -1660,13 +1747,16 @@ class TestGetHeritageItem:
             respx.get(f"{MEMOBASE_API}/record/snp-007-213072_03").mock(
                 return_value=httpx.Response(200, json=MOCK_MEMOBASE_RECORD)
             )
-            md = await get_heritage_item(HeritageItemInput(
-                collection="memobase", item_id="snp-007-213072_03",
-            ))
+            md = await get_heritage_item(
+                HeritageItemInput(
+                    collection="memobase",
+                    item_id="snp-007-213072_03",
+                )
+            )
         assert "Kneebus" in md
         assert "memobase.ch/de/document/snp-007-213072_03" in md
-        assert "rightsstatements.org" in md          # digitisate right shown
-        assert "fonoteca.ch" in md                   # sameAs original catalogue
+        assert "rightsstatements.org" in md  # digitisate right shown
+        assert "fonoteca.ch" in md  # sameAs original catalogue
 
     @pytest.mark.asyncio
     async def test_memobase_item_accepts_curie_id(self):
@@ -1674,10 +1764,13 @@ class TestGetHeritageItem:
             route = respx.get(f"{MEMOBASE_API}/record/snp-007-213072_03").mock(
                 return_value=httpx.Response(200, json=MOCK_MEMOBASE_RECORD)
             )
-            await get_heritage_item(HeritageItemInput(
-                collection="memobase", item_id="mbr:snp-007-213072_03",
-            ))
-        assert route.called                          # prefix stripped before request
+            await get_heritage_item(
+                HeritageItemInput(
+                    collection="memobase",
+                    item_id="mbr:snp-007-213072_03",
+                )
+            )
+        assert route.called  # prefix stripped before request
 
     @pytest.mark.asyncio
     async def test_dodis_item_never_leaks_fulltext_markdown(self):
@@ -1688,8 +1781,8 @@ class TestGetHeritageItem:
             md = await get_heritage_item(HeritageItemInput(collection="dodis", item_id="44755"))
         assert "Bundesratsprotokoll" in md
         assert "dodis.ch/44755" in md
-        assert "GESCHUETZTER VOLLTEXT" not in md     # protected fulltext excluded
-        assert "…" in md                             # regest truncated
+        assert "GESCHUETZTER VOLLTEXT" not in md  # protected fulltext excluded
+        assert "…" in md  # regest truncated
 
     @pytest.mark.asyncio
     async def test_dodis_item_json_strips_protected_field(self):
@@ -1697,9 +1790,13 @@ class TestGetHeritageItem:
             respx.get(f"{DODIS_API}/solr/full/44755").mock(
                 return_value=httpx.Response(200, json=MOCK_DODIS_FULL)
             )
-            result = await get_heritage_item(HeritageItemInput(
-                collection="dodis", item_id="44755", response_format=ResponseFormat.JSON,
-            ))
+            result = await get_heritage_item(
+                HeritageItemInput(
+                    collection="dodis",
+                    item_id="44755",
+                    response_format=ResponseFormat.JSON,
+                )
+            )
         assert isinstance(result, ResultEnvelope)
         assert "doc_att_file_content" not in result.results[0]
         assert result.results[0]["doc_title"]
@@ -1707,9 +1804,7 @@ class TestGetHeritageItem:
     @pytest.mark.asyncio
     async def test_item_not_found(self):
         with respx.mock:
-            respx.get(f"{MEMOBASE_API}/record/nope").mock(
-                return_value=httpx.Response(200, json={})
-            )
+            respx.get(f"{MEMOBASE_API}/record/nope").mock(return_value=httpx.Response(200, json={}))
             md = await get_heritage_item(HeritageItemInput(collection="memobase", item_id="nope"))
         assert "Kein Memobase-Record" in md
 
@@ -1750,6 +1845,7 @@ class TestHeritageEgress:
 
 # ─────────────────────────── Live Tests (skipped in CI) ────────────────────────
 
+
 @pytest.mark.live
 class TestLiveSIKISEA:
     @pytest.mark.asyncio
@@ -1789,16 +1885,24 @@ class TestLiveHeritageInstitutions:
 
     @pytest.mark.asyncio
     async def test_live_search_memobase(self):
-        result = await search_heritage(HeritageSearchInput(
-            query="Volksschule", collection="memobase", limit=3,
-        ))
+        result = await search_heritage(
+            HeritageSearchInput(
+                query="Volksschule",
+                collection="memobase",
+                limit=3,
+            )
+        )
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
     async def test_live_search_dodis(self):
-        result = await search_heritage(HeritageSearchInput(
-            query="Volksschule", collection="dodis", limit=3,
-        ))
+        result = await search_heritage(
+            HeritageSearchInput(
+                query="Volksschule",
+                collection="dodis",
+                limit=3,
+            )
+        )
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
