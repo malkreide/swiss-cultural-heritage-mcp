@@ -38,6 +38,8 @@ from . import __version__
 # hinaus und der Betreiber der Datenquelle sieht bloss eine Bibliothek.
 # Die Version stammt aus den Paket-Metadaten und kann nicht driften.
 USER_AGENT = f"swiss-cultural-heritage-mcp/{__version__} (+https://github.com/malkreide/swiss-cultural-heritage-mcp)"
+
+
 # ─────────────────────────── Konfiguration (ARCH-004) ──────────────────────────
 # Einziger Konfig-Ladepunkt: alle Endpunkte, Timeouts, die Egress-Allow-List sowie
 # Host/Port/Transport/Log-Level kommen aus diesem Settings-Objekt (statt aus frei
@@ -45,51 +47,54 @@ USER_AGENT = f"swiss-cultural-heritage-mcp/{__version__} (+https://github.com/ma
 # ``MCP_`` überschreibbar (z. B. ``MCP_HTTP_TIMEOUT=10``), ohne Code zu ändern.
 class Settings(BaseSettings):
     """Zentrale, env-überschreibbare Server-Konfiguration (Präfix ``MCP_``)."""
+
     model_config = SettingsConfigDict(env_prefix="MCP_", extra="ignore")
 
     # Upstream-Endpunkte / Ressourcen
-    ckan_api:           str = "https://ckan.opendata.swiss/api/3/action"
-    snm_org:            str = "schweizerisches-nationalmuseum"
+    ckan_api: str = "https://ckan.opendata.swiss/api/3/action"
+    snm_org: str = "schweizerisches-nationalmuseum"
     sikart_resource_id: str = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
-    nb_oai_pmh:         str = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
+    nb_oai_pmh: str = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
     # Gedächtnisinstitutionen — föderierte Fassade (Live-Probe 2026-07-19):
     #   Memobase = Linked-Open-Data-API (JSON-LD/Hydra, RiC-O), No-Auth.
     #   Dodis    = JSON-REST (Solr-Backend der neuen Angular-App), No-Auth.
-    memobase_api:       str = "https://api.memobase.ch"
-    dodis_api:          str = "https://beta.dodis.ch/api"
+    memobase_api: str = "https://api.memobase.ch"
+    dodis_api: str = "https://beta.dodis.ch/api"
 
     # HTTP-Verhalten
-    http_timeout:  float = 30.0
+    http_timeout: float = 30.0
     default_limit: int = 20
-    max_limit:     int = 100
+    max_limit: int = 100
     max_redirects: int = 5
 
     # Retry mit exponentiellem Backoff (Resilienz-Leitplanke): 5xx/429/Netzwerk-
     # fehler werden bis zu ``retry_attempts``-mal wiederholt; die Wartezeit ist
     # ``retry_backoff_base * 2**(versuch-1)`` (Default 2s/4s/8s). 4xx (ausser 429)
     # werden nie wiederholt.
-    retry_attempts:     int = 4
+    retry_attempts: int = 4
     retry_backoff_base: float = 2.0
 
     # Egress-Allow-List (SEC-021)
-    allowed_hosts: frozenset[str] = frozenset({
-        "ckan.opendata.swiss",
-        "helveticat.nb.admin.ch",
-        "api.memobase.ch",
-        "beta.dodis.ch",
-    })
+    allowed_hosts: frozenset[str] = frozenset(
+        {
+            "ckan.opendata.swiss",
+            "helveticat.nb.admin.ch",
+            "api.memobase.ch",
+            "beta.dodis.ch",
+        }
+    )
 
     # Transport / Netzwerk
-    transport:    Literal["stdio", "http"] = "stdio"
-    host:         str = "127.0.0.1"   # SEC-016: loopback-Default; Container setzt 0.0.0.0
-    port:         int = 8000
-    cors_origins: str = ""            # komma-separiert; leer = keine Cross-Origin-Freigabe
+    transport: Literal["stdio", "http"] = "stdio"
+    host: str = "127.0.0.1"  # SEC-016: loopback-Default; Container setzt 0.0.0.0
+    port: int = 8000
+    cors_origins: str = ""  # komma-separiert; leer = keine Cross-Origin-Freigabe
     # SEC-005, eingehend: Hostnamen, unter denen dieser Server erreichbar ist —
     # nötig für die Host/Origin-Prüfung des Transports, sobald nicht auf Loopback
     # gebunden wird. Bewusst NICHT `allowed_hosts`: das oben ist die
     # Egress-Allow-List (SEC-021) und meint die Gegenrichtung.
-    inbound_allowed_hosts: str = ""   # komma-separiert, via MCP_INBOUND_ALLOWED_HOSTS
-    log_level:    str = "INFO"
+    inbound_allowed_hosts: str = ""  # komma-separiert, via MCP_INBOUND_ALLOWED_HOSTS
+    log_level: str = "INFO"
 
 
 settings = Settings()
@@ -160,18 +165,22 @@ def _init_tracing(*, exporter=None) -> bool:
 
     try:
         from importlib.metadata import version as _pkg_version
+
         svc_version = _pkg_version("swiss-cultural-heritage-mcp")
     except Exception:
         svc_version = "0.0.0+local"
 
-    resource = Resource.create({
-        "service.name":           "swiss-cultural-heritage-mcp",
-        "service.version":        svc_version,
-        "deployment.environment": os.getenv("DEPLOYMENT_ENV", "production"),
-    })
+    resource = Resource.create(
+        {
+            "service.name": "swiss-cultural-heritage-mcp",
+            "service.version": svc_version,
+            "deployment.environment": os.getenv("DEPLOYMENT_ENV", "production"),
+        }
+    )
     provider = TracerProvider(resource=resource)
     if exporter is None:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
         provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     else:
         provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -204,16 +213,16 @@ _init_tracing()
 # ─────────────────────────── Konstanten (aus Settings abgeleitet) ──────────────
 # Modulweite Aliase für die Konfigwerte — Quelle der Wahrheit ist ``settings``
 # (ARCH-004); diese Namen bleiben für Tools, Tests und Importeure stabil.
-CKAN_API           = settings.ckan_api
-SNM_ORG            = settings.snm_org
+CKAN_API = settings.ckan_api
+SNM_ORG = settings.snm_org
 SIKART_RESOURCE_ID = settings.sikart_resource_id
-NB_OAI_PMH         = settings.nb_oai_pmh
-MEMOBASE_API       = settings.memobase_api
-DODIS_API          = settings.dodis_api
+NB_OAI_PMH = settings.nb_oai_pmh
+MEMOBASE_API = settings.memobase_api
+DODIS_API = settings.dodis_api
 
-HTTP_TIMEOUT  = settings.http_timeout
+HTTP_TIMEOUT = settings.http_timeout
 DEFAULT_LIMIT = settings.default_limit
-MAX_LIMIT     = settings.max_limit
+MAX_LIMIT = settings.max_limit
 MAX_REDIRECTS = settings.max_redirects
 
 # Egress-Allow-List (SEC-021): nur diese Hosts dürfen kontaktiert werden.
@@ -221,9 +230,9 @@ ALLOWED_HOSTS: Final[frozenset[str]] = settings.allowed_hosts
 
 # OAI-PMH XML-Namespaces
 OAI_NS = {
-    "oai":    "http://www.openarchives.org/OAI/2.0/",
+    "oai": "http://www.openarchives.org/OAI/2.0/",
     "oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
-    "dc":     "http://purl.org/dc/elements/1.1/",
+    "dc": "http://purl.org/dc/elements/1.1/",
 }
 
 
@@ -234,7 +243,9 @@ _http_client: httpx.AsyncClient | None = None
 
 
 def _new_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=False, headers={"User-Agent": USER_AGENT})
+    return httpx.AsyncClient(
+        timeout=HTTP_TIMEOUT, follow_redirects=False, headers={"User-Agent": USER_AGENT}
+    )
 
 
 def _get_http_client() -> httpx.AsyncClient:
@@ -297,8 +308,10 @@ def mask_unexpected_errors(fn: F) -> F:
         bound = log.bind(tool=name)
         # contextvars sorgen dafür, dass auch tief im Tool-Body emittierte Logs
         # (z. B. aus _handle_error) Tool-Name + Request-ID mittragen.
-        with structlog.contextvars.bound_contextvars(**_request_log_context(name)), \
-                _tool_span(name) as span:
+        with (
+            structlog.contextvars.bound_contextvars(**_request_log_context(name)),
+            _tool_span(name) as span,
+        ):
             bound.info("tool.call")
             try:
                 result = await fn(*args, **kwargs)
@@ -325,8 +338,9 @@ def mask_unexpected_errors(fn: F) -> F:
 # ─────────────────────────── Enum ──────────────────────────────────────────────
 class ResponseFormat(StrEnum):
     """Ausgabeformat für Tool-Antworten."""
+
     MARKDOWN = "markdown"
-    JSON     = "json"
+    JSON = "json"
 
 
 # ─────────────────────────── Response-Envelope (SDK-002) ───────────────────────
@@ -337,17 +351,19 @@ class ResponseFormat(StrEnum):
 # Rückgabetyp ist deshalb ``ResultEnvelope | str``.
 class SourceInfo(BaseModel):
     """Provenienz und Lizenz einer Datenquelle."""
-    name:    str
+
+    name: str
     license: str
-    url:     str | None = None
+    url: str | None = None
 
 
 class ResultEnvelope(BaseModel):
     """Einheitlicher Response-Envelope für Such-/Listen-Tools."""
-    source:   SourceInfo | list[SourceInfo] = Field(description="Quelle(n) inkl. Lizenz")
-    count:    int = Field(description="Anzahl zurückgegebener Einträge")
-    total:    int | None = Field(default=None, description="Gesamtzahl upstream verfügbar")
-    offset:   int | None = Field(default=None, description="Paginierungs-Offset")
+
+    source: SourceInfo | list[SourceInfo] = Field(description="Quelle(n) inkl. Lizenz")
+    count: int = Field(description="Anzahl zurückgegebener Einträge")
+    total: int | None = Field(default=None, description="Gesamtzahl upstream verfügbar")
+    offset: int | None = Field(default=None, description="Paginierungs-Offset")
     has_more: bool = Field(default=False, description="Weitere Ergebnisse verfügbar")
     match_type: Literal["exact", "fuzzy", "none"] = Field(
         default="exact",
@@ -356,8 +372,8 @@ class ResultEnvelope(BaseModel):
             "erweiterte Suche nach 0 exakten Treffern, 'none' = keine Treffer"
         ),
     )
-    results:  list[dict] = Field(default_factory=list, description="Datensätze (quellnah)")
-    meta:     dict | None = Field(default=None, description="Tool-spezifische Zusatzfelder")
+    results: list[dict] = Field(default_factory=list, description="Datensätze (quellnah)")
+    meta: dict | None = Field(default=None, description="Tool-spezifische Zusatzfelder")
 
 
 # Quellen-/Lizenz-Konstanten (Provenienz + Lizenz pro Datensatz, CH-004).
@@ -370,11 +386,13 @@ SOURCE_SIKART: Final = SourceInfo(
 )
 SOURCE_SNM: Final = SourceInfo(
     name="Schweizerisches Nationalmuseum (opendata.swiss)",
-    license="CC BY / CC0 (pro Datensatz)", url="https://www.nationalmuseum.ch",
+    license="CC BY / CC0 (pro Datensatz)",
+    url="https://www.nationalmuseum.ch",
 )
 SOURCE_NB: Final = SourceInfo(
     name="Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
-    license="offen / pro Datensatz", url="https://www.nb.admin.ch",
+    license="offen / pro Datensatz",
+    url="https://www.nb.admin.ch",
 )
 # Gedächtnisinstitutionen (föderierte Fassade). Für diese Quellen ist die
 # Divergenz zwischen Metadaten- und Digitalisat-Lizenz der kritische Punkt:
@@ -402,8 +420,7 @@ def _attribution(source: SourceInfo | list[SourceInfo]) -> str:
     """
     sources = source if isinstance(source, list) else [source]
     rows = "\n".join(
-        f"- {s.name} — Lizenz: {s.license}" + (f" · <{s.url}>" if s.url else "")
-        for s in sources
+        f"- {s.name} — Lizenz: {s.license}" + (f" · <{s.url}>" if s.url else "") for s in sources
     )
     return f"\n\n---\n**Datenquelle & Lizenz:**\n{rows}\n"
 
@@ -475,7 +492,7 @@ async def _http_get(
     """
     _assert_allowed(url)
     client = _get_http_client()
-    resp   = await client.get(url, params=params, headers=headers)
+    resp = await client.get(url, params=params, headers=headers)
     for _ in range(MAX_REDIRECTS):
         if not resp.is_redirect:
             break
@@ -589,12 +606,12 @@ def _parse_oai_records(xml_text: str) -> list[dict]:
         if header is not None and header.get("status") == "deleted":
             continue
         identifier_el = record.find("oai:header/oai:identifier", OAI_NS)
-        datestamp_el  = record.find("oai:header/oai:datestamp",  OAI_NS)
-        metadata_el   = record.find("oai:metadata/oai_dc:dc",    OAI_NS)
+        datestamp_el = record.find("oai:header/oai:datestamp", OAI_NS)
+        metadata_el = record.find("oai:metadata/oai_dc:dc", OAI_NS)
 
         rec: dict = {
             "oai_identifier": identifier_el.text if identifier_el is not None else "",
-            "datestamp":      datestamp_el.text  if datestamp_el  is not None else "",
+            "datestamp": datestamp_el.text if datestamp_el is not None else "",
         }
 
         if metadata_el is not None:
@@ -618,7 +635,7 @@ def _parse_oai_records(xml_text: str) -> list[dict]:
 
 def _extract_resumption_token(xml_text: str) -> str | None:
     """Extrahiert OAI-PMH Resumption Token für Paginierung."""
-    root    = ET.fromstring(xml_text)
+    root = ET.fromstring(xml_text)
     token_el = root.find(".//oai:resumptionToken", OAI_NS)
     if token_el is not None and token_el.text and token_el.text.strip():
         return token_el.text.strip()
@@ -628,7 +645,9 @@ def _extract_resumption_token(xml_text: str) -> str | None:
 def _normalize_ckan_title(title) -> str:
     """Normalisiert CKAN-Titel (dict mit Sprachschlüsseln oder String)."""
     if isinstance(title, dict):
-        return title.get("de") or title.get("fr") or title.get("en") or next(iter(title.values()), "—")
+        return (
+            title.get("de") or title.get("fr") or title.get("en") or next(iter(title.values()), "—")
+        )
     return str(title) if title else "—"
 
 
@@ -642,9 +661,9 @@ def _normalize_ckan_title(title) -> str:
 
 def _artist_full_name(rec: dict) -> str:
     """Setzt Vor- und Nachname eines SIKART-Records zusammen."""
-    name    = (rec.get("NAME") or "").strip()
+    name = (rec.get("NAME") or "").strip()
     vorname = (rec.get("VORNAME") or "").strip()
-    full    = f"{vorname} {name}".strip()
+    full = f"{vorname} {name}".strip()
     return full or (rec.get("NAMIDENT") or "").strip() or "(Unbekannt)"
 
 
@@ -662,17 +681,22 @@ def _artist_lifespan(rec: dict) -> str:
 
 class ArtistSearchInput(BaseModel):
     """Input für die SIKART-Künstler·innen-Suche."""
+
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:  str | None = Field(
-        default=None, max_length=200,
-        description="Name, Beruf oder Stichwort (z. B. 'Hodler', 'Bildhauer', 'Taeuber-Arp')"
+    query: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Name, Beruf oder Stichwort (z. B. 'Hodler', 'Bildhauer', 'Taeuber-Arp')",
     )
     region: str | None = Field(
-        default=None, max_length=100,
-        description="Geburts-/Sterbeort oder Kanton (z. B. 'Basel', 'Genf', 'BE', 'Zürich')"
+        default=None,
+        max_length=100,
+        description="Geburts-/Sterbeort oder Kanton (z. B. 'Basel', 'Genf', 'BE', 'Zürich')",
     )
-    limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max. Ergebnisse (1–100)")
+    limit: int = Field(
+        default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max. Ergebnisse (1–100)"
+    )
     offset: int = Field(default=0, ge=0, description="Offset für Paginierung")
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -688,10 +712,10 @@ class ArtistSearchInput(BaseModel):
     name="heritage_search_artists",
     annotations={
         "title": "Schweizer Künstler·innen suchen (SIKART)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -718,11 +742,12 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
         str: Liste gefundener Künstler·innen mit Name, Lebensdaten, Kanton, Kurzbiografie.
     """
     try:
+
         async def _query(q: str | None) -> tuple[list[dict], int]:
             api_params: dict = {
                 "resource_id": SIKART_RESOURCE_ID,
-                "limit":       params.limit,
-                "offset":      params.offset,
+                "limit": params.limit,
+                "offset": params.offset,
             }
             if q:
                 api_params["q"] = q
@@ -731,7 +756,7 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
             data = resp.json()
             if not data.get("success"):
                 raise ValueError("CKAN-DataStore-Anfrage fehlgeschlagen.")
-            res  = data.get("result", {})
+            res = data.get("result", {})
             recs = res.get("records", [])
             return recs, res.get("total", len(recs))
 
@@ -748,7 +773,8 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
 
         if not records:
             return _no_match(
-                SOURCE_SIKART, params.response_format,
+                SOURCE_SIKART,
+                params.response_format,
                 "Keine Künstler·innen gefunden für die angegebenen Suchkriterien.",
             )
 
@@ -807,11 +833,13 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
 
 class ArtistDetailInput(BaseModel):
     """Input für SIKART Künstler·in-Detailabfrage."""
+
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     artist_id: str = Field(
-        ..., min_length=1,
-        description="SIKART-ID (HAUPTNR aus heritage_search_artists, z. B. '4023584')"
+        ...,
+        min_length=1,
+        description="SIKART-ID (HAUPTNR aus heritage_search_artists, z. B. '4023584')",
     )
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -820,10 +848,10 @@ class ArtistDetailInput(BaseModel):
     name="heritage_get_artist",
     annotations={
         "title": "Künstler·in-Details abrufen (SIKART)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -843,8 +871,8 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
             f"{CKAN_API}/datastore_search",
             params={
                 "resource_id": SIKART_RESOURCE_ID,
-                "filters":     json.dumps({"HAUPTNR": params.artist_id}),
-                "limit":       1,
+                "filters": json.dumps({"HAUPTNR": params.artist_id}),
+                "limit": 1,
             },
         )
         resp.raise_for_status()
@@ -867,22 +895,22 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
             f"**SIKART-ID:** `{params.artist_id}`\n",
         ]
         field_map = [
-            ("LEBENSDATEN",    "Lebensdaten"),
-            ("GEBURTSDATUM",   "Geburtsdatum"),
-            ("GEBURTSORT",     "Geburtsort"),
-            ("GEBURTSKANTON",  "Geburtskanton"),
-            ("GEBURTSLAND",    "Geburtsland"),
-            ("STERBEDATUM",    "Sterbedatum"),
-            ("STERBEORT",      "Sterbeort"),
-            ("STERBEKANTON",   "Sterbekanton"),
-            ("STERBELAND",     "Sterbeland"),
-            ("TYPUS",          "Typus"),
-            ("VITAZEILE",      "Kurzbiografie"),
+            ("LEBENSDATEN", "Lebensdaten"),
+            ("GEBURTSDATUM", "Geburtsdatum"),
+            ("GEBURTSORT", "Geburtsort"),
+            ("GEBURTSKANTON", "Geburtskanton"),
+            ("GEBURTSLAND", "Geburtsland"),
+            ("STERBEDATUM", "Sterbedatum"),
+            ("STERBEORT", "Sterbeort"),
+            ("STERBEKANTON", "Sterbekanton"),
+            ("STERBELAND", "Sterbeland"),
+            ("TYPUS", "Typus"),
+            ("VITAZEILE", "Kurzbiografie"),
             ("NUTZUNGSLIZENZ", "Lizenz"),
-            ("GND",            "GND"),
-            ("HLS_ID",         "HLS-ID"),
-            ("SIKART_LINK",    "SIKART-Eintrag"),
-            ("WEBSITE",        "Website"),
+            ("GND", "GND"),
+            ("HLS_ID", "HLS-ID"),
+            ("SIKART_LINK", "SIKART-Eintrag"),
+            ("WEBSITE", "Website"),
         ]
         for field, label in field_map:
             val = artist.get(field)
@@ -899,19 +927,23 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
 #  MODUL 2 — NATIONALMUSEUM (SNM) via opendata.swiss CKAN API
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class MuseumSearchInput(BaseModel):
     """Input für SNM-Datensatzsuche."""
+
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:      str | None = Field(
-        default=None, max_length=200,
-        description="Suchbegriff (z. B. 'Münzen', 'Siegel', 'Mittelalter', 'Waffen', 'Textil')"
+    query: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Suchbegriff (z. B. 'Münzen', 'Siegel', 'Mittelalter', 'Waffen', 'Textil')",
     )
     collection: str | None = Field(
-        default=None, max_length=100,
-        description="Sammlungsfilter (z. B. 'numismatik', 'siegelsammlung', 'spezialsammlungen')"
+        default=None,
+        max_length=100,
+        description="Sammlungsfilter (z. B. 'numismatik', 'siegelsammlung', 'spezialsammlungen')",
     )
-    limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
+    limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
     offset: int = Field(default=0, ge=0)
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -920,10 +952,10 @@ class MuseumSearchInput(BaseModel):
     name="heritage_search_museum_datasets",
     annotations={
         "title": "SNM-Datensätze suchen (opendata.swiss)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -948,12 +980,12 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
     """
     try:
         org_filter = f"organization:{SNM_ORG}"
-        extra      = f" {params.collection}" if params.collection else ""
+        extra = f" {params.collection}" if params.collection else ""
 
         async def _query(query: str | None, fuzzy: bool = False) -> tuple[list[dict], int]:
             if query and fuzzy:
                 # Gelockerte Solr-Suche: OR-verknüpfte Präfix-Wildcards je Wort.
-                words  = [w for w in query.split() if w]
+                words = [w for w in query.split() if w]
                 q_part = "(" + " OR ".join(f"{w}*" for w in words) + ") " if words else ""
             elif query:
                 q_part = f"{query} "
@@ -967,7 +999,9 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
             resp.raise_for_status()
             data = resp.json()
             if not data.get("success"):
-                raise ValueError(f"CKAN-API-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}")
+                raise ValueError(
+                    f"CKAN-API-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}"
+                )
             res = data.get("result", {})
             return res.get("results", []), res.get("count", 0)
 
@@ -982,21 +1016,24 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
 
         if not packages:
             return _no_match(
-                SOURCE_SNM, params.response_format,
+                SOURCE_SNM,
+                params.response_format,
                 "Keine SNM-Datensätze gefunden für die angegebenen Kriterien.",
             )
 
         if params.response_format == ResponseFormat.JSON:
             simplified = [
                 {
-                    "name":  pkg.get("name", ""),
+                    "name": pkg.get("name", ""),
                     "title": _normalize_ckan_title(pkg.get("title")),
-                    "description": _normalize_ckan_title(pkg.get("notes")) if pkg.get("notes") else "",
+                    "description": _normalize_ckan_title(pkg.get("notes"))
+                    if pkg.get("notes")
+                    else "",
                     "resources": [
                         {
-                            "name":   r.get("name") or r.get("title") or "Unbenannt",
+                            "name": r.get("name") or r.get("title") or "Unbenannt",
                             "format": r.get("format") or r.get("media_type", ""),
-                            "url":    r.get("download_url") or r.get("url") or "",
+                            "url": r.get("download_url") or r.get("url") or "",
                         }
                         for r in pkg.get("resources", [])
                     ],
@@ -1022,10 +1059,10 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
         lines.append("---\n")
 
         for pkg in packages:
-            title    = _normalize_ckan_title(pkg.get("title"))
+            title = _normalize_ckan_title(pkg.get("title"))
             pkg_name = pkg.get("name", "")
-            notes    = pkg.get("notes")
-            desc     = _normalize_ckan_title(notes) if notes else ""
+            notes = pkg.get("notes")
+            desc = _normalize_ckan_title(notes) if notes else ""
             if desc and len(desc) > 200:
                 desc = desc[:200] + "…"
             resources = pkg.get("resources", [])
@@ -1037,9 +1074,9 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
             if resources:
                 lines.append(f"**{len(resources)} Ressource(n):**")
                 for r in resources[:4]:
-                    r_name   = r.get("name") or r.get("title") or "Unbenannt"
+                    r_name = r.get("name") or r.get("title") or "Unbenannt"
                     r_format = r.get("format") or r.get("media_type", "?")
-                    r_url    = r.get("download_url") or r.get("url") or ""
+                    r_url = r.get("download_url") or r.get("url") or ""
                     lines.append(f"  - [{r_name}]({r_url}) `{r_format}`")
             lines.append("")
 
@@ -1054,14 +1091,16 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
 
 class CollectionBrowseInput(BaseModel):
     """Input für SNM-Sammlungsobjekt-Suche via CKAN DataStore."""
+
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
     resource_id: str = Field(
-        ..., min_length=1,
-        description="CKAN Resource-ID (aus heritage_search_museum_datasets, z. B. 'abc123-...')"
+        ...,
+        min_length=1,
+        description="CKAN Resource-ID (aus heritage_search_museum_datasets, z. B. 'abc123-...')",
     )
-    query:  str | None = Field(default=None, max_length=200, description="Suchbegriff im Datensatz")
-    limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
+    query: str | None = Field(default=None, max_length=200, description="Suchbegriff im Datensatz")
+    limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
     offset: int = Field(default=0, ge=0)
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -1070,10 +1109,10 @@ class CollectionBrowseInput(BaseModel):
     name="heritage_browse_collection",
     annotations={
         "title": "SNM-Sammlungsobjekte durchsuchen (CKAN DataStore)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -1095,8 +1134,8 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
     try:
         api_params: dict = {
             "resource_id": params.resource_id,
-            "limit":       params.limit,
-            "offset":      params.offset,
+            "limit": params.limit,
+            "offset": params.offset,
         }
         if params.query:
             api_params["q"] = params.query
@@ -1110,10 +1149,10 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
                 ValueError(f"DataStore-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}")
             )
 
-        result  = data.get("result", {})
+        result = data.get("result", {})
         records = result.get("records", [])
-        total   = result.get("total", 0)
-        fields  = [f["id"] for f in result.get("fields", []) if f["id"] != "_id"]
+        total = result.get("total", 0)
+        fields = [f["id"] for f in result.get("fields", []) if f["id"] != "_id"]
 
         if not records:
             return (
@@ -1134,7 +1173,11 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
 
         # Titelfeld ermitteln (erste sinnvolle Spalte)
         title_field = next(
-            (f for f in ["Titel", "Title", "Bezeichnung", "Name", "Objekt", "Beschriftung"] if f in fields),
+            (
+                f
+                for f in ["Titel", "Title", "Bezeichnung", "Name", "Objekt", "Beschriftung"]
+                if f in fields
+            ),
             fields[0] if fields else None,
         )
 
@@ -1148,7 +1191,11 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
         display_fields = [f for f in fields if f != title_field][:7]
 
         for rec in records:
-            title = rec.get(title_field, f"Objekt #{rec.get('_id', '?')}") if title_field else f"#{rec.get('_id', '?')}"
+            title = (
+                rec.get(title_field, f"Objekt #{rec.get('_id', '?')}")
+                if title_field
+                else f"#{rec.get('_id', '?')}"
+            )
             lines.append(f"## {title}")
             for f in display_fields:
                 if rec.get(f):
@@ -1168,23 +1215,27 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
 #  MODUL 3 — NATIONALBIBLIOTHEK (NB) via OAI-PMH
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class HelvticatSearchInput(BaseModel):
     """Input für die OAI-PMH-Suche in der Nationalbibliothek."""
+
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
-    query:      str | None = Field(
-        default=None, max_length=300,
+    query: str | None = Field(
+        default=None,
+        max_length=300,
         description=(
             "Suchbegriff für clientseitige Filterung (Titel, Autor, Schlagwort) — "
             "z. B. 'Volksschule Zürich', 'Gottfried Keller', 'Bildungspolitik'. "
             "Hinweis: OAI-PMH unterstützt keine serverseitige Volltextsuche."
-        )
+        ),
     )
-    set_spec:   str | None = Field(
-        default=None, max_length=100,
-        description="OAI-Set-Bezeichner (aus heritage_list_nb_collections) — z. B. 'swissbook'"
+    set_spec: str | None = Field(
+        default=None,
+        max_length=100,
+        description="OAI-Set-Bezeichner (aus heritage_list_nb_collections) — z. B. 'swissbook'",
     )
-    from_date:  str | None = Field(
+    from_date: str | None = Field(
         default=None,
         description="Publikationen ab diesem Datum (YYYY oder YYYY-MM-DD)",
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
@@ -1202,10 +1253,10 @@ class HelvticatSearchInput(BaseModel):
     name="heritage_search_helveticat",
     annotations={
         "title": "Helveticat durchsuchen (Nationalbibliothek OAI-PMH)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -1236,27 +1287,32 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
         resp = await _http_get(NB_OAI_PMH, params=oai_params)
         resp.raise_for_status()
 
-        records    = _parse_oai_records(resp.text)
+        records = _parse_oai_records(resp.text)
         resumption = _extract_resumption_token(resp.text)
 
         # Clientseitige Filterung nach query
         if params.query:
             q_lower = params.query.lower()
+
             def _matches(r: dict) -> bool:
-                blob = " ".join([
-                    str(r.get("title", "")),
-                    str(r.get("creator", "")),
-                    str(r.get("subject", "")),
-                    str(r.get("description", "")),
-                ]).lower()
+                blob = " ".join(
+                    [
+                        str(r.get("title", "")),
+                        str(r.get("creator", "")),
+                        str(r.get("subject", "")),
+                        str(r.get("description", "")),
+                    ]
+                ).lower()
                 return q_lower in blob
+
             records = [r for r in records if _matches(r)]
 
-        records = records[:params.limit]
+        records = records[: params.limit]
 
         if not records:
             return _no_match(
-                SOURCE_NB, params.response_format,
+                SOURCE_NB,
+                params.response_format,
                 "Keine Publikationen gefunden für die angegebenen Kriterien.\n\n"
                 "**Tipp:** OAI-PMH unterstützt keine serverseitige Volltextsuche, daher "
                 "gibt es hier keine unscharfe Suche (`match_type` ist immer `exact`). "
@@ -1275,7 +1331,9 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
         if params.query:
             lines.append(f"**Suche:** *{params.query}*")
         if params.from_date or params.until_date:
-            lines.append(f"**Zeitraum:** {params.from_date or '—'} bis {params.until_date or 'heute'}")
+            lines.append(
+                f"**Zeitraum:** {params.from_date or '—'} bis {params.until_date or 'heute'}"
+            )
         if params.set_spec:
             lines.append(f"**Sammlung:** `{params.set_spec}`")
         lines.append(f"\nGefunden: {len(records)} Einträge\n")
@@ -1288,7 +1346,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
             creator = rec.get("creator", "")
             if isinstance(creator, list):
                 creator = " / ".join(creator)
-            date        = rec.get("date", "")
+            date = rec.get("date", "")
             description = rec.get("description", "")
             if isinstance(description, list):
                 description = description[0]
@@ -1296,7 +1354,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
             if isinstance(subject, list):
                 subject = " | ".join(subject[:4])
             identifier = rec.get("oai_identifier", "") or rec.get("identifier", "")
-            language   = rec.get("language", "")
+            language = rec.get("language", "")
 
             lines.append(f"## {title}")
             if creator:
@@ -1308,7 +1366,11 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
             if subject:
                 lines.append(f"**Schlagwörter:** {subject}")
             if description:
-                short = str(description)[:280] + "…" if len(str(description)) > 280 else str(description)
+                short = (
+                    str(description)[:280] + "…"
+                    if len(str(description)) > 280
+                    else str(description)
+                )
                 lines.append(f"*{short}*")
             if identifier:
                 lines.append(f"**OAI-ID:** `{identifier}`")
@@ -1325,6 +1387,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
 
 class NbCollectionsInput(BaseModel):
     """Input für die OAI-PMH ListSets-Abfrage der Nationalbibliothek."""
+
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
@@ -1334,10 +1397,10 @@ class NbCollectionsInput(BaseModel):
     name="heritage_list_nb_collections",
     annotations={
         "title": "NB-Sammlungen auflisten (OAI-PMH ListSets)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -1363,10 +1426,12 @@ async def heritage_list_nb_collections(
         for s in root.findall(".//oai:set", OAI_NS):
             spec_el = s.find("oai:setSpec", OAI_NS)
             name_el = s.find("oai:setName", OAI_NS)
-            sets.append({
-                "spec": spec_el.text if spec_el is not None else "",
-                "name": name_el.text if name_el is not None else "",
-            })
+            sets.append(
+                {
+                    "spec": spec_el.text if spec_el is not None else "",
+                    "name": name_el.text if name_el is not None else "",
+                }
+            )
 
         if params.response_format == ResponseFormat.JSON:
             return ResultEnvelope(source=SOURCE_NB, count=len(sets), results=sets)
@@ -1386,11 +1451,13 @@ async def heritage_list_nb_collections(
 
 class PublicationDetailInput(BaseModel):
     """Input für NB OAI-PMH GetRecord."""
+
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     identifier: str = Field(
-        ..., min_length=5,
-        description="OAI-Identifier aus heritage_search_helveticat (z. B. 'oai:helveticat.ch:...')"
+        ...,
+        min_length=5,
+        description="OAI-Identifier aus heritage_search_helveticat (z. B. 'oai:helveticat.ch:...')",
     )
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -1399,10 +1466,10 @@ class PublicationDetailInput(BaseModel):
     name="heritage_get_publication",
     annotations={
         "title": "Publikationsdetails abrufen (NB OAI-PMH GetRecord)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -1420,7 +1487,11 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
     try:
         resp = await _http_get(
             NB_OAI_PMH,
-            params={"verb": "GetRecord", "identifier": params.identifier, "metadataPrefix": "oai_dc"},
+            params={
+                "verb": "GetRecord",
+                "identifier": params.identifier,
+                "metadataPrefix": "oai_dc",
+            },
         )
         resp.raise_for_status()
 
@@ -1440,21 +1511,21 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
         lines = [f"# {title}\n"]
 
         dc_fields = [
-            ("creator",     "Autor·in / Urheber·in"),
+            ("creator", "Autor·in / Urheber·in"),
             ("contributor", "Mitwirkende"),
-            ("publisher",   "Verlag / Herausgeber"),
-            ("date",        "Erscheinungsjahr"),
-            ("type",        "Typ"),
-            ("format",      "Format"),
-            ("language",    "Sprache"),
-            ("subject",     "Schlagwörter"),
+            ("publisher", "Verlag / Herausgeber"),
+            ("date", "Erscheinungsjahr"),
+            ("type", "Typ"),
+            ("format", "Format"),
+            ("language", "Sprache"),
+            ("subject", "Schlagwörter"),
             ("description", "Beschreibung"),
-            ("source",      "Quelle"),
-            ("relation",    "Verwandte Ressourcen"),
-            ("coverage",    "Abdeckung (Zeit/Raum)"),
-            ("rights",      "Rechte / Lizenz"),
+            ("source", "Quelle"),
+            ("relation", "Verwandte Ressourcen"),
+            ("coverage", "Abdeckung (Zeit/Raum)"),
+            ("rights", "Rechte / Lizenz"),
             ("oai_identifier", "OAI-Identifier"),
-            ("identifier",  "Identifier (DC)"),
+            ("identifier", "Identifier (DC)"),
         ]
         for key, label in dc_fields:
             val = rec.get(key)
@@ -1473,31 +1544,34 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
 #  MODUL 4 — QUELLENÜBERGREIFENDE SUCHE
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class CrossSearchInput(BaseModel):
     """Input für quellenübergreifende Suche."""
+
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
     query: str = Field(
-        ..., min_length=2, max_length=200,
+        ...,
+        min_length=2,
+        max_length=200,
         description=(
             "Suchbegriff (z. B. 'Ferdinand Hodler', 'Volksschule Zürich', 'Mittelalter', "
             "'Industrialisierung Schweiz')"
-        )
+        ),
     )
     sources: list[str] = Field(
         default=["sik_isea", "snm", "nb"],
         description="Quellen: 'sik_isea', 'snm', 'nb' (Standard: alle drei)",
     )
     limit_per_source: int = Field(
-        default=5, ge=1, le=20,
-        description="Max. Ergebnisse pro Quelle (Standard: 5)"
+        default=5, ge=1, le=20, description="Max. Ergebnisse pro Quelle (Standard: 5)"
     )
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
     @field_validator("sources")
     @classmethod
     def validate_sources(cls, v: list[str]) -> list[str]:
-        valid   = {"sik_isea", "snm", "nb"}
+        valid = {"sik_isea", "snm", "nb"}
         invalid = set(v) - valid
         if invalid:
             raise ValueError(f"Ungültige Quellen: {invalid}. Gültig: {valid}")
@@ -1508,10 +1582,10 @@ class CrossSearchInput(BaseModel):
     name="heritage_cross_search",
     annotations={
         "title": "Quellenübergreifende Kulturerbe-Suche (SIK-ISEA + SNM + NB)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -1538,8 +1612,8 @@ async def heritage_cross_search(
     Returns:
         ResultEnvelope | str: Aggregierte Ergebnisse aus allen gewählten Quellen.
     """
-    n    = params.limit_per_source
-    q    = params.query
+    n = params.limit_per_source
+    q = params.query
 
     async def _sik_isea() -> dict:
         try:
@@ -1549,11 +1623,20 @@ async def heritage_cross_search(
             )
             resp.raise_for_status()
             records = resp.json().get("result", {}).get("records", [])
-            return {"source": "SIK-ISEA", "label": "Künstler·innen",
-                    "license": SOURCE_SIKART.license, "url": SOURCE_SIKART.url, "items": records}
+            return {
+                "source": "SIK-ISEA",
+                "label": "Künstler·innen",
+                "license": SOURCE_SIKART.license,
+                "url": SOURCE_SIKART.url,
+                "items": records,
+            }
         except ExpectedUpstreamError as e:
-            return {"source": "SIK-ISEA", "license": SOURCE_SIKART.license,
-                    "url": SOURCE_SIKART.url, "error": str(e)}
+            return {
+                "source": "SIK-ISEA",
+                "license": SOURCE_SIKART.license,
+                "url": SOURCE_SIKART.url,
+                "error": str(e),
+            }
 
     async def _snm() -> dict:
         try:
@@ -1563,28 +1646,50 @@ async def heritage_cross_search(
             )
             resp.raise_for_status()
             pkgs = resp.json().get("result", {}).get("results", [])
-            return {"source": "SNM", "label": "Museumsdatensätze",
-                    "license": SOURCE_SNM.license, "url": SOURCE_SNM.url, "items": pkgs}
+            return {
+                "source": "SNM",
+                "label": "Museumsdatensätze",
+                "license": SOURCE_SNM.license,
+                "url": SOURCE_SNM.url,
+                "items": pkgs,
+            }
         except ExpectedUpstreamError as e:
-            return {"source": "SNM", "license": SOURCE_SNM.license,
-                    "url": SOURCE_SNM.url, "error": str(e)}
+            return {
+                "source": "SNM",
+                "license": SOURCE_SNM.license,
+                "url": SOURCE_SNM.url,
+                "error": str(e),
+            }
 
     async def _nb() -> dict:
         try:
-            resp = await _http_get(NB_OAI_PMH, params={"verb": "ListRecords", "metadataPrefix": "oai_dc"})
+            resp = await _http_get(
+                NB_OAI_PMH, params={"verb": "ListRecords", "metadataPrefix": "oai_dc"}
+            )
             resp.raise_for_status()
-            records  = _parse_oai_records(resp.text)
-            q_lower  = q.lower()
-            filtered = [r for r in records if q_lower in json.dumps(r, ensure_ascii=False).lower()][:n]
-            return {"source": "NB", "label": "Publikationen",
-                    "license": SOURCE_NB.license, "url": SOURCE_NB.url, "items": filtered}
+            records = _parse_oai_records(resp.text)
+            q_lower = q.lower()
+            filtered = [r for r in records if q_lower in json.dumps(r, ensure_ascii=False).lower()][
+                :n
+            ]
+            return {
+                "source": "NB",
+                "label": "Publikationen",
+                "license": SOURCE_NB.license,
+                "url": SOURCE_NB.url,
+                "items": filtered,
+            }
         except ExpectedUpstreamError as e:
-            return {"source": "NB", "license": SOURCE_NB.license,
-                    "url": SOURCE_NB.url, "error": str(e)}
+            return {
+                "source": "NB",
+                "license": SOURCE_NB.license,
+                "url": SOURCE_NB.url,
+                "error": str(e),
+            }
 
-    task_map   = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
+    task_map = {"sik_isea": _sik_isea, "snm": _snm, "nb": _nb}
     source_map = {"sik_isea": SOURCE_SIKART, "snm": SOURCE_SNM, "nb": SOURCE_NB}
-    keys       = [s for s in params.sources if s in task_map]
+    keys = [s for s in params.sources if s in task_map]
     used_sources = [source_map[s] for s in keys]
 
     # Fan-out mit Progress je abgeschlossener Quelle (SDK-003). as_completed
@@ -1593,7 +1698,7 @@ async def heritage_cross_search(
     async def _run(key: str) -> tuple[str, dict]:
         return key, await task_map[key]()
 
-    pending   = [asyncio.create_task(_run(k)) for k in keys]
+    pending = [asyncio.create_task(_run(k)) for k in keys]
     collected: dict[str, dict] = {}
     for done, fut in enumerate(asyncio.as_completed(pending), start=1):
         key, res = await fut
@@ -1601,9 +1706,7 @@ async def heritage_cross_search(
         if ctx is not None:
             label = res.get("source", key)
             status = "Fehler" if "error" in res else f"{len(res.get('items', []))} Treffer"
-            await ctx.report_progress(
-                progress=done, total=len(keys), message=f"{label}: {status}"
-            )
+            await ctx.report_progress(progress=done, total=len(keys), message=f"{label}: {status}")
             if "error" in res:
                 await ctx.warning(f"Quelle '{label}' fehlgeschlagen: {res['error']}")
 
@@ -1621,7 +1724,7 @@ async def heritage_cross_search(
     lines.append("---\n")
 
     for res in results:
-        src   = res.get("source", "?")
+        src = res.get("source", "?")
         label = res.get("label", "Einträge")
 
         if "error" in res:
@@ -1637,11 +1740,11 @@ async def heritage_cross_search(
 
         for item in items:
             if src == "SIK-ISEA":
-                full   = _artist_full_name(item)
-                span   = _artist_lifespan(item)
+                full = _artist_full_name(item)
+                span = _artist_lifespan(item)
                 canton = (item.get("GEBURTSKANTON") or "").strip()
                 dating = f" ({span})" if span else ""
-                ctxt   = f" · {canton}" if canton else ""
+                ctxt = f" · {canton}" if canton else ""
                 lines.append(f"- `[{src}]` **{full}**{dating}{ctxt}")
 
             elif src == "SNM":
@@ -1657,7 +1760,7 @@ async def heritage_cross_search(
                     creator = creator[0]
                 date = item.get("date", "")
                 auth = f" — {creator}" if creator else ""
-                yr   = f" ({date})" if date else ""
+                yr = f" ({date})" if date else ""
                 lines.append(f"- `[{src}]` **{title}**{auth}{yr}")
 
         lines.append("")
@@ -1689,20 +1792,22 @@ async def heritage_cross_search(
 
 class HeritageCollection(StrEnum):
     """Zielsammlung der föderierten Suche."""
+
     MEMOBASE = "memobase"
-    DODIS    = "dodis"
-    ALL      = "all"
+    DODIS = "dodis"
+    ALL = "all"
 
 
 class HeritageItemCollection(StrEnum):
     """Zielsammlung für den Einzelabruf (kein ``all``)."""
+
     MEMOBASE = "memobase"
-    DODIS    = "dodis"
+    DODIS = "dodis"
 
 
 _HERITAGE_SOURCE = {
     HeritageCollection.MEMOBASE: SOURCE_MEMOBASE,
-    HeritageCollection.DODIS:    SOURCE_DODIS,
+    HeritageCollection.DODIS: SOURCE_DODIS,
 }
 
 
@@ -1784,63 +1889,67 @@ def _memobase_norm(rec: dict) -> dict:
     created = rec.get("created")
     date = created.get("normalizedDateValue") if isinstance(created, dict) else None
     return {
-        "collection":       "memobase",
-        "id":               local,
-        "title":            _first(rec.get("title")) or "(ohne Titel)",
-        "type":             rec.get("type"),
-        "date":             date,
-        "permalink":        f"https://memobase.ch/de/document/{local}" if local else SOURCE_MEMOBASE.url,
-        "source":           SOURCE_MEMOBASE.name,
+        "collection": "memobase",
+        "id": local,
+        "title": _first(rec.get("title")) or "(ohne Titel)",
+        "type": rec.get("type"),
+        "date": date,
+        "permalink": f"https://memobase.ch/de/document/{local}" if local else SOURCE_MEMOBASE.url,
+        "source": SOURCE_MEMOBASE.name,
         "license_metadata": "offen (Linked Open Data)",
-        "license_item":     rights_label or "je Rechteinhaber (siehe Permalink)",
-        "rights_url":       rights_url,
+        "license_item": rights_label or "je Rechteinhaber (siehe Permalink)",
+        "rights_url": rights_url,
     }
 
 
 async def _search_memobase(q: str, limit: int, offset: int) -> tuple[list[dict], int]:
     """Volltextsuche in Memobase (``GET /?q=…``); gibt (Treffer, Gesamtzahl) zurück."""
-    resp = await _fetch_with_retry(lambda: _http_get(
-        f"{MEMOBASE_API}/",
-        params={"q": q, "size": limit, "offset": offset},
-        headers={"Accept": "application/ld+json"},
-    ))
-    data    = resp.json()
+    resp = await _fetch_with_retry(
+        lambda: _http_get(
+            f"{MEMOBASE_API}/",
+            params={"q": q, "size": limit, "offset": offset},
+            headers={"Accept": "application/ld+json"},
+        )
+    )
+    data = resp.json()
     members = data.get("hydra:member", [])
-    total   = data.get("hydra:totalItems", len(members))
+    total = data.get("hydra:totalItems", len(members))
     return [_memobase_norm(m) for m in members], total
 
 
 # ─────────────── Dodis (JSON-REST / Solr) ──────────────────────────────────────
 def _dodis_norm(hit: dict) -> dict:
     """Normalisiert einen Dodis-Solr-Treffer (Dokument/Person/Organisation)."""
-    hid   = str(hit.get("id", ""))
+    hid = str(hit.get("id", ""))
     start = hit.get("startDate")
-    end   = hit.get("endDate")
+    end = hit.get("endDate")
     if start and end and end != start:
         date = f"{start}–{end}"
     else:
         date = start or end
     return {
-        "collection":       "dodis",
-        "id":               hid,
-        "title":            hit.get("name") or hit.get("title") or "(ohne Titel)",
-        "type":             hit.get("type"),
-        "date":             date,
-        "permalink":        f"https://dodis.ch/{hid}" if hid else SOURCE_DODIS.url,
-        "source":           SOURCE_DODIS.name,
+        "collection": "dodis",
+        "id": hid,
+        "title": hit.get("name") or hit.get("title") or "(ohne Titel)",
+        "type": hit.get("type"),
+        "date": date,
+        "permalink": f"https://dodis.ch/{hid}" if hid else SOURCE_DODIS.url,
+        "source": SOURCE_DODIS.name,
         "license_metadata": "offen (Zitierpflicht Dodis)",
-        "license_item":     "je Dokument (siehe Permalink)",
-        "rights_url":       None,
+        "license_item": "je Dokument (siehe Permalink)",
+        "rights_url": None,
     }
 
 
 async def _search_dodis(q: str, limit: int, offset: int) -> tuple[list[dict], int]:
     """Volltextsuche in Dodis (``POST /api/solr/query``); Gesamtzahl liefert die API nicht (→ -1)."""
-    resp = await _fetch_with_retry(lambda: _http_post(
-        f"{DODIS_API}/solr/query",
-        json_body={"query": q, "start": offset, "rows": limit},
-        headers={"Accept": "application/json"},
-    ))
+    resp = await _fetch_with_retry(
+        lambda: _http_post(
+            f"{DODIS_API}/solr/query",
+            json_body={"query": q, "start": offset, "rows": limit},
+            headers={"Accept": "application/json"},
+        )
+    )
     data = resp.json()
     hits = data if isinstance(data, list) else data.get("results", [])
     return [_dodis_norm(h) for h in hits], -1
@@ -1849,16 +1958,19 @@ async def _search_dodis(q: str, limit: int, offset: int) -> tuple[list[dict], in
 # ─────────────── Suche (föderierte Fassade) ────────────────────────────────────
 _HERITAGE_SEARCH_FN = {
     HeritageCollection.MEMOBASE: _search_memobase,
-    HeritageCollection.DODIS:    _search_dodis,
+    HeritageCollection.DODIS: _search_dodis,
 }
 
 
 class HeritageSearchInput(BaseModel):
     """Input für die quellenübergreifende Suche in den Gedächtnisinstitutionen."""
+
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
 
     query: str = Field(
-        ..., min_length=2, max_length=200,
+        ...,
+        min_length=2,
+        max_length=200,
         description="Suchbegriff (z. B. 'Volksschule Zürich', 'Escher', 'Landesstreik')",
     )
     collection: HeritageCollection = Field(
@@ -1866,21 +1978,26 @@ class HeritageSearchInput(BaseModel):
         description="Quelle: 'memobase', 'dodis' oder 'all' (beide, Standard)",
     )
     date_from: str | None = Field(
-        default=None, description="Nur ab diesem Jahr (YYYY oder YYYY-MM-DD, clientseitig)",
+        default=None,
+        description="Nur ab diesem Jahr (YYYY oder YYYY-MM-DD, clientseitig)",
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
     )
     date_to: str | None = Field(
-        default=None, description="Nur bis zu diesem Jahr (YYYY oder YYYY-MM-DD, clientseitig)",
+        default=None,
+        description="Nur bis zu diesem Jahr (YYYY oder YYYY-MM-DD, clientseitig)",
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
     )
     media_type: str | None = Field(
-        default=None, max_length=40,
+        default=None,
+        max_length=40,
         description=(
             "Medientyp-/Objekttyp-Filter (clientseitig, Teilstring). Memobase: "
             "'Foto', 'Ton', 'Video', 'Text'. Dodis: 'Document', 'Person', 'Organization'."
         ),
     )
-    limit:  int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max. Treffer pro Quelle")
+    limit: int = Field(
+        default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max. Treffer pro Quelle"
+    )
     offset: int = Field(default=0, ge=0, description="Paginierungs-Offset (pro Quelle)")
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
 
@@ -1889,16 +2006,14 @@ class HeritageSearchInput(BaseModel):
     name="search_heritage",
     annotations={
         "title": "Schweizer Gedächtnisinstitutionen durchsuchen (Memobase + Dodis)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
-async def search_heritage(
-    params: HeritageSearchInput, ctx: Context = None
-) -> ResultEnvelope | str:
+async def search_heritage(params: HeritageSearchInput, ctx: Context = None) -> ResultEnvelope | str:
     """Durchsucht Schweizer Gedächtnisinstitutionen (Memobase, Dodis) föderiert.
 
     Föderierte Fassade über zwei Quellen mit offenen, standardisierten
@@ -1938,7 +2053,9 @@ async def search_heritage(
         keys = [params.collection]
     used_sources = [_HERITAGE_SOURCE[k] for k in keys]
 
-    async def _run(key: HeritageCollection) -> tuple[HeritageCollection, list[dict], int, str | None]:
+    async def _run(
+        key: HeritageCollection,
+    ) -> tuple[HeritageCollection, list[dict], int, str | None]:
         try:
             items, total = await _HERITAGE_SEARCH_FN[key](params.query, params.limit, params.offset)
             return key, items, total, None
@@ -1953,7 +2070,8 @@ async def search_heritage(
         if ctx is not None:
             src = _HERITAGE_SOURCE[key].name
             await ctx.report_progress(
-                progress=done, total=len(keys),
+                progress=done,
+                total=len(keys),
                 message=f"{src}: {'Fehler' if error else f'{len(items)} Treffer'}",
             )
             if error:
@@ -1961,7 +2079,7 @@ async def search_heritage(
 
     # Ergebnisreihenfolge auf die angeforderte Quellenreihenfolge normalisieren
     per_source_counts: dict[str, int] = {}
-    errors:   dict[str, str] = {}
+    errors: dict[str, str] = {}
     combined: list[dict] = []
     known_total = 0
     for key in keys:
@@ -1976,15 +2094,18 @@ async def search_heritage(
         combined.extend(filtered)
 
     filters_applied = [
-        f for f, on in (
-            ("date_from", params.date_from), ("date_to", params.date_to),
+        f
+        for f, on in (
+            ("date_from", params.date_from),
+            ("date_to", params.date_to),
             ("media_type", params.media_type),
-        ) if on
+        )
+        if on
     ]
     meta = {
-        "per_source":               per_source_counts,
-        "clientside_filters":       filters_applied,
-        "errors":                   errors,
+        "per_source": per_source_counts,
+        "clientside_filters": filters_applied,
+        "errors": errors,
     }
 
     if not combined and errors and len(errors) == len(keys):
@@ -1997,16 +2118,18 @@ async def search_heritage(
             count=len(combined),
             total=known_total or None,
             offset=params.offset,
-            has_more=any(
-                len(collected[k][0]) >= params.limit for k in keys if not collected[k][2]
-            ),
+            has_more=any(len(collected[k][0]) >= params.limit for k in keys if not collected[k][2]),
             results=combined,
             match_type="exact" if combined else "none",
             meta=meta,
         )
 
     lines = [f"# Gedächtnisinstitutionen — Suche: *{params.query}*\n"]
-    scope = "Memobase + Dodis" if params.collection == HeritageCollection.ALL else params.collection.value
+    scope = (
+        "Memobase + Dodis"
+        if params.collection == HeritageCollection.ALL
+        else params.collection.value
+    )
     lines.append(f"**Quelle(n):** {scope}")
     if filters_applied:
         crit = []
@@ -2026,7 +2149,7 @@ async def search_heritage(
         return "\n".join(lines) + _attribution(used_sources)
 
     for item in combined:
-        tag  = item["collection"]
+        tag = item["collection"]
         meta_bits = []
         if item.get("type"):
             meta_bits.append(str(item["type"]))
@@ -2047,13 +2170,17 @@ async def search_heritage(
 # ─────────────── Einzelabruf ───────────────────────────────────────────────────
 class HeritageItemInput(BaseModel):
     """Input für den Einzelabruf eines Objekts."""
+
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     collection: HeritageItemCollection = Field(
-        ..., description="Quelle des Objekts: 'memobase' oder 'dodis'",
+        ...,
+        description="Quelle des Objekts: 'memobase' oder 'dodis'",
     )
     item_id: str = Field(
-        ..., min_length=1, max_length=120,
+        ...,
+        min_length=1,
+        max_length=120,
         description=(
             "Objekt-ID aus search_heritage. Memobase: Record-ID (z. B. "
             "'snp-007-213072_03'). Dodis: numerische Dokument-ID (z. B. '44755') "
@@ -2065,9 +2192,12 @@ class HeritageItemInput(BaseModel):
 
 # Dodis-Felder, die urheberrechtlich geschützten Volltext enthalten könnten und
 # daher NIE ausgegeben werden (nur Metadaten + Links, kein Volltext-Reprint).
-_DODIS_FULLTEXT_FIELDS: Final = frozenset({
-    "doc_att_file_content", "doc_att_xmlTranscription_ids",
-})
+_DODIS_FULLTEXT_FIELDS: Final = frozenset(
+    {
+        "doc_att_file_content",
+        "doc_att_xmlTranscription_ids",
+    }
+)
 
 
 def _dodis_item_markdown(rec: dict) -> list[str]:
@@ -2077,15 +2207,20 @@ def _dodis_item_markdown(rec: dict) -> list[str]:
     (``_DODIS_FULLTEXT_FIELDS``) werden nie gerendert. Das Regest (``doc_summary``)
     ist die zitierfähige Zusammenfassung (Metadatum) und wird gekürzt gezeigt.
     """
-    def loc(base: str):
-        return _first(rec.get(f"{base}_de")) or _first(rec.get(f"{base}_en")) or _first(rec.get(base))
 
-    hid   = str(rec.get("id", ""))
-    typ   = _first(rec.get("doc_type_names_de")) or rec.get("type") or "Objekt"
+    def loc(base: str):
+        return (
+            _first(rec.get(f"{base}_de")) or _first(rec.get(f"{base}_en")) or _first(rec.get(base))
+        )
+
+    hid = str(rec.get("id", ""))
+    typ = _first(rec.get("doc_type_names_de")) or rec.get("type") or "Objekt"
     title = (
         rec.get("doc_title")
-        or rec.get("prs_name_de") or rec.get("org_name_de")
-        or rec.get("name") or f"Dodis {hid}"
+        or rec.get("prs_name_de")
+        or rec.get("org_name_de")
+        or rec.get("name")
+        or f"Dodis {hid}"
     )
     lines = [f"# {title}\n", f"**Typ:** {typ}  ·  **Dodis-ID:** `{hid}`"]
 
@@ -2119,9 +2254,7 @@ def _dodis_item_markdown(rec: dict) -> list[str]:
         "**Volltext:** Transkription (TEI-XML) und PDF sind über den Permalink "
         "abrufbar. Rechte je Dokument prüfen — hier werden nur Metadaten geliefert."
     )
-    lines.append(
-        "\n**Lizenz:** Metadaten: offen (Zitierpflicht Dodis) · Dokument: je Dokument."
-    )
+    lines.append("\n**Lizenz:** Metadaten: offen (Zitierpflicht Dodis) · Dokument: je Dokument.")
     return lines
 
 
@@ -2166,10 +2299,10 @@ def _memobase_item_markdown(rec: dict) -> list[str]:
     name="get_heritage_item",
     annotations={
         "title": "Objekt-Details aus einer Gedächtnisinstitution abrufen",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   True,
+        "idempotentHint": True,
+        "openWorldHint": True,
     },
 )
 @mask_unexpected_errors
@@ -2192,10 +2325,12 @@ async def get_heritage_item(params: HeritageItemInput) -> ResultEnvelope | str:
     try:
         if params.collection == HeritageItemCollection.MEMOBASE:
             local = _memobase_local_id(params.item_id)
-            resp  = await _fetch_with_retry(lambda: _http_get(
-                f"{MEMOBASE_API}/record/{local}",
-                headers={"Accept": "application/ld+json"},
-            ))
+            resp = await _fetch_with_retry(
+                lambda: _http_get(
+                    f"{MEMOBASE_API}/record/{local}",
+                    headers={"Accept": "application/ld+json"},
+                )
+            )
             rec = resp.json()
             if not rec or not rec.get("@id"):
                 return f"Kein Memobase-Record gefunden für ID `{params.item_id}`."
@@ -2204,10 +2339,12 @@ async def get_heritage_item(params: HeritageItemInput) -> ResultEnvelope | str:
             return "\n".join(_memobase_item_markdown(rec)) + _attribution(SOURCE_MEMOBASE)
 
         # Dodis
-        resp = await _fetch_with_retry(lambda: _http_get(
-            f"{DODIS_API}/solr/full/{params.item_id}",
-            headers={"Accept": "application/json"},
-        ))
+        resp = await _fetch_with_retry(
+            lambda: _http_get(
+                f"{DODIS_API}/solr/full/{params.item_id}",
+                headers={"Accept": "application/json"},
+            )
+        )
         rec = resp.json()
         if not rec or not rec.get("id"):
             return f"Kein Dodis-Objekt gefunden für ID `{params.item_id}`."
@@ -2224,6 +2361,7 @@ async def get_heritage_item(params: HeritageItemInput) -> ResultEnvelope | str:
 # ─────────────── Discovery ─────────────────────────────────────────────────────
 class HeritageCollectionsInput(BaseModel):
     """Input für das Discovery-Tool."""
+
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     response_format: ResponseFormat = Field(default=ResponseFormat.MARKDOWN)
@@ -2234,36 +2372,47 @@ class HeritageCollectionsInput(BaseModel):
 # werden mit Grund offen ausgewiesen (Ehrlichkeit statt Scraping/Session-Emulation).
 _HERITAGE_COLLECTIONS: Final = [
     {
-        "id": "memobase", "name": "Memoriav / Memobase", "status": "active",
-        "protocol": "Linked Open Data API (JSON-LD, Hydra, RiC-O)", "auth": "keine",
+        "id": "memobase",
+        "name": "Memoriav / Memobase",
+        "status": "active",
+        "protocol": "Linked Open Data API (JSON-LD, Hydra, RiC-O)",
+        "auth": "keine",
         "content": "Audiovisuelles Kulturerbe (Foto, Ton, Video, Text) aus Schweizer Institutionen",
         "license_metadata": "offen (Linked Open Data)",
         "license_digitisate": "je Rechteinhaber (rightsstatements.org, teils «onsite»)",
         "url": "https://memobase.ch",
     },
     {
-        "id": "dodis", "name": "Diplomatische Dokumente der Schweiz (Dodis)", "status": "active",
-        "protocol": "JSON-REST (Solr) · stabile Permalinks · TEI/PDF", "auth": "keine",
+        "id": "dodis",
+        "name": "Diplomatische Dokumente der Schweiz (Dodis)",
+        "status": "active",
+        "protocol": "JSON-REST (Solr) · stabile Permalinks · TEI/PDF",
+        "auth": "keine",
         "content": "Diplomatische Dokumente, Personen, Organisationen (19.–20. Jh.)",
         "license_metadata": "offen (Zitierpflicht)",
         "license_digitisate": "je Dokument (Volltext via Permalink)",
         "url": "https://dodis.ch",
     },
     {
-        "id": "bar", "name": "Schweizerisches Bundesarchiv", "status": "not_connected",
+        "id": "bar",
+        "name": "Schweizerisches Bundesarchiv",
+        "status": "not_connected",
         "protocol": "CMI-AIS (JSON-REST, proprietär)",
         "auth": "eIAM-Login + Google reCAPTCHA → nicht maschinell zugänglich",
         "content": "Bestände, Verzeichnungseinheiten, Digitalisate",
-        "license_metadata": "n/a (zugangsgesperrt)", "license_digitisate": "je Bestand / Schutzfristen",
+        "license_metadata": "n/a (zugangsgesperrt)",
+        "license_digitisate": "je Bestand / Schutzfristen",
         "url": "https://www.recherche.bar.admin.ch",
     },
     {
-        "id": "landesmuseum", "name": "Schweizerisches Landesmuseum (Sammlung online)",
+        "id": "landesmuseum",
+        "name": "Schweizerisches Landesmuseum (Sammlung online)",
         "status": "not_connected",
         "protocol": "keine öffentliche API (nur interne Ajax/HTML)",
         "auth": "keine — aber keine maschinenlesbare Schnittstelle",
         "content": "Objektsammlung (Sammlung Online)",
-        "license_metadata": "n/a", "license_digitisate": "je Objekt",
+        "license_metadata": "n/a",
+        "license_digitisate": "je Objekt",
         "url": "https://sammlung.nationalmuseum.ch",
     },
 ]
@@ -2273,10 +2422,10 @@ _HERITAGE_COLLECTIONS: Final = [
     name="list_heritage_collections",
     annotations={
         "title": "Verfügbare Gedächtnisinstitutionen auflisten (Discovery)",
-        "readOnlyHint":    True,
+        "readOnlyHint": True,
         "destructiveHint": False,
-        "idempotentHint":  True,
-        "openWorldHint":   False,
+        "idempotentHint": True,
+        "openWorldHint": False,
     },
 )
 @mask_unexpected_errors
@@ -2312,7 +2461,7 @@ async def list_heritage_collections(
         "Föderierte Suche über `search_heritage` (collection = `memobase` | `dodis` | `all`).\n"
     )
     active = [c for c in _HERITAGE_COLLECTIONS if c["status"] == "active"]
-    other  = [c for c in _HERITAGE_COLLECTIONS if c["status"] != "active"]
+    other = [c for c in _HERITAGE_COLLECTIONS if c["status"] != "active"]
 
     lines.append("## ✅ Angebunden\n")
     for c in active:
@@ -2337,6 +2486,7 @@ async def list_heritage_collections(
 # ══════════════════════════════════════════════════════════════════════════════
 #  RESOURCES
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @mcp.resource("heritage://sik-isea/overview")
 async def sik_isea_overview() -> str:
@@ -2422,6 +2572,7 @@ Für komplexe Suchen: https://www.helveticat.ch
 #  PROMPTS
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @mcp.prompt()
 def heritage_research_artist(
     artist_name: str,
@@ -2504,10 +2655,12 @@ Antworte auf Deutsch."""
 #  HEALTH-ENDPOINT (nur im HTTP-Transport sichtbar)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health(_request):
     """Liveness-Probe für Render / Kubernetes / Cloud Run."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "service": "swiss-cultural-heritage-mcp"})
 
 
@@ -2626,7 +2779,9 @@ if __name__ == "__main__":
         # HTTP 421 auf jede echte Anfrage.
         app = build_http_app(cors_origins_from_env(), settings.host, settings.port)
         uvicorn.run(
-            app, host=settings.host, port=settings.port,
+            app,
+            host=settings.host,
+            port=settings.port,
             log_level=mcp.settings.log_level.lower(),
         )
     else:
