@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Sechs CKAN-Stellen schrieben eine Strukturänderung in eine Leermenge um.**
+  Dreimal auf `records` (DataStore), zweimal auf `results` (`package_search`),
+  einmal auf beides im Mehrquellen-Werkzeug — alle nach dem Muster
+  `data.get("result", {}).get(<feld>, [])`.
+
+  Fällt `result` weg, war die Trefferliste leer, und das Werkzeug antwortete
+  «Keine Daten gefunden»: für das Modell nicht davon zu unterscheiden, dass
+  SIK-ISEA oder das SNM nichts haben. **Zwei der sechs** lasen die Hülle sogar
+  direkt aus `resp.json()`, ohne das `success`-Envelope überhaupt anzusehen —
+  die beiden waren am leichtesten zu übersehen.
+
+  Alle sechs laufen jetzt über `_ckan_result()`, das `result` **und** das
+  gelesene Feld bestätigt und sonst `UpstreamSchemaError` wirft, mit den
+  tatsächlich vorhandenen Schlüsseln in der Meldung.
+
+  Der Typ erbt von `ValueError` und ist damit automatisch Teil von
+  `ExpectedUpstreamError` — das ist hier tragend: Die Formänderung wird zur
+  handlungsorientierten Meldung statt zu einem maskierten «Interner Fehler»,
+  und im Mehrquellen-Werkzeug fällt nur *diese* Quelle aus, während die anderen
+  weiter antworten.
+
+  `records: []` bleibt ein normales Ergebnis: Bestätigt wird die **Anwesenheit**
+  des Schlüssels, nicht sein Inhalt. CKAN liefert `records` bzw. `results` auch
+  bei null Treffern.
+
+  **Unverändert:** Eine Antwort, die statt eines Objekts eine nackte Liste ist,
+  scheitert weiterhin an `data.get("success")` und wird als «Interner Fehler»
+  maskiert — eine bewusste Entscheidung dieses Repos mit eigenem Test.
+
+  Gefunden im Portfolio-Durchlauf zu
+  [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)
+  am 2026-08-07: Acht Server im Portfolio sprechen mit CKAN, alle acht prüfen
+  das `success`-Envelope, sieben defaulteten `result` danach.
+
+### Fixed
+
 - **The retry had six defects, all inherited from the shared template.** This
   server copied its retry from `reference/retry_backoff.py` in
   [mcp-data-source-probe-skill](https://github.com/malkreide/mcp-data-source-probe-skill),

@@ -487,6 +487,53 @@ ExpectedUpstreamError = (
 )
 
 
+class UpstreamSchemaError(ValueError):
+    """Die Antwort kam an, sieht aber anders aus, als der Code sie liest.
+
+    Erbt von ``ValueError`` und ist damit automatisch Teil von
+    ``ExpectedUpstreamError``: Der Fehler wird als handlungsorientierte Meldung
+    gemeldet statt als Programmierfehler zu propagieren — und in den
+    Mehrquellen-Werkzeugen fällt nur *diese* Quelle aus, während die anderen
+    weiter antworten.
+    """
+
+
+def _ckan_result(data: object, action: str, field: str) -> dict:
+    """Den ``result``-Block holen und ``field`` darin bestätigen (FID-006).
+
+    ``data.get("result", {}).get(field, [])`` schrieb jede Strukturänderung in
+    eine leere Trefferliste um: Das Werkzeug antwortete «keine Daten gefunden»,
+    und für das Modell war das nicht davon zu unterscheiden, dass die Quelle
+    nichts hat.
+
+    Bestätigt wird die **Anwesenheit** der Schlüssel, nicht ihr Inhalt —
+    ``records: []`` ist eine Aussage der Quelle und bleibt ein normales
+    Ergebnis. CKAN liefert ``records`` bzw. ``results`` auch bei null Treffern.
+    """
+    if not isinstance(data, dict):
+        raise UpstreamSchemaError(
+            f"CKAN `{action}`: Antwort ist {type(data).__name__} und kein Objekt."
+        )
+    if "result" not in data:
+        raise UpstreamSchemaError(
+            f"CKAN `{action}`: Antwort ohne `result`. Vorhandene Schlüssel: "
+            f"{sorted(data)}. Das ist keine Leermenge — die Struktur der Quelle "
+            "hat sich geändert."
+        )
+    result = data["result"]
+    if not isinstance(result, dict):
+        raise UpstreamSchemaError(
+            f"CKAN `{action}`: `result` ist {type(result).__name__} und kein Objekt."
+        )
+    if field not in result:
+        raise UpstreamSchemaError(
+            f"CKAN `{action}`: `result` ohne `{field}`. Vorhandene Schlüssel: "
+            f"{sorted(result)}. CKAN liefert `{field}` auch bei null Treffern — "
+            "dies ist keine leere Suche."
+        )
+    return result
+
+
 def _assert_allowed(url: str) -> None:
     """Egress-Guard: nur HTTPS und nur Hosts aus der statischen Allow-List.
 
@@ -893,8 +940,8 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
             data = resp.json()
             if not data.get("success"):
                 raise ValueError("CKAN-DataStore-Anfrage fehlgeschlagen.")
-            res = data.get("result", {})
-            recs = res.get("records", [])
+            res = _ckan_result(data, "datastore_search", "records")
+            recs = res["records"]
             return recs, res.get("total", len(recs))
 
         q_terms = [t for t in (params.query, params.region) if t]
@@ -1018,7 +1065,7 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
         if not data.get("success"):
             _raise_tool_error(ValueError("CKAN-DataStore-Anfrage fehlgeschlagen."))
 
-        records = data.get("result", {}).get("records", [])
+        records = _ckan_result(data, "datastore_search", "records")["records"]
         if not records:
             return f"Keine Daten gefunden für SIKART-ID `{params.artist_id}`."
 
@@ -1139,8 +1186,8 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
                 raise ValueError(
                     f"CKAN-API-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}"
                 )
-            res = data.get("result", {})
-            return res.get("results", []), res.get("count", 0)
+            res = _ckan_result(data, "package_search", "results")
+            return res["results"], res.get("count", 0)
 
         packages, total = await _query(params.query)
         match_type: Literal["exact", "fuzzy", "none"] = "exact"
@@ -1286,8 +1333,8 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
                 ValueError(f"DataStore-Anfrage fehlgeschlagen — {data.get('error', 'Unbekannt')}")
             )
 
-        result = data.get("result", {})
-        records = result.get("records", [])
+        result = _ckan_result(data, "datastore_search", "records")
+        records = result["records"]
         total = result.get("total", 0)
         fields = [f["id"] for f in result.get("fields", []) if f["id"] != "_id"]
 
@@ -1759,7 +1806,7 @@ async def heritage_cross_search(
                 params={"resource_id": SIKART_RESOURCE_ID, "q": q, "limit": n},
             )
             resp.raise_for_status()
-            records = resp.json().get("result", {}).get("records", [])
+            records = _ckan_result(resp.json(), "datastore_search", "records")["records"]
             return {
                 "source": "SIK-ISEA",
                 "label": "Künstler·innen",
@@ -1782,7 +1829,7 @@ async def heritage_cross_search(
                 params={"q": f"{q} organization:{SNM_ORG}", "rows": n},
             )
             resp.raise_for_status()
-            pkgs = resp.json().get("result", {}).get("results", [])
+            pkgs = _ckan_result(resp.json(), "package_search", "results")["results"]
             return {
                 "source": "SNM",
                 "label": "Museumsdatensätze",
