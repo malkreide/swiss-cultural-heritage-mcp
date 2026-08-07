@@ -21,6 +21,7 @@ import respx
 
 from swiss_cultural_heritage_mcp.server import (
     CKAN_API,
+    DODIS_API,
     UpstreamSchemaError,
     _ckan_result,
 )
@@ -141,3 +142,64 @@ def test_every_ckan_read_goes_through_the_helper():
     body = source.read_text(encoding="utf-8").split('"""', 3)[-1]
     calls = body.count("_ckan_result(")
     assert calls >= 6, f"erwartet: mindestens 6 Aufrufstellen, gefunden: {calls}"
+
+
+# --- Die zweite Quelle: Dodis (Solr) -----------------------------------------
+
+
+class TestDodisResponseShape:
+    """`data if isinstance(data, list) else data.get("results", [])`.
+
+    Zwei Formen sind hier wirklich gültig — Dodis antwortet als nackte
+    Trefferliste und als Objekt mit `results`. Der stille Rest war der dritte
+    Fall: ein Objekt **ohne** `results` wurde zu null Treffern, und das liest
+    sich wie «Dodis kennt dazu nichts».
+    """
+
+    @staticmethod
+    def _mock(payload):
+        return respx.post(f"{DODIS_API}/solr/query").mock(
+            return_value=httpx.Response(200, json=payload)
+        )
+
+    @pytest.mark.asyncio
+    async def test_an_object_without_results_is_rejected(self):
+        from swiss_cultural_heritage_mcp.server import _search_dodis
+
+        with respx.mock:
+            self._mock({"status": "error", "message": "backend unavailable"})
+            with pytest.raises(UpstreamSchemaError) as excinfo:
+                await _search_dodis("bern", 10, 0)
+        message = str(excinfo.value)
+        assert "'message'" in message and "'status'" in message, message
+        assert "keine Leermenge" in message
+
+    @pytest.mark.asyncio
+    async def test_both_valid_shapes_still_pass(self):
+        """Die Gegenrichtung — und hier sind es zwei Richtungen.
+
+        Beide Formen sind echte Dodis-Antworten. Eine Bestätigung, die die
+        Listenform mitfängt, hätte die Quelle kaputtgemacht statt sie zu
+        prüfen.
+        """
+        from swiss_cultural_heritage_mcp.server import _search_dodis
+
+        with respx.mock:
+            self._mock([{"id": "dodis-1"}])
+            hits, total = await _search_dodis("bern", 10, 0)
+        assert len(hits) == 1
+        assert total == -1
+
+        with respx.mock:
+            self._mock({"results": [{"id": "dodis-2"}]})
+            hits, _ = await _search_dodis("bern", 10, 0)
+        assert len(hits) == 1
+
+    @pytest.mark.asyncio
+    async def test_an_empty_hit_list_still_passes(self):
+        from swiss_cultural_heritage_mcp.server import _search_dodis
+
+        with respx.mock:
+            self._mock({"results": []})
+            hits, _ = await _search_dodis("gibtesnicht", 10, 0)
+        assert hits == []

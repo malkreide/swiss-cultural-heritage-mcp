@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Eine unerwartete Dodis-Antwort wurde zu null Treffern.** `_search_dodis`
+  las `data if isinstance(data, list) else data.get("results", [])`.
+
+  Zwei Formen sind hier wirklich gültig — Dodis antwortet als nackte
+  Trefferliste **und** als Objekt mit `results`. Der stille Rest war der dritte
+  Fall: ein Objekt **ohne** `results` — eine Fehlerseite mit HTTP 200, eine
+  umgebaute Antwort — wurde zu null Treffern, und das liest sich wie «Dodis
+  kennt dazu nichts».
+
+  Der dritte Fall wirft jetzt `UpstreamSchemaError` mit den tatsächlich
+  vorhandenen Schlüsseln. Beide gültigen Formen gehen unverändert durch; eine
+  Bestätigung, die die Listenform mitgefangen hätte, hätte die Quelle
+  kaputtgemacht statt sie zu prüfen.
+
+  Nachtrag zum Portfolio-Durchlauf
+  ([`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)):
+  Der CKAN-Sweep reparierte die sechs CKAN-Stellen dieses Servers, Dodis ist
+  die siebte Quelle.
+
+### Fixed
+
 - **Sechs CKAN-Stellen schrieben eine Strukturänderung in eine Leermenge um.**
   Dreimal auf `records` (DataStore), zweimal auf `results` (`package_search`),
   einmal auf beides im Mehrquellen-Werkzeug — alle nach dem Muster
