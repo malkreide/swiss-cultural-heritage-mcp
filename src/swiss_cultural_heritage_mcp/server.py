@@ -2135,7 +2135,22 @@ async def _search_dodis(q: str, limit: int, offset: int) -> tuple[list[dict], in
         )
     )
     data = resp.json()
-    hits = data if isinstance(data, list) else data.get("results", [])
+    # Dodis' Solr-Fassade antwortet in zwei Formen: als nackte Trefferliste und
+    # als Objekt mit `results`. Beides ist gültig — `data.get("results", [])`
+    # war aber der stille Rest: Ein Objekt OHNE `results` (Fehlerseite mit
+    # HTTP 200, umgebaute Antwort) wurde zu null Treffern, und das liest sich
+    # wie «Dodis kennt dazu nichts» (FID-006).
+    if isinstance(data, list):
+        hits = data
+    elif isinstance(data, dict) and "results" in data:
+        hits = data["results"]
+    else:
+        raise UpstreamSchemaError(
+            "Dodis `solr/query`: Antwort ist weder eine Trefferliste noch ein "
+            "Objekt mit `results`. Vorhanden: "
+            f"{sorted(data) if isinstance(data, dict) else type(data).__name__}. "
+            "Das ist keine Leermenge — die Struktur der Quelle hat sich geändert."
+        )
     return [_dodis_norm(h) for h in hits], -1
 
 
