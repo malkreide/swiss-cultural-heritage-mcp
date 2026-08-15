@@ -1,0 +1,1076 @@
+{
+  "@id": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd",
+  "@type": "hydra:Collection",
+  "@context": {
+    "hydra": "http://www.w3.org/ns/hydra/core#"
+  },
+  "hydra:member": [
+    {
+      "@id": "mbr:abb-001-1603_39_Foto_St",
+      "@type": "rico:Record",
+      "@context": "https://api.memobase.ch/context/record.json",
+      "type": "Foto",
+      "title": "Zürich",
+      "conditionsOfUse": [
+        "Die Akten sind frei zugänglich."
+      ],
+      "descriptiveNote": [
+        "unscharfe und fehlbelichtete Aufnahmen, Film unvollständig"
+      ],
+      "created": {
+        "@type": "rico:DateRange",
+        "normalizedDateValue": "1939"
+      },
+      "hasInstantiation": [
+        {
+          "@id": "mbpo:abb-001-1603_39_Foto_St-1",
+          "@type": "rico:Instantiation",
+          "type": "physicalObject",
+          "isInstantiationOf": "mbr:abb-001-1603_39_Foto_St",
+          "isOrWasRegulatedBy": [
+            {
+              "@type": "rico:Rule",
+              "type": "access",
+              "name": "onsite",
+              "regulatesOrRegulated": "mbpo:abb-001-1603_39_Foto_St-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "usage",
+              "name": "In Copyright - Educational Use Permitted (InC-EDU)",
+              "sameAs": "http://rightsstatements.org/vocab/InC-EDU/1.0/",
+              "regulatesOrRegulated": "mbpo:abb-001-1603_39_Foto_St-1"
+            }
+          ],
+          "hasOrHadIdentifier": [
+            {
+              "@type": "rico:Identifier",
+              "identifier": "abb-001-1603_39_Foto_St-1",
+              "type": "main",
+              "isOrWasIdentifierOf": "mbpo:abb-001-1603_39_Foto_St-1"
+            },
+            {
+              "@type": "rico:Identifier",
+              "identifier": "30",
+              "type": "callNumber",
+              "isOrWasIdentifierOf": "mbpo:abb-001-1603_39_Foto_St-1"
+            }
+          ],
+          "hasDerivedInstantiation": "mbdo:abb-001-1603_39_Foto_St-1",
+          "hasCarrierType": [
+            {
+              "@id": "_:07210276fae0d71c4ec9d591cbb56b92",
+              "@type": "rico:CarrierType",
+              "name": "Cellulosenitratfilm",
+              "isCarrierTypeOf": "https://memobase.ch/physical/abb-001-1603_39_Foto_St-1",
+              "isOrWasAffectedBy": "_:ec7416352c96761a74692fdc642e39c3"
+            },
+            {
+              "@id": "_:7d6fbd87fd7a7f47a9f36f388dc4181f",
+              "@type": "rico:CarrierType",
+              "nameDe": "Negativfilm",
+              "nameFr": "film négatif",
+              "nameIt": "Pellicola per negativi",
+              "sameAs": [
+                "http://www.wikidata.org/entity/Q595597"
+              ],
+              "isCarrierTypeOf": "https://memobase.ch/physical/abb-001-1603_39_Foto_St-1",
+              "resultsOrResultedFrom": {
+                "@id": "_:ec7416352c96761a74692fdc642e39c3",
+                "@type": "rico:Activity",
+                "type": "enrichment",
+                "beginningDate": "2026-06-19T06:12:48Z",
+                "endDate": "2026-06-19T06:12:48Z",
+                "isOrWasPerformedBy": {
+                  "@id": "_:c6393a226dd8845adcf8055525776b39",
+                  "@type": "rico:Mechanism",
+                  "name": "Normalizer - Carrier Type",
+                  "performsOrPerformed": "_:ec7416352c96761a74692fdc642e39c3"
+                },
+                "affectsOrAffected": [
+                  "_:07210276fae0d71c4ec9d591cbb56b92"
+                ],
+                "resultsOrResultedIn": [
+                  "_:7d6fbd87fd7a7f47a9f36f388dc4181f",
+                  "_:172edd3bab218d4eda1e4cfae6798612"
+                ]
+              }
+            },
+            {
+              "@id": "_:172edd3bab218d4eda1e4cfae6798612",
+              "@type": "rico:CarrierType",
+              "nameDe": "Cellulosenitratfilm",
+              "nameFr": "film nitrate",
+              "nameIt": "film nitrate",
+              "sameAs": [
+                "http://www.wikidata.org/entity/Q105833892"
+              ],
+              "isCarrierTypeOf": "https://memobase.ch/physical/abb-001-1603_39_Foto_St-1",
+              "resultsOrResultedFrom": {
+                "@id": "_:ec7416352c96761a74692fdc642e39c3"
+              }
+            }
+          ],
+          "physicalCharacteristics": [
+            "18 Dias; 2.4x3.6"
+          ]
+        },
+        {
+          "@id": "mbdo:abb-001-1603_39_Foto_St-1",
+          "@type": "rico:Instantiation",
+          "type": "digitalObject",
+          "isInstantiationOf": "mbr:abb-001-1603_39_Foto_St",
+          "isOrWasRegulatedBy": [
+            {
+              "@type": "rico:Rule",
+              "type": "exifCopyright",
+              "name": "Burgerarchiv Burgdorf",
+              "regulatesOrRegulated": "mbdo:abb-001-1603_39_Foto_St-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "usage",
+              "name": "Creative Commons - Attribution, Non-Commercial, ShareAlike (BY-NC-SA)",
+              "sameAs": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+              "regulatesOrRegulated": "mbdo:abb-001-1603_39_Foto_St-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "access",
+              "name": "public",
+              "regulatesOrRegulated": "mbdo:abb-001-1603_39_Foto_St-1"
+            }
+          ],
+          "hasOrHadIdentifier": [
+            {
+              "@type": "rico:Identifier",
+              "identifier": "abb-001-1603_39_Foto_St-1",
+              "type": "main",
+              "isOrWasIdentifierOf": "mbdo:abb-001-1603_39_Foto_St-1"
+            }
+          ],
+          "isDerivedFromInstantiation": "mbpo:abb-001-1603_39_Foto_St-1",
+          "componentColor": [
+            "6B7F6B",
+            "669292",
+            "585858"
+          ],
+          "hasColourContent": "TrueColor",
+          "hasFormat": "fmt/1507",
+          "hasMimeType": "image/jpeg",
+          "height": "2000.0",
+          "width": "1196.0",
+          "orientation": "Undefined",
+          "isDistributedOn": "image",
+          "locator": "https://prod.media.memobase.ch/memo/abb-001-1603_39_Foto_St-1",
+          "mediaLocation": "local",
+          "proxyType": "proxydirect"
+        }
+      ],
+      "hasOrHadIdentifier": [
+        {
+          "@type": "rico:Identifier",
+          "identifier": "abb-001-1603_39_Foto_St",
+          "type": "main",
+          "isOrWasIdentifierOf": "mbr:abb-001-1603_39_Foto_St"
+        },
+        {
+          "@type": "rico:Identifier",
+          "identifier": "1603_39_Foto_St",
+          "type": "original",
+          "isOrWasIdentifierOf": "mbr:abb-001-1603_39_Foto_St"
+        }
+      ],
+      "hasGenre": [
+        {
+          "@id": "_:5f19097cb05f48a2bd403101eb40597e",
+          "@type": "skos:Concept",
+          "prefLabelDe": "Architektur",
+          "prefLabelFr": "Architecture",
+          "prefLabelIt": "Architettura",
+          "resultsOrResultedFrom": {
+            "@id": "_:3982c7bd87bcbe2fe5ab3d2ab887cc55",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T06:12:48Z",
+            "endDate": "2026-06-19T06:12:48Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:96761d266cfa838ea1f5fbf663f06502",
+              "@type": "rico:Mechanism",
+              "name": "Normalizer - Genre",
+              "performsOrPerformed": "_:3982c7bd87bcbe2fe5ab3d2ab887cc55"
+            },
+            "affectsOrAffected": [
+              "_:83a5bc5d89cb6193d3c432ba39a99b97"
+            ],
+            "resultsOrResultedIn": [
+              "_:5f19097cb05f48a2bd403101eb40597e"
+            ]
+          }
+        },
+        {
+          "@id": "_:83a5bc5d89cb6193d3c432ba39a99b97",
+          "@type": "skos:Concept",
+          "prefLabel": "Architektur",
+          "isOrWasAffectedBy": "_:3982c7bd87bcbe2fe5ab3d2ab887cc55"
+        }
+      ],
+      "hasOrHadTitle": [
+        {
+          "@type": "rico:Title",
+          "type": "main",
+          "isOrWasTitleOf": "https://memobase.ch/record/abb-001-1603_39_Foto_St",
+          "title": "Zürich"
+        }
+      ],
+      "recordResourceOrInstantiationIsSourceOfCreationRelation": [
+        {
+          "@id": "_:11688a61a1aad24984c1ca259371b2e1",
+          "@type": "rico:CreationRelation",
+          "type": "creator",
+          "creationRelationHasSource": "mbr:abb-001-1603_39_Foto_St",
+          "creationRelationHasTarget": {
+            "@id": "_:19d2e312f187b6ac05ee3a7facd76623",
+            "@type": "rico:Person",
+            "name": "Stauffer, Walther",
+            "firstName": "Walther",
+            "lastName": "Stauffer",
+            "agentIsTargetOfCreationRelation": "_:11688a61a1aad24984c1ca259371b2e1"
+          }
+        }
+      ],
+      "hasSponsoringAgentOfResource": "mbcb:mav",
+      "isOrWasPartOf": "mbrs:abb-001",
+      "hasOrHadHolder": "mbcb:abb",
+      "isOrWasRegulatedBy": [
+        {
+          "@type": "rico:Rule",
+          "type": "holder",
+          "name": "Die Verwertungsrechte liegen beim Burgerarchiv.",
+          "regulatesOrRegulated": "mbr:abb-001-1603_39_Foto_St"
+        }
+      ],
+      "spatial": [
+        {
+          "@id": "_:1fc7aba796e87ff4b8b6e54cc89e37a0",
+          "@type": "rico:Place",
+          "type": "Enriched by Connectom",
+          "nameDe": "Zürich",
+          "nameFr": "Zurich",
+          "nameIt": "Zurigo",
+          "descriptiveNoteDe": "bevölkerungsreichste Stadt der Schweiz und Hauptort des Kantons Zürich",
+          "descriptiveNoteFr": "ville la plus peuplée de Suisse et chef-lieu du canton de Zurich",
+          "descriptiveNoteIt": "città della Svizzera, capoluogo dell'omonimo cantone",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q72",
+            "https://d-nb.info/gnd/4068038-1",
+            "https://hls-dhs-dss.ch/articles/000171"
+          ],
+          "coordinateLocation": "Point(47.374444 8.541111)",
+          "resultsOrResultedFrom": {
+            "@id": "_:6485a3ae5550f57e2d2893352239998c",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T06:12:48Z",
+            "endDate": "2026-06-19T06:12:48Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:5597527acd75c9d589a3cc4e2b1e337e",
+              "@type": "rico:Mechanism",
+              "name": "Connectom Enrichment - Text Fields",
+              "performsOrPerformed": "_:6485a3ae5550f57e2d2893352239998c"
+            },
+            "affectsOrAffected": [
+              "https://memobase.ch/record/abb-001-1603_39_Foto_St"
+            ],
+            "resultsOrResultedIn": [
+              "_:1fc7aba796e87ff4b8b6e54cc89e37a0"
+            ]
+          }
+        },
+        {
+          "@id": "_:de1a5bb1fc15466ffdc3a2325d5a2313",
+          "@type": "rico:Place",
+          "name": "Zürich"
+        }
+      ],
+      "isPublished": true,
+      "sameAs": [
+        "https://www.burgerarchiv-burgdorf.findbuch.net/php/main.php#466f746f205374x1603"
+      ]
+    },
+    {
+      "@id": "mbr:soz-023-Sozarch_F_5068-Ka-1770",
+      "@type": "rico:Record",
+      "@context": "https://api.memobase.ch/context/record.json",
+      "type": "Foto",
+      "title": "Zürich",
+      "abstract": [
+        "\"Zürich\" - Bootsanlegestelle, Blick vom See gegen die Limmat, koloriert, Poststempel: 21.09.1917"
+      ],
+      "created": {
+        "@type": "rico:DateRange",
+        "normalizedDateValue": "1917"
+      },
+      "hasInstantiation": [
+        {
+          "@id": "mbdo:soz-023-Sozarch_F_5068-Ka-1770-1",
+          "@type": "rico:Instantiation",
+          "type": "digitalObject",
+          "isInstantiationOf": "mbr:soz-023-Sozarch_F_5068-Ka-1770",
+          "isOrWasRegulatedBy": [
+            {
+              "@type": "rico:Rule",
+              "type": "usage",
+              "name": "In Copyright (InC)",
+              "sameAs": "http://rightsstatements.org/vocab/InC/1.0/",
+              "regulatesOrRegulated": "mbdo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "access",
+              "name": "public",
+              "regulatesOrRegulated": "mbdo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            }
+          ],
+          "hasOrHadIdentifier": [
+            {
+              "@type": "rico:Identifier",
+              "identifier": "soz-023-Sozarch_F_5068-Ka-1770-1",
+              "type": "main",
+              "isOrWasIdentifierOf": "mbdo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            }
+          ],
+          "isDerivedFromInstantiation": "mbpo:soz-023-Sozarch_F_5068-Ka-1770-1",
+          "componentColor": [
+            "9DA79D",
+            "958474",
+            "738495"
+          ],
+          "hasColourContent": "TrueColor",
+          "hasFormat": "fmt/43",
+          "hasMimeType": "image/jpg",
+          "height": "695.0",
+          "width": "1024.0",
+          "orientation": "Undefined",
+          "isDistributedOn": "image",
+          "locator": "https://prod.media.memobase.ch/memo/soz-023-Sozarch_F_5068-Ka-1770-1",
+          "mediaLocation": "remote",
+          "proxyType": "proxydirect"
+        },
+        {
+          "@id": "mbpo:soz-023-Sozarch_F_5068-Ka-1770-1",
+          "@type": "rico:Instantiation",
+          "type": "physicalObject",
+          "isInstantiationOf": "mbr:soz-023-Sozarch_F_5068-Ka-1770",
+          "isOrWasRegulatedBy": [
+            {
+              "@type": "rico:Rule",
+              "type": "usage",
+              "name": "In Copyright (InC)",
+              "sameAs": "http://rightsstatements.org/vocab/InC/1.0/",
+              "regulatesOrRegulated": "mbpo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "access",
+              "name": "onsite",
+              "regulatesOrRegulated": "mbpo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            }
+          ],
+          "hasOrHadIdentifier": [
+            {
+              "@type": "rico:Identifier",
+              "identifier": "soz-023-Sozarch_F_5068-Ka-1770-1",
+              "type": "main",
+              "isOrWasIdentifierOf": "mbpo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            },
+            {
+              "@type": "rico:Identifier",
+              "identifier": "Sozarch_F_5068-Ka-1770",
+              "type": "callNumber",
+              "isOrWasIdentifierOf": "mbpo:soz-023-Sozarch_F_5068-Ka-1770-1"
+            }
+          ],
+          "hasDerivedInstantiation": "mbdo:soz-023-Sozarch_F_5068-Ka-1770-1",
+          "hasCarrierType": [
+            {
+              "@id": "_:4b084662c8cdcf45622ee1c0d74cc14c",
+              "@type": "rico:CarrierType",
+              "name": "Postkarte",
+              "isCarrierTypeOf": "https://memobase.ch/physical/soz-023-Sozarch_F_5068-Ka-1770-1",
+              "isOrWasAffectedBy": "_:4065a0f6b8c6c08fca67c9bd695b0924"
+            },
+            {
+              "@id": "_:21d7930a207ed5109aba85ec54f9cbd6",
+              "@type": "rico:CarrierType",
+              "nameDe": "Postkarte",
+              "nameFr": "carte postale",
+              "nameIt": "cartolina postale",
+              "sameAs": [
+                "http://www.wikidata.org/entity/Q192425"
+              ],
+              "isCarrierTypeOf": "https://memobase.ch/physical/soz-023-Sozarch_F_5068-Ka-1770-1",
+              "resultsOrResultedFrom": {
+                "@id": "_:4065a0f6b8c6c08fca67c9bd695b0924",
+                "@type": "rico:Activity",
+                "type": "enrichment",
+                "beginningDate": "2026-06-19T00:03:59Z",
+                "endDate": "2026-06-19T00:03:59Z",
+                "isOrWasPerformedBy": {
+                  "@id": "_:89f4e1cddbf2dbae380abe50f734f784",
+                  "@type": "rico:Mechanism",
+                  "name": "Normalizer - Carrier Type",
+                  "performsOrPerformed": "_:4065a0f6b8c6c08fca67c9bd695b0924"
+                },
+                "affectsOrAffected": [
+                  "_:4b084662c8cdcf45622ee1c0d74cc14c"
+                ],
+                "resultsOrResultedIn": [
+                  "_:21d7930a207ed5109aba85ec54f9cbd6"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "hasOrHadIdentifier": [
+        {
+          "@type": "rico:Identifier",
+          "identifier": "soz-023-Sozarch_F_5068-Ka-1770",
+          "type": "main",
+          "isOrWasIdentifierOf": "mbr:soz-023-Sozarch_F_5068-Ka-1770"
+        },
+        {
+          "@type": "rico:Identifier",
+          "identifier": "308745",
+          "type": "original",
+          "isOrWasIdentifierOf": "mbr:soz-023-Sozarch_F_5068-Ka-1770"
+        }
+      ],
+      "hasOrHadLanguage": [
+        {
+          "@id": "_:95d081978ef2b98483b531803f144b96",
+          "@type": "rico:Language",
+          "type": "content",
+          "nameDe": "Deutsch",
+          "nameFr": "allemand",
+          "nameIt": "tedesco",
+          "sameAs": [
+            "http://www.wikidata.org/entity/Q188"
+          ],
+          "isOrWasLanguageOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770",
+          "resultsOrResultedFrom": {
+            "@id": "_:03c2adbf7433b4549ebd3fcb13635e74",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T00:03:59Z",
+            "endDate": "2026-06-19T00:03:59Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:c58e44865733ebfdb839e69e644e615a",
+              "@type": "rico:Mechanism",
+              "name": "Normalizer - Languages",
+              "performsOrPerformed": "_:03c2adbf7433b4549ebd3fcb13635e74"
+            },
+            "affectsOrAffected": [
+              "_:0e6bbb8d037bedce27f7d8c161947d21"
+            ],
+            "resultsOrResultedIn": [
+              "_:95d081978ef2b98483b531803f144b96"
+            ]
+          }
+        },
+        {
+          "@id": "_:0e6bbb8d037bedce27f7d8c161947d21",
+          "@type": "rico:Language",
+          "type": "content",
+          "name": "ger",
+          "isOrWasLanguageOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770",
+          "isOrWasAffectedBy": "_:03c2adbf7433b4549ebd3fcb13635e74"
+        }
+      ],
+      "hasOrHadSubject": [
+        {
+          "@id": "_:ea9dfeb352ac15b4c4b32e0d76f193d9",
+          "@type": "skos:Concept",
+          "prefLabel": "Binnenschiffsverkehr"
+        }
+      ],
+      "hasOrHadTitle": [
+        {
+          "@type": "rico:Title",
+          "type": "main",
+          "isOrWasTitleOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770",
+          "title": "Zürich"
+        },
+        {
+          "@type": "rico:Title",
+          "type": "series",
+          "isOrWasTitleOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770",
+          "title": "Stadt Zürich: Limmat links und rechts"
+        }
+      ],
+      "hasPlaceOfCapture": [
+        {
+          "@id": "_:e12f981236a1de562c98c82e9093b0cd",
+          "@type": "rico:Place",
+          "type": "Enriched by Memobase",
+          "nameDe": "Zürich",
+          "nameFr": "Zurich",
+          "nameIt": "Zurigo",
+          "descriptiveNoteDe": "bevölkerungsreichste Stadt der Schweiz und Hauptort des Kantons Zürich",
+          "descriptiveNoteFr": "ville la plus peuplée de Suisse et chef-lieu du canton de Zurich",
+          "descriptiveNoteIt": "città della Svizzera, capoluogo dell'omonimo cantone",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q72",
+            "https://d-nb.info/gnd/4068038-1",
+            "https://hls-dhs-dss.ch/articles/000171"
+          ],
+          "isPlaceOfCaptureOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770",
+          "coordinateLocation": "Point(47.374444 8.541111)",
+          "resultsOrResultedFrom": {
+            "@id": "_:62130f95a53e0038ad975db4089d9ddb",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T00:03:58Z",
+            "endDate": "2026-06-19T00:03:58Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:010147ffec1ab0183119ebaebb0174ff",
+              "@type": "rico:Mechanism",
+              "name": "Wikidata Linker - Place",
+              "performsOrPerformed": "_:62130f95a53e0038ad975db4089d9ddb"
+            },
+            "affectsOrAffected": [
+              "_:cb6cb61c8fd56383c0c25694a387a0d1"
+            ],
+            "resultsOrResultedIn": [
+              "_:e12f981236a1de562c98c82e9093b0cd"
+            ]
+          }
+        },
+        {
+          "@id": "_:cb6cb61c8fd56383c0c25694a387a0d1",
+          "@type": "rico:Place",
+          "name": "Zürich, Stadt",
+          "isPlaceOfCaptureOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770",
+          "isOrWasAffectedBy": "_:62130f95a53e0038ad975db4089d9ddb"
+        }
+      ],
+      "recordResourceOrInstantiationIsSourceOfCreationRelation": [
+        {
+          "@id": "_:c62233755e7e9194e2d1e5ccef4a3f03",
+          "@type": "rico:CreationRelation",
+          "type": "creator",
+          "creationRelationHasSource": "mbr:soz-023-Sozarch_F_5068-Ka-1770",
+          "creationRelationHasTarget": {
+            "@id": "_:6975f6d95069ea3a8767deffb3f48d3f",
+            "@type": "rico:Person",
+            "name": "Künzli-Tobler, Carl",
+            "firstName": "Carl",
+            "lastName": "Künzli-Tobler",
+            "agentIsTargetOfCreationRelation": "_:c62233755e7e9194e2d1e5ccef4a3f03"
+          }
+        }
+      ],
+      "isOrWasPartOf": "mbrs:soz-023",
+      "hasOrHadHolder": "mbcb:soz",
+      "isOrWasRegulatedBy": [
+        {
+          "@type": "rico:Rule",
+          "type": "holder",
+          "name": "Schweizerisches Sozialarchiv",
+          "regulatesOrRegulated": "mbr:soz-023-Sozarch_F_5068-Ka-1770"
+        }
+      ],
+      "spatial": [
+        {
+          "@id": "_:92da2f3a05913679eb00f1584cb6e5de",
+          "@type": "rico:Place",
+          "type": "Enriched by Connectom",
+          "nameDe": "Limmat",
+          "nameFr": "Limmat",
+          "nameIt": "Limmat",
+          "descriptiveNoteDe": "Fluss in der Schweiz",
+          "descriptiveNoteFr": "rivière suisse",
+          "descriptiveNoteIt": "fiume svizzero",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q14338",
+            "https://d-nb.info/gnd/4315418-9",
+            "https://hls-dhs-dss.ch/articles/008761"
+          ],
+          "coordinateLocation": "Point(47.366342 8.543351)",
+          "resultsOrResultedFrom": {
+            "@id": "_:4184f3923a7a397053dde90b76581453",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T00:03:59Z",
+            "endDate": "2026-06-19T00:03:59Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:15162f9c617370b5a20efdbbf77d8daa",
+              "@type": "rico:Mechanism",
+              "name": "Connectom Enrichment - Text Fields",
+              "performsOrPerformed": "_:4184f3923a7a397053dde90b76581453"
+            },
+            "affectsOrAffected": [
+              "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1770"
+            ],
+            "resultsOrResultedIn": [
+              "_:4311b3aec9d66cac14a6a73e1d8348d0",
+              "_:92da2f3a05913679eb00f1584cb6e5de"
+            ]
+          }
+        },
+        {
+          "@id": "_:4311b3aec9d66cac14a6a73e1d8348d0",
+          "@type": "rico:Place",
+          "type": "Enriched by Connectom",
+          "nameDe": "Zürich",
+          "nameFr": "Zurich",
+          "nameIt": "Zurigo",
+          "descriptiveNoteDe": "bevölkerungsreichste Stadt der Schweiz und Hauptort des Kantons Zürich",
+          "descriptiveNoteFr": "ville la plus peuplée de Suisse et chef-lieu du canton de Zurich",
+          "descriptiveNoteIt": "città della Svizzera, capoluogo dell'omonimo cantone",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q72",
+            "https://d-nb.info/gnd/4068038-1",
+            "https://hls-dhs-dss.ch/articles/000171"
+          ],
+          "coordinateLocation": "Point(47.374444 8.541111)",
+          "resultsOrResultedFrom": {
+            "@id": "_:4184f3923a7a397053dde90b76581453"
+          }
+        }
+      ],
+      "isPublished": true,
+      "sameAs": [
+        "https://www.bild-video-ton.ch/bestand/objekt/Sozarch_F_5068-Ka-1770"
+      ]
+    },
+    {
+      "@id": "mbr:soz-023-Sozarch_F_5068-Ka-1772",
+      "@type": "rico:Record",
+      "@context": "https://api.memobase.ch/context/record.json",
+      "type": "Foto",
+      "title": "Zürich",
+      "abstract": [
+        "\"Zürich - Die 3 Hauptkirchen von der Quaibrücke aus\" - Rückseite: \"Verbandstag des schweizerischen Buchbinderverbandes. Zürich, Pfingsten 1909\", Fraumünster, Wasserkirche, Grossmünster, Limmat, koloriert"
+      ],
+      "created": {
+        "@type": "rico:DateRange",
+        "normalizedDateValue": "1909"
+      },
+      "hasInstantiation": [
+        {
+          "@id": "mbdo:soz-023-Sozarch_F_5068-Ka-1772-1",
+          "@type": "rico:Instantiation",
+          "type": "digitalObject",
+          "isInstantiationOf": "mbr:soz-023-Sozarch_F_5068-Ka-1772",
+          "isOrWasRegulatedBy": [
+            {
+              "@type": "rico:Rule",
+              "type": "usage",
+              "name": "In Copyright (InC)",
+              "sameAs": "http://rightsstatements.org/vocab/InC/1.0/",
+              "regulatesOrRegulated": "mbdo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "access",
+              "name": "public",
+              "regulatesOrRegulated": "mbdo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            }
+          ],
+          "hasOrHadIdentifier": [
+            {
+              "@type": "rico:Identifier",
+              "identifier": "soz-023-Sozarch_F_5068-Ka-1772-1",
+              "type": "main",
+              "isOrWasIdentifierOf": "mbdo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            }
+          ],
+          "isDerivedFromInstantiation": "mbpo:soz-023-Sozarch_F_5068-Ka-1772-1",
+          "componentColor": [
+            "5F4B37",
+            "C4C4B4",
+            "C4B39F"
+          ],
+          "hasColourContent": "TrueColor",
+          "hasFormat": "fmt/43",
+          "hasMimeType": "image/jpg",
+          "height": "679.0",
+          "width": "1023.0",
+          "orientation": "Undefined",
+          "isDistributedOn": "image",
+          "locator": "https://prod.media.memobase.ch/memo/soz-023-Sozarch_F_5068-Ka-1772-1",
+          "mediaLocation": "remote",
+          "proxyType": "proxydirect"
+        },
+        {
+          "@id": "mbpo:soz-023-Sozarch_F_5068-Ka-1772-1",
+          "@type": "rico:Instantiation",
+          "type": "physicalObject",
+          "isInstantiationOf": "mbr:soz-023-Sozarch_F_5068-Ka-1772",
+          "isOrWasRegulatedBy": [
+            {
+              "@type": "rico:Rule",
+              "type": "access",
+              "name": "onsite",
+              "regulatesOrRegulated": "mbpo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            },
+            {
+              "@type": "rico:Rule",
+              "type": "usage",
+              "name": "In Copyright (InC)",
+              "sameAs": "http://rightsstatements.org/vocab/InC/1.0/",
+              "regulatesOrRegulated": "mbpo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            }
+          ],
+          "hasOrHadIdentifier": [
+            {
+              "@type": "rico:Identifier",
+              "identifier": "soz-023-Sozarch_F_5068-Ka-1772-1",
+              "type": "main",
+              "isOrWasIdentifierOf": "mbpo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            },
+            {
+              "@type": "rico:Identifier",
+              "identifier": "Sozarch_F_5068-Ka-1772",
+              "type": "callNumber",
+              "isOrWasIdentifierOf": "mbpo:soz-023-Sozarch_F_5068-Ka-1772-1"
+            }
+          ],
+          "hasDerivedInstantiation": "mbdo:soz-023-Sozarch_F_5068-Ka-1772-1",
+          "hasCarrierType": [
+            {
+              "@id": "_:87862f8c0624a2cce506dda92dc82991",
+              "@type": "rico:CarrierType",
+              "name": "Postkarte",
+              "isCarrierTypeOf": "https://memobase.ch/physical/soz-023-Sozarch_F_5068-Ka-1772-1",
+              "isOrWasAffectedBy": "_:6c473272b631d282f008f774d3741ee0"
+            },
+            {
+              "@id": "_:aeead4aadfc5fdae97c7a874cde7366f",
+              "@type": "rico:CarrierType",
+              "nameDe": "Postkarte",
+              "nameFr": "carte postale",
+              "nameIt": "cartolina postale",
+              "sameAs": [
+                "http://www.wikidata.org/entity/Q192425"
+              ],
+              "isCarrierTypeOf": "https://memobase.ch/physical/soz-023-Sozarch_F_5068-Ka-1772-1",
+              "resultsOrResultedFrom": {
+                "@id": "_:6c473272b631d282f008f774d3741ee0",
+                "@type": "rico:Activity",
+                "type": "enrichment",
+                "beginningDate": "2026-06-19T00:03:59Z",
+                "endDate": "2026-06-19T00:03:59Z",
+                "isOrWasPerformedBy": {
+                  "@id": "_:e7dcd3a229430622f94930956679faa1",
+                  "@type": "rico:Mechanism",
+                  "name": "Normalizer - Carrier Type",
+                  "performsOrPerformed": "_:6c473272b631d282f008f774d3741ee0"
+                },
+                "affectsOrAffected": [
+                  "_:87862f8c0624a2cce506dda92dc82991"
+                ],
+                "resultsOrResultedIn": [
+                  "_:aeead4aadfc5fdae97c7a874cde7366f"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "hasOrHadIdentifier": [
+        {
+          "@type": "rico:Identifier",
+          "identifier": "soz-023-Sozarch_F_5068-Ka-1772",
+          "type": "main",
+          "isOrWasIdentifierOf": "mbr:soz-023-Sozarch_F_5068-Ka-1772"
+        },
+        {
+          "@type": "rico:Identifier",
+          "identifier": "308747",
+          "type": "original",
+          "isOrWasIdentifierOf": "mbr:soz-023-Sozarch_F_5068-Ka-1772"
+        }
+      ],
+      "hasOrHadLanguage": [
+        {
+          "@id": "_:d385bbd8f039069747c7e8d890812d0f",
+          "@type": "rico:Language",
+          "type": "content",
+          "name": "ger",
+          "isOrWasLanguageOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772",
+          "isOrWasAffectedBy": "_:36aef7307d96773adc0432ecae199133"
+        },
+        {
+          "@id": "_:f2af43d2df55c79c310641051a4f8626",
+          "@type": "rico:Language",
+          "type": "content",
+          "nameDe": "Deutsch",
+          "nameFr": "allemand",
+          "nameIt": "tedesco",
+          "sameAs": [
+            "http://www.wikidata.org/entity/Q188"
+          ],
+          "isOrWasLanguageOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772",
+          "resultsOrResultedFrom": {
+            "@id": "_:36aef7307d96773adc0432ecae199133",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T00:03:59Z",
+            "endDate": "2026-06-19T00:03:59Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:d7f05e3be57b01f56356c6d0da264d87",
+              "@type": "rico:Mechanism",
+              "name": "Normalizer - Languages",
+              "performsOrPerformed": "_:36aef7307d96773adc0432ecae199133"
+            },
+            "affectsOrAffected": [
+              "_:d385bbd8f039069747c7e8d890812d0f"
+            ],
+            "resultsOrResultedIn": [
+              "_:f2af43d2df55c79c310641051a4f8626"
+            ]
+          }
+        }
+      ],
+      "hasOrHadSubject": [
+        {
+          "@id": "_:d3916a9a8fa652109d8743367c60d45f",
+          "@type": "rico:Agent",
+          "type": "Enriched by Connectom",
+          "name": "Kirchengebäude",
+          "nameDe": "Kirchengebäude",
+          "nameFr": "église",
+          "nameIt": "chiesa",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q16970",
+            "https://d-nb.info/gnd/4073436-5"
+          ],
+          "descriptiveNoteDe": [
+            "Gebäude errichtet für Andacht und Gottesdienste einer christlichen Religionsgemeinschaft"
+          ],
+          "descriptiveNoteFr": [
+            "édifice religieux chrétien"
+          ],
+          "descriptiveNoteIt": [
+            "edificio religioso cristiano"
+          ],
+          "isOrWasSubjectOf": "mbr:soz-023-Sozarch_F_5068-Ka-1772",
+          "resultsOrResultedFrom": {
+            "@id": "_:b1425dd4931617be3e0f6263aac322a7",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T00:03:59Z",
+            "endDate": "2026-06-19T00:03:59Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:313a68465f1a205213991b57ad10f334",
+              "@type": "rico:Mechanism",
+              "name": "Connectom Enrichment - Text Fields",
+              "performsOrPerformed": "_:b1425dd4931617be3e0f6263aac322a7"
+            },
+            "affectsOrAffected": [
+              "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772"
+            ],
+            "resultsOrResultedIn": [
+              "_:5ba96306170aa369ecf5526c97fb274d",
+              "_:2106a286217e9bd3d5396515e1fee6ec",
+              "_:972eea134dc39c4278c3f6c4887b46f8"
+            ]
+          }
+        },
+        {
+          "@id": "_:9b0b8fbabbdea3185ceea8593f5d2259",
+          "@type": "rico:Agent",
+          "type": "Enriched by Connectom",
+          "name": "Zürich",
+          "nameDe": "Zürich",
+          "nameFr": "Zurich",
+          "nameIt": "Zurigo",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q72",
+            "https://d-nb.info/gnd/4068038-1",
+            "https://hls-dhs-dss.ch/articles/000171"
+          ],
+          "descriptiveNoteDe": [
+            "bevölkerungsreichste Stadt der Schweiz und Hauptort des Kantons Zürich"
+          ],
+          "descriptiveNoteFr": [
+            "ville la plus peuplée de Suisse et chef-lieu du canton de Zurich"
+          ],
+          "descriptiveNoteIt": [
+            "città della Svizzera, capoluogo dell'omonimo cantone"
+          ],
+          "isOrWasSubjectOf": "mbr:soz-023-Sozarch_F_5068-Ka-1772",
+          "resultsOrResultedFrom": {
+            "@id": "_:b1425dd4931617be3e0f6263aac322a7"
+          }
+        },
+        {
+          "@id": "_:04ed9a5d10f9a92952c4e88b6e38afc5",
+          "@type": "skos:Concept",
+          "prefLabel": "Binnenschiffsverkehr"
+        }
+      ],
+      "hasOrHadTitle": [
+        {
+          "@type": "rico:Title",
+          "type": "series",
+          "isOrWasTitleOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772",
+          "title": "Stadt Zürich: Limmat links und rechts"
+        },
+        {
+          "@type": "rico:Title",
+          "type": "main",
+          "isOrWasTitleOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772",
+          "title": "Zürich"
+        }
+      ],
+      "hasPlaceOfCapture": [
+        {
+          "@id": "_:36b00101cf7148dc79880866873e157c",
+          "@type": "rico:Place",
+          "name": "Zürich, Stadt",
+          "isPlaceOfCaptureOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772",
+          "isOrWasAffectedBy": "_:fb6803461fdebdd141a9dd6b72b8ba96"
+        },
+        {
+          "@id": "_:245d2008f3ddb78f67a212224fd7258c",
+          "@type": "rico:Place",
+          "type": "Enriched by Memobase",
+          "nameDe": "Zürich",
+          "nameFr": "Zurich",
+          "nameIt": "Zurigo",
+          "descriptiveNoteDe": "bevölkerungsreichste Stadt der Schweiz und Hauptort des Kantons Zürich",
+          "descriptiveNoteFr": "ville la plus peuplée de Suisse et chef-lieu du canton de Zurich",
+          "descriptiveNoteIt": "città della Svizzera, capoluogo dell'omonimo cantone",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q72",
+            "https://d-nb.info/gnd/4068038-1",
+            "https://hls-dhs-dss.ch/articles/000171"
+          ],
+          "isPlaceOfCaptureOf": "https://memobase.ch/record/soz-023-Sozarch_F_5068-Ka-1772",
+          "coordinateLocation": "Point(47.374444 8.541111)",
+          "resultsOrResultedFrom": {
+            "@id": "_:fb6803461fdebdd141a9dd6b72b8ba96",
+            "@type": "rico:Activity",
+            "type": "enrichment",
+            "beginningDate": "2026-06-19T00:03:59Z",
+            "endDate": "2026-06-19T00:03:59Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:64337029602743632265bd2d19004545",
+              "@type": "rico:Mechanism",
+              "name": "Wikidata Linker - Place",
+              "performsOrPerformed": "_:fb6803461fdebdd141a9dd6b72b8ba96"
+            },
+            "affectsOrAffected": [
+              "_:36b00101cf7148dc79880866873e157c"
+            ],
+            "resultsOrResultedIn": [
+              "_:245d2008f3ddb78f67a212224fd7258c"
+            ]
+          }
+        }
+      ],
+      "recordResourceOrInstantiationIsSourceOfCreationRelation": [
+        {
+          "@id": "_:6231fb5dfd12c954b749d290942b89a3",
+          "@type": "rico:CreationRelation",
+          "type": "creator",
+          "creationRelationHasSource": "mbr:soz-023-Sozarch_F_5068-Ka-1772",
+          "creationRelationHasTarget": {
+            "@id": "_:177b4deb69e83866e44f0206a3d121a0",
+            "@type": "rico:Person",
+            "name": "Edition Photoglob Co.",
+            "lastName": "Edition Photoglob Co.",
+            "agentIsTargetOfCreationRelation": "_:6231fb5dfd12c954b749d290942b89a3"
+          }
+        }
+      ],
+      "isOrWasPartOf": "mbrs:soz-023",
+      "hasOrHadHolder": "mbcb:soz",
+      "isOrWasRegulatedBy": [
+        {
+          "@type": "rico:Rule",
+          "type": "holder",
+          "name": "Schweizerisches Sozialarchiv",
+          "regulatesOrRegulated": "mbr:soz-023-Sozarch_F_5068-Ka-1772"
+        }
+      ],
+      "spatial": [
+        {
+          "@id": "_:9c35b3ad4469d17f42401d3157c1afc2",
+          "@type": "rico:Place",
+          "type": "Enriched by Connectom",
+          "nameDe": "Grossmünster",
+          "nameFr": "Grossmünster",
+          "nameIt": "Grossmünster",
+          "descriptiveNoteDe": "Kirchengebäude in der Stadt Zürich, Schweiz",
+          "descriptiveNoteFr": "église suisse",
+          "descriptiveNoteIt": "chiesa di Zurigo",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q684948",
+            "https://d-nb.info/gnd/4458464-7",
+            "https://hls-dhs-dss.ch/articles/012123"
+          ],
+          "coordinateLocation": "Point(47.370000 8.544167)",
+          "resultsOrResultedFrom": {
+            "@id": "_:b1425dd4931617be3e0f6263aac322a7"
+          }
+        },
+        {
+          "@id": "_:49aef696f95f5fb6b354b90370dc1451",
+          "@type": "rico:Place",
+          "type": "Enriched by Connectom",
+          "nameDe": "Wasserkirche",
+          "nameFr": "Wasserkirche",
+          "nameIt": "Wasserkirche",
+          "descriptiveNoteDe": "Kirchengebäude in Zürich",
+          "descriptiveNoteFr": "église suisse",
+          "descriptiveNoteIt": "chiesa di Zurigo",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q477189",
+            "https://d-nb.info/gnd/4263709-0"
+          ],
+          "coordinateLocation": "Point(47.369611 8.543333)",
+          "resultsOrResultedFrom": {
+            "@id": "_:b1425dd4931617be3e0f6263aac322a7"
+          }
+        },
+        {
+          "@id": "_:9d37d63fb6736189dd677ab8a405f324",
+          "@type": "rico:Place",
+          "type": "Enriched by Connectom",
+          "nameDe": "Fraumünster",
+          "nameFr": "Fraumünster",
+          "nameIt": "Fraumünster",
+          "descriptiveNoteDe": "Kirchengebäude in der Stadt Zürich, Schweiz",
+          "descriptiveNoteFr": "église suisse",
+          "descriptiveNoteIt": "chiesa di Zurigo",
+          "sameAs": [
+            "https://www.wikidata.org/entity/Q690944",
+            "https://d-nb.info/gnd/1083295004",
+            "https://d-nb.info/gnd/4097964-7"
+          ],
+          "coordinateLocation": "Point(47.369722 8.541111)",
+          "resultsOrResultedFrom": {
+            "@id": "_:b1425dd4931617be3e0f6263aac322a7"
+          }
+        }
+      ],
+      "isPublished": true,
+      "sameAs": [
+        "https://www.bild-video-ton.ch/bestand/objekt/Sozarch_F_5068-Ka-1772"
+      ]
+    }
+  ],
+  "hydra:totalItems": 51119,
+  "hydra:view": {
+    "@id": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&size=5",
+    "hydra:first": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&size=5",
+    "hydra:last": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&offset=51115&size=5",
+    "hydra:limit": 5,
+    "hydra:next": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&offset=5&size=5"
+  }
+}

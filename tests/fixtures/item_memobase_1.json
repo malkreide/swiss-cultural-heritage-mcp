@@ -1,0 +1,291 @@
+{
+  "@context": "https://api.memobase.ch/context/record.json",
+  "@id": "mbr:abb-001-1603_39_Foto_St",
+  "@type": "rico:Record",
+  "conditionsOfUse": [
+    "Die Akten sind frei zugänglich."
+  ],
+  "created": {
+    "@type": "rico:DateRange",
+    "normalizedDateValue": "1939"
+  },
+  "descriptiveNote": [
+    "unscharfe und fehlbelichtete Aufnahmen, Film unvollständig"
+  ],
+  "hasGenre": [
+    {
+      "@id": "_:5f19097cb05f48a2bd403101eb40597e",
+      "@type": "skos:Concept",
+      "prefLabelDe": "Architektur",
+      "prefLabelFr": "Architecture",
+      "prefLabelIt": "Architettura",
+      "resultsOrResultedFrom": {
+        "@id": "_:3982c7bd87bcbe2fe5ab3d2ab887cc55",
+        "@type": "rico:Activity",
+        "affectsOrAffected": [
+          "_:83a5bc5d89cb6193d3c432ba39a99b97"
+        ],
+        "beginningDate": "2026-06-19T06:12:48Z",
+        "endDate": "2026-06-19T06:12:48Z",
+        "isOrWasPerformedBy": {
+          "@id": "_:96761d266cfa838ea1f5fbf663f06502",
+          "@type": "rico:Mechanism",
+          "name": "Normalizer - Genre",
+          "performsOrPerformed": "_:3982c7bd87bcbe2fe5ab3d2ab887cc55"
+        },
+        "resultsOrResultedIn": [
+          "_:5f19097cb05f48a2bd403101eb40597e"
+        ],
+        "type": "enrichment"
+      }
+    },
+    {
+      "@id": "_:83a5bc5d89cb6193d3c432ba39a99b97",
+      "@type": "skos:Concept",
+      "isOrWasAffectedBy": "_:3982c7bd87bcbe2fe5ab3d2ab887cc55",
+      "prefLabel": "Architektur"
+    }
+  ],
+  "hasInstantiation": [
+    {
+      "@id": "mbpo:abb-001-1603_39_Foto_St-1",
+      "@type": "rico:Instantiation",
+      "hasCarrierType": [
+        {
+          "@id": "_:07210276fae0d71c4ec9d591cbb56b92",
+          "@type": "rico:CarrierType",
+          "isCarrierTypeOf": "https://memobase.ch/physical/abb-001-1603_39_Foto_St-1",
+          "isOrWasAffectedBy": "_:ec7416352c96761a74692fdc642e39c3",
+          "name": "Cellulosenitratfilm"
+        },
+        {
+          "@id": "_:7d6fbd87fd7a7f47a9f36f388dc4181f",
+          "@type": "rico:CarrierType",
+          "isCarrierTypeOf": "https://memobase.ch/physical/abb-001-1603_39_Foto_St-1",
+          "nameDe": "Negativfilm",
+          "nameFr": "film négatif",
+          "nameIt": "Pellicola per negativi",
+          "resultsOrResultedFrom": {
+            "@id": "_:ec7416352c96761a74692fdc642e39c3",
+            "@type": "rico:Activity",
+            "affectsOrAffected": [
+              "_:07210276fae0d71c4ec9d591cbb56b92"
+            ],
+            "beginningDate": "2026-06-19T06:12:48Z",
+            "endDate": "2026-06-19T06:12:48Z",
+            "isOrWasPerformedBy": {
+              "@id": "_:c6393a226dd8845adcf8055525776b39",
+              "@type": "rico:Mechanism",
+              "name": "Normalizer - Carrier Type",
+              "performsOrPerformed": "_:ec7416352c96761a74692fdc642e39c3"
+            },
+            "resultsOrResultedIn": [
+              "_:7d6fbd87fd7a7f47a9f36f388dc4181f",
+              "_:172edd3bab218d4eda1e4cfae6798612"
+            ],
+            "type": "enrichment"
+          },
+          "sameAs": [
+            "http://www.wikidata.org/entity/Q595597"
+          ]
+        },
+        {
+          "@id": "_:172edd3bab218d4eda1e4cfae6798612",
+          "@type": "rico:CarrierType",
+          "isCarrierTypeOf": "https://memobase.ch/physical/abb-001-1603_39_Foto_St-1",
+          "nameDe": "Cellulosenitratfilm",
+          "nameFr": "film nitrate",
+          "nameIt": "film nitrate",
+          "resultsOrResultedFrom": {
+            "@id": "_:ec7416352c96761a74692fdc642e39c3"
+          },
+          "sameAs": [
+            "http://www.wikidata.org/entity/Q105833892"
+          ]
+        }
+      ],
+      "hasDerivedInstantiation": "mbdo:abb-001-1603_39_Foto_St-1",
+      "hasOrHadIdentifier": [
+        {
+          "@type": "rico:Identifier",
+          "identifier": "abb-001-1603_39_Foto_St-1",
+          "isOrWasIdentifierOf": "mbpo:abb-001-1603_39_Foto_St-1",
+          "type": "main"
+        },
+        {
+          "@type": "rico:Identifier",
+          "identifier": "30",
+          "isOrWasIdentifierOf": "mbpo:abb-001-1603_39_Foto_St-1",
+          "type": "callNumber"
+        }
+      ],
+      "isInstantiationOf": "mbr:abb-001-1603_39_Foto_St",
+      "isOrWasRegulatedBy": [
+        {
+          "@type": "rico:Rule",
+          "name": "onsite",
+          "regulatesOrRegulated": "mbpo:abb-001-1603_39_Foto_St-1",
+          "type": "access"
+        },
+        {
+          "@type": "rico:Rule",
+          "name": "In Copyright - Educational Use Permitted (InC-EDU)",
+          "regulatesOrRegulated": "mbpo:abb-001-1603_39_Foto_St-1",
+          "sameAs": "http://rightsstatements.org/vocab/InC-EDU/1.0/",
+          "type": "usage"
+        }
+      ],
+      "physicalCharacteristics": [
+        "18 Dias; 2.4x3.6"
+      ],
+      "type": "physicalObject"
+    },
+    {
+      "@id": "mbdo:abb-001-1603_39_Foto_St-1",
+      "@type": "rico:Instantiation",
+      "componentColor": [
+        "6B7F6B",
+        "669292",
+        "585858"
+      ],
+      "hasColourContent": "TrueColor",
+      "hasFormat": "fmt/1507",
+      "hasMimeType": "image/jpeg",
+      "hasOrHadIdentifier": [
+        {
+          "@type": "rico:Identifier",
+          "identifier": "abb-001-1603_39_Foto_St-1",
+          "isOrWasIdentifierOf": "mbdo:abb-001-1603_39_Foto_St-1",
+          "type": "main"
+        }
+      ],
+      "height": "2000.0",
+      "isDerivedFromInstantiation": "mbpo:abb-001-1603_39_Foto_St-1",
+      "isDistributedOn": "image",
+      "isInstantiationOf": "mbr:abb-001-1603_39_Foto_St",
+      "isOrWasRegulatedBy": [
+        {
+          "@type": "rico:Rule",
+          "name": "Burgerarchiv Burgdorf",
+          "regulatesOrRegulated": "mbdo:abb-001-1603_39_Foto_St-1",
+          "type": "exifCopyright"
+        },
+        {
+          "@type": "rico:Rule",
+          "name": "Creative Commons - Attribution, Non-Commercial, ShareAlike (BY-NC-SA)",
+          "regulatesOrRegulated": "mbdo:abb-001-1603_39_Foto_St-1",
+          "sameAs": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+          "type": "usage"
+        },
+        {
+          "@type": "rico:Rule",
+          "name": "public",
+          "regulatesOrRegulated": "mbdo:abb-001-1603_39_Foto_St-1",
+          "type": "access"
+        }
+      ],
+      "mediaLocation": "local",
+      "orientation": "Undefined",
+      "proxyType": "proxydirect",
+      "type": "digitalObject",
+      "width": "1196.0"
+    }
+  ],
+  "hasOrHadHolder": "mbcb:abb",
+  "hasOrHadIdentifier": [
+    {
+      "@type": "rico:Identifier",
+      "identifier": "abb-001-1603_39_Foto_St",
+      "isOrWasIdentifierOf": "mbr:abb-001-1603_39_Foto_St",
+      "type": "main"
+    },
+    {
+      "@type": "rico:Identifier",
+      "identifier": "1603_39_Foto_St",
+      "isOrWasIdentifierOf": "mbr:abb-001-1603_39_Foto_St",
+      "type": "original"
+    }
+  ],
+  "hasOrHadTitle": [
+    {
+      "@type": "rico:Title",
+      "isOrWasTitleOf": "https://memobase.ch/record/abb-001-1603_39_Foto_St",
+      "title": "Zürich",
+      "type": "main"
+    }
+  ],
+  "hasSponsoringAgentOfResource": "mbcb:mav",
+  "isOrWasPartOf": "mbrs:abb-001",
+  "isOrWasRegulatedBy": [
+    {
+      "@type": "rico:Rule",
+      "name": "Die Verwertungsrechte liegen beim Burgerarchiv.",
+      "regulatesOrRegulated": "mbr:abb-001-1603_39_Foto_St",
+      "type": "holder"
+    }
+  ],
+  "recordResourceOrInstantiationIsSourceOfCreationRelation": [
+    {
+      "@id": "_:11688a61a1aad24984c1ca259371b2e1",
+      "@type": "rico:CreationRelation",
+      "creationRelationHasSource": "mbr:abb-001-1603_39_Foto_St",
+      "creationRelationHasTarget": {
+        "@id": "_:19d2e312f187b6ac05ee3a7facd76623",
+        "@type": "rico:Person",
+        "agentIsTargetOfCreationRelation": "_:11688a61a1aad24984c1ca259371b2e1",
+        "firstName": "Walther",
+        "lastName": "Stauffer",
+        "name": "Stauffer, Walther"
+      },
+      "type": "creator"
+    }
+  ],
+  "sameAs": [
+    "https://www.burgerarchiv-burgdorf.findbuch.net/php/main.php#466f746f205374x1603"
+  ],
+  "spatial": [
+    {
+      "@id": "_:1fc7aba796e87ff4b8b6e54cc89e37a0",
+      "@type": "rico:Place",
+      "coordinateLocation": "Point(47.374444 8.541111)",
+      "descriptiveNoteDe": "bevölkerungsreichste Stadt der Schweiz und Hauptort des Kantons Zürich",
+      "descriptiveNoteFr": "ville la plus peuplée de Suisse et chef-lieu du canton de Zurich",
+      "descriptiveNoteIt": "città della Svizzera, capoluogo dell'omonimo cantone",
+      "nameDe": "Zürich",
+      "nameFr": "Zurich",
+      "nameIt": "Zurigo",
+      "resultsOrResultedFrom": {
+        "@id": "_:6485a3ae5550f57e2d2893352239998c",
+        "@type": "rico:Activity",
+        "affectsOrAffected": [
+          "https://memobase.ch/record/abb-001-1603_39_Foto_St"
+        ],
+        "beginningDate": "2026-06-19T06:12:48Z",
+        "endDate": "2026-06-19T06:12:48Z",
+        "isOrWasPerformedBy": {
+          "@id": "_:5597527acd75c9d589a3cc4e2b1e337e",
+          "@type": "rico:Mechanism",
+          "name": "Connectom Enrichment - Text Fields",
+          "performsOrPerformed": "_:6485a3ae5550f57e2d2893352239998c"
+        },
+        "resultsOrResultedIn": [
+          "_:1fc7aba796e87ff4b8b6e54cc89e37a0"
+        ],
+        "type": "enrichment"
+      },
+      "sameAs": [
+        "https://www.wikidata.org/entity/Q72",
+        "https://d-nb.info/gnd/4068038-1",
+        "https://hls-dhs-dss.ch/articles/000171"
+      ],
+      "type": "Enriched by Connectom"
+    },
+    {
+      "@id": "_:de1a5bb1fc15466ffdc3a2325d5a2313",
+      "@type": "rico:Place",
+      "name": "Zürich"
+    }
+  ],
+  "title": "Zürich",
+  "type": "Foto"
+}
