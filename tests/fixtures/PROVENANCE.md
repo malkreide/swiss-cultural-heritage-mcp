@@ -30,7 +30,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `heritage_get_artist`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea&filters=%7B%22HAUPTNR%22%3A+%224005571%22%7D&limit=1`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 4 von 28 Listeneintraegen (je Liste die ersten 3), aus 2453 Bytes Rohantwort
 - **Groesse:** 2034 Bytes
 - **SHA-256:** `4a35dabd274d69a1ef64491580223d65f1e89e97bb4baa4efce70c907403c08f`
 
@@ -38,7 +38,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `heritage_search_artists`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea&limit=5&offset=0&q=Giacometti`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 6 von 33 Listeneintraegen (je Liste die ersten 3), aus 5730 Bytes Rohantwort
 - **Groesse:** 4280 Bytes
 - **SHA-256:** `38eb506eafef927440daf564c14c643f07f81889e878bac8fc31648f3b76ee44`
 
@@ -46,7 +46,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `heritage_cross_search`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea&q=Sammlung&limit=3`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 6 von 31 Listeneintraegen (je Liste die ersten 3), aus 4352 Bytes Rohantwort
 - **Groesse:** 4486 Bytes
 - **SHA-256:** `2eeec5b3e9be0987b8a0e4391dbf1a66bc74c49b88de4a9ab34c3b97c1c26367`
 
@@ -54,7 +54,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `heritage_cross_search`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/package_search?q=Sammlung+organization%3Aschweizerisches-nationalmuseum-snm&rows=3`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 62 von 104 Listeneintraegen (je Liste die ersten 3), aus 40967 Bytes Rohantwort
 - **Groesse:** 43596 Bytes
 - **SHA-256:** `8b70419ee6a5df7be7e9997ed1a405ec17b08a8dac562a212e1936a49c4d0d0d`
 
@@ -62,7 +62,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `search_heritage`
 - **Schluessel:** `https://beta.dodis.ch/api/solr/query`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 3 von 5 Listeneintraegen (je Liste die ersten 3), aus 1559 Bytes Rohantwort
 - **Groesse:** 1247 Bytes
 - **SHA-256:** `2909afd922012a9f95471f7a381a969f265380a41e14e2aa0dad429a794c65cb`
 
@@ -70,7 +70,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `get_heritage_item`
 - **Schluessel:** `https://beta.dodis.ch/api/solr/full/G27`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 6 von 21 Listeneintraegen (je Liste die ersten 3), aus 1796 Bytes Rohantwort
 - **Groesse:** 989 Bytes
 - **SHA-256:** `c8490a549f138c750096010292dc8c9da206cd33380c6f9a363de1fac9626e4d`
 
@@ -78,7 +78,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `get_heritage_item`
 - **Schluessel:** `https://api.memobase.ch/record/abb-001-1603_39_Foto_St`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 41 von 48 Listeneintraegen (je Liste die ersten 3), aus 7086 Bytes Rohantwort
 - **Groesse:** 9603 Bytes
 - **SHA-256:** `c363de23d1117d22b911819ea27bb8680ea0b595a487f799063f02124cf7200c`
 
@@ -86,7 +86,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `search_heritage`
 - **Schluessel:** `https://api.memobase.ch/?q=Z%C3%BCrich&size=5&offset=0`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 159 von 192 Listeneintraegen (je Liste die ersten 3), aus 48226 Bytes Rohantwort
 - **Groesse:** 40774 Bytes
 - **SHA-256:** `d244b53746a2f72f06ebaafcf7fcd9cba9da7169108f27d9f440f903279cfd2c`
 
@@ -94,7 +94,7 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 
 - **Werkzeuge:** `heritage_search_museum_datasets`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/package_search?q=Museum+organization%3Aschweizerisches-nationalmuseum-snm&rows=5&start=0`
-- **Auswahl:** ungekuerzt
+- **Auswahl:** 64 von 116 Listeneintraegen (je Liste die ersten 3), aus 70311 Bytes Rohantwort
 - **Groesse:** 46549 Bytes
 - **SHA-256:** `349e8c5fa480488405df662ed8c33df4fa0c91490abd7071924032245d606e66`
 
@@ -104,4 +104,4 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 - **Schluessel:** `https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request?verb=ListSets`
 - **Auswahl:** ungekuerzt — der Server liest diese Liste ganz, ein Schnitt behauptete einen kleineren Bestand
 - **Groesse:** 4855 Bytes
-- **SHA-256:** `769c7f1e2f9418a62ab869ad617f87cba27d29cfdd917dda8bd072eef17c6892`
+- **SHA-256:** `db07bfe255027240f33074feb045775c9672291c3797c91b19ef7b20c596af6c`
