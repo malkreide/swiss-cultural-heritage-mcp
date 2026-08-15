@@ -56,7 +56,12 @@ class Settings(BaseSettings):
 
     # Upstream-Endpunkte / Ressourcen
     ckan_api: str = "https://ckan.opendata.swiss/api/3/action"
-    snm_org: str = "schweizerisches-nationalmuseum"
+    # `-snm` gehoert dazu. Ohne das Kuerzel gibt es die Organisation auf
+    # opendata.swiss nicht, und CKAN beantwortet einen `q` mit einem
+    # unbekannten `organization:`-Term mit HTTP 200 und null Treffern — kein
+    # Fehler, keine Warnung. `heritage_search_museum_datasets` lieferte damit
+    # zu jeder Anfrage nichts. Gemessen am 15.08.2026: ohne Kuerzel 0, mit 10.
+    snm_org: str = "schweizerisches-nationalmuseum-snm"
     sikart_resource_id: str = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
     nb_oai_pmh: str = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
     # Gedächtnisinstitutionen — föderierte Fassade (Live-Probe 2026-07-19):
@@ -781,8 +786,50 @@ def _raise_tool_error(e: Exception) -> NoReturn:
     raise ToolError(_handle_error(e))
 
 
+class OaiError(ValueError):
+    """Die OAI-Schnittstelle hat die Anfrage abgelehnt.
+
+    OAI-PMH meldet Fehler *im Rumpf* und mit HTTP 200: ein `<error code="…">`
+    statt einer Trefferliste. Ohne Erkennung parst man null Records und meldet
+    «keine Publikationen gefunden» — ein Ausfall in der Form eines gueltigen
+    Negativbefunds, den ein Modell nicht unterscheiden kann.
+
+    Erbt von ``ValueError`` und ist damit automatisch Teil von
+    ``ExpectedUpstreamError`` — genau wie ``UpstreamSchemaError``. Die
+    Einzelquellen-Werkzeuge melden ihn als handlungsorientierten Fehler, und in
+    ``heritage_cross_search`` faellt nur *diese* Quelle aus, waehrend die
+    anderen weiter antworten.
+    """
+
+
+def _raise_if_oai_error(xml_text: str) -> None:
+    """Wirft `OaiError`, wenn die Antwort ein `<error>`-Element traegt.
+
+    Genau so blieb unbemerkt, dass `heritage_search_helveticat` seine Anfrage
+    ohne das verlangte `set` und mit einem nicht publizierten
+    `metadataPrefix` stellte: die Quelle antwortete mit
+    `<error code="badArgument">The request is missing required set argument</error>`
+    beziehungsweise `noRecordsMatch`, und das Werkzeug las beides als leere
+    Trefferliste.
+    """
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return
+    fehler = root.find("oai:error", OAI_NS)
+    if fehler is None:
+        return
+    code = fehler.get("code", "unbekannt")
+    raise OaiError(
+        f"Die OAI-Schnittstelle hat die Anfrage abgelehnt (code={code}): "
+        f"{(fehler.text or '').strip() or 'ohne Begruendung'}. "
+        "Das ist KEIN leeres Ergebnis — es wurde nichts durchsucht."
+    )
+
+
 def _parse_oai_records(xml_text: str) -> list[dict]:
     """Parsed OAI-PMH ListRecords/GetRecord-Antwort in eine Liste von Dicts."""
+    _raise_if_oai_error(xml_text)
     root = ET.fromstring(xml_text)
     records = []
     for record in root.findall(".//oai:record", OAI_NS):

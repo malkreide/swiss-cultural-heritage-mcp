@@ -7,7 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Aufgezeichnete Fixtures** in `tests/fixtures/` — zehn echte Antworten, eine
+  je Abfrageform (vier Quellen, aber mehr Abfrageformen als Hosts). Abgegriffen
+  über einen httpx-Response-Hook auf dem geteilten Client, ausgelöst von den
+  Werkzeugen selbst. Herkunft, Datum, Auswahlregel und SHA-256 je Datei in
+  `tests/fixtures/PROVENANCE.md`, neu aufzeichnen mit
+  `scripts/record_fixtures.py`, geladen über `tests/fixture_data.py`.
+  Portfolio-Konvention, gleich wie in `meteoswiss-mcp` und
+  `swiss-statistics-mcp`.
+
+  Zugeordnet wird beim Abspielen nach der **Anfrage** und nicht nach der
+  Reihenfolge: `heritage_cross_search` und `search_heritage` fragen mehrere
+  Quellen in einem Aufruf ab. Die Sets der Nationalbibliothek bleiben
+  ungekürzt — das Werkzeug listet den Bestand, gekürzt log es.
+
+- **`OaiError` und `_raise_if_oai_error`.** OAI-PMH meldet Fehler *im Rumpf*
+  und mit HTTP 200: ein `<error code="…">` statt einer Trefferliste. Ohne
+  Erkennung parst man null Records und meldet «keine Publikationen gefunden» —
+  ein Ausfall in der Form eines gültigen Negativbefunds. `OaiError` erbt von
+  `ValueError` und damit von `ExpectedUpstreamError`, dasselbe Muster wie
+  `UpstreamSchemaError`: in `heritage_cross_search` fällt nur diese Quelle aus,
+  während die anderen weiter antworten.
+
 ### Fixed
+
+- **`heritage_search_museum_datasets` lieferte zu jeder Anfrage nichts.** Der
+  Organisationsfilter hiess `schweizerisches-nationalmuseum`; auf
+  opendata.swiss heisst die Organisation `schweizerisches-nationalmuseum-snm`.
+  CKAN beantwortet einen `q` mit einem unbekannten `organization:`-Term mit
+  HTTP 200 und null Treffern, ohne Fehler und ohne Warnung. Gemessen am
+  15.08.2026: ohne Kürzel 0 Datensätze, mit 10. Betroffen war auch die
+  SNM-Spur von `heritage_cross_search`.
+
+### Bekannt / Known
+
+- **`heritage_search_helveticat` und `heritage_get_publication` liefern keine
+  Datensätze.** Sie fragen OAI-PMH mit `metadataPrefix=oai_dc` und ohne `set`.
+  Die Schnittstelle verlangt ein `set` (`<error code="badArgument">The request
+  is missing required set argument</error>`) und publiziert `oai_dc` nicht:
+  `ListMetadataFormats` nennt mods, oai_dc, oai_qdc, marc21 und etdms, Records
+  liefert aber nur `marc21` — dort 100 je Set (`helveticat`,
+  `helveticat4slsp`, `xehelv`, `xdigicoll`; gemessen am 15.08.2026).
+
+  Behoben ist damit die *Stummheit*, nicht die Funktion: statt «keine
+  Publikationen gefunden» sagen die Werkzeuge jetzt, dass die Quelle die
+  Anfrage abgelehnt hat. Damit sie wieder Datensätze liefern, muss
+  `_parse_oai_records` MARC21 lesen können statt Dublin Core — ein eigener
+  Schritt. Bis dahin gibt es für diese beiden Werkzeuge auch keine
+  Erfolgs-Aufzeichnung; `tests/fixtures/PROVENANCE.md` sagt, warum.
 
 - **Eine unerwartete Dodis-Antwort wurde zu null Treffern.** `_search_dodis`
   las `data if isinstance(data, list) else data.get("results", [])`.

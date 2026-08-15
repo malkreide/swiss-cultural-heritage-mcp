@@ -1,0 +1,797 @@
+{
+  "help": "https://ckan.opendata.swiss/api/3/action/help_show?name=package_search",
+  "success": true,
+  "result": {
+    "count": 9,
+    "facets": {},
+    "results": [
+      {
+        "accrual_periodicity": "http://publications.europa.eu/resource/authority/frequency/IRREG",
+        "author": null,
+        "author_email": null,
+        "conforms_to": [],
+        "contact_points": [
+          {
+            "email": "info@snm.admin.ch",
+            "name": "Nationalmuseum Schweiz NMS"
+          }
+        ],
+        "creator_user_id": "af084126-f711-4016-a585-70354e997796",
+        "description": {
+          "rm": "Repräsentative Auswahl aus der Sammlung „Spezialsammlungen“ des Schweizerischen Nationalmuseums",
+          "de": "Repräsentative Auswahl aus der Sammlung \"Spezialsammlungen\" des Schweizerischen Nationalmuseums. Es handelt sich um die Sammlungen Spielzeuge, Musikinstrumente mit Schwerpunkt Militärmusik, Zollwesen, Gebäckmodel, Zinnfiguren/Gussformen, sowie die Sammlung Hallwil.",
+          "en": "Representative selection from the \"Special Collections\" of the Swiss National Museum. These are the collections of toys, musical instruments with a focus on military music, customs-related items, baking moulds, tin figures/casting moulds, and the Hallwil Collection.",
+          "fr": "Sélection représentative issue des \"collections spéciales\" du Musée national suisse. Il s’agit de collections de jouets, instruments de musique principalement utilisés dans la musique militaire, douanes, moules à gâteaux, moules et figurines en étain, et la collection Hallwil.",
+          "it": "Selezione rappresentativa dalla collezione \"Collezioni particolari\" del Museo nazionale svizzero. Questo fondo comprende le collezioni di giocattoli, strumenti musicali (con un’attenzione particolare rivolta alla musica militare), dogane, stampi per pasticceria, figurine in stagno/stampi e la collezione Hallwil."
+        },
+        "display_name": {},
+        "documentation": [],
+        "id": "03d8d103-31c9-4700-bc32-05ab5ef473d5",
+        "identifier": "Spezialsammlungen@schweizerisches-nationalmuseum-snm",
+        "isopen": false,
+        "issued": "2017-11-10T00:00:00",
+        "keywords": {
+          "en": [
+            "swiss-national-museum"
+          ],
+          "de": [
+            "schweizerisches-nationalmuseum"
+          ],
+          "fr": [
+            "musee-national-suisse"
+          ],
+          "it": [
+            "museo-nazionale-svizzero"
+          ]
+        },
+        "language": [
+          "de"
+        ],
+        "license_id": null,
+        "license_title": null,
+        "maintainer": null,
+        "maintainer_email": null,
+        "metadata_created": "2026-06-04T17:00:35.025801",
+        "metadata_modified": "2026-06-29T17:08:48.676671",
+        "modified": "2025-03-18T00:00:00",
+        "name": "reprasentative-auswahl-aus-der-sammlung-spezialsammlungen-des-schweizerischen-nationalmuseums",
+        "num_resources": 1,
+        "num_tags": 4,
+        "organization": {
+          "approval_status": "approved",
+          "created": "2017-12-07T10:13:36.830636",
+          "description": {
+            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
+            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
+            "de": "Unter dem Dach des Schweizerischen Nationalmuseums sind die drei Museen – Landesmuseum Zürich, Château de Prangins und das Forum Schweizer Geschichte Schwyz – sowie das Sammlungszentrum in Affoltern am Albis vereint. Die Museen präsentieren Schweizer Geschichte von den Anfängen bis heute, und erschliessen – auch mit temporären Ausstellungen zu aktuellen Themen – die schweizerischen Identitäten und die Vielfalt der Geschichte und Kultur unseres Landes.",
+            "it": "Il Museo nazionale svizzero (MNS) riunisce sotto lo stesso tetto il Museo nazionale Zurigo, il Castello di Prangins e il Forum della storia svizzera Svitto nonché il Centro delle collezioni di Affoltern am Albis. Con le loro mostre i musei presentano la storia della Svizzera dagli inizi ad oggi e valorizzano l’identità svizzera e la varietà storica e culturale del nostro Paese. Le mostre temporanee su temi attuali offrono ulteriori impressioni. Inoltre l’MNS cura la Casa della corporazione «Zur Meisen» Zurigo e il Museo doganale Cantine di Gandria."
+          },
+          "display_name": {
+            "de": "Schweizerisches Nationalmuseum SNM",
+            "en": "Swiss National Museum SNM",
+            "fr": "Musée national suisse MNS",
+            "it": "Museo nazionale svizzero MNS"
+          },
+          "id": "2c768667-6d3f-4643-bc8a-26fc9439075c",
+          "image_display_url": "https://ckan.opendata.swiss/uploads/group/snm.jpg",
+          "image_url": "https://ckan.opendata.swiss/uploads/group/snm.jpg",
+          "is_organization": true,
+          "name": "schweizerisches-nationalmuseum-snm",
+          "num_followers": 0,
+          "package_count": 9,
+          "political_level": "other",
+          "state": "active",
+          "title": {
+            "de": "Schweizerisches Nationalmuseum SNM",
+            "en": "Swiss National Museum SNM",
+            "fr": "Musée national suisse MNS",
+            "it": "Museo nazionale svizzero MNS"
+          },
+          "type": "organization",
+          "url": "http://www.nationalmuseum.ch",
+          "tags": [],
+          "groups": []
+        },
+        "owner_org": "2c768667-6d3f-4643-bc8a-26fc9439075c",
+        "private": false,
+        "publisher": {
+          "url": "",
+          "name": {
+            "de": "Schweizerisches Nationalmuseum (SNM)",
+            "fr": "Musée national suisse (MNS)",
+            "en": "Swiss National Museum (SNM)",
+            "it": "Museo nazionale svizzero (MNS)"
+          }
+        },
+        "qualified_relations": [],
+        "relations": [],
+        "see_alsos": [],
+        "spatial": "CH",
+        "state": "active",
+        "temporals": [],
+        "title": {
+          "de": "Repräsentative Auswahl aus der Sammlung \"Spezialsammlungen\" des Schweizerischen Nationalmuseums",
+          "rm": "Repräsentative Auswahl aus der Sammlung „Spezialsammlungen“ des Schweizerischen Nationalmuseums",
+          "en": "Representative selection from the \"Special Collections\" of the Swiss National Museum",
+          "fr": "Sélection représentative issue des \"collections spéciales\" du Musée national suisse",
+          "it": "Selezione rappresentativa dalla collezione \"Collezioni particolari\" del Museo nazionale svizzero"
+        },
+        "title_for_slug": "reprasentative-auswahl-aus-der-sammlung-spezialsammlungen-des-schweizerischen-nationalmuseums",
+        "type": "dataset",
+        "url": "",
+        "version": null,
+        "extras": [
+          {
+            "key": "guid",
+            "value": "Spezialsammlungen@schweizerisches-nationalmuseum-snm"
+          },
+          {
+            "key": "uri",
+            "value": "https://register.ld.admin.ch/i14y/dataset/Spezialsammlungen"
+          },
+          {
+            "key": "harvest_object_id",
+            "value": "5bf09fac-54ba-405f-bae3-5e7ea067cf39"
+          }
+        ],
+        "groups": [
+          {
+            "description": {
+              "fr": "",
+              "de": "",
+              "en": "",
+              "it": ""
+            },
+            "display_name": {
+              "de": "Bildung, Kultur und Sport",
+              "en": "Education, culture and sport",
+              "fr": "Éducation, culture et sport",
+              "it": "Istruzione, cultura e sport"
+            },
+            "id": "b36d9b09-dc05-422c-997e-4e81b02afd6f",
+            "image_display_url": "",
+            "name": "educ",
+            "title": "{\"de\": \"Bildung, Kultur und Sport\", \"en\": \"Education, culture and sport\", \"fr\": \"Éducation, culture et sport\", \"it\": \"Istruzione, cultura e sport\"}"
+          }
+        ],
+        "resources": [
+          {
+            "access_services": [],
+            "byte_size": 196056,
+            "cache_last_updated": null,
+            "cache_url": null,
+            "created": "2026-06-18T14:08:27.162648",
+            "datastore_active": false,
+            "datastore_contains_all_records_of_source_file": false,
+            "description": {
+              "de": "Download vom Server media.nationalmuseum.ch",
+              "fr": "Téléchargement depuis le serveur media.nationalmuseum.ch",
+              "en": "Download from the server media.nationalmuseum.ch",
+              "it": "Download dal server media.nationalmuseum.ch",
+              "rm": "Datensätze Spezialsammlungen als CSV Datei"
+            },
+            "display_name": {
+              "de": "Datensätze Spezialsammlungen als CSV Datei",
+              "fr": "Jeux de données collections spéciales au format CSV",
+              "en": "Dataset special collections as CSV file",
+              "it": "Ricordi collezioni particolari come file CSV Datei",
+              "rm": "Datensätze Spezialsammlungen als CSV Datei"
+            },
+            "documentation": [],
+            "format": "CSV",
+            "hash": "17a16dbdb5b820e36b605cc18e54a8dc",
+            "id": "e84174f9-4c6e-49fb-8b51-81f78696e29a",
+            "identifier": "resource_1",
+            "language": [],
+            "last_modified": null,
+            "license": "https://opendata.swiss/terms-of-use#terms_by",
+            "media_type": "text/csv",
+            "metadata_modified": "2026-06-29T17:08:48.688355",
+            "mimetype": null,
+            "mimetype_inner": null,
+            "name": {
+              "de": "Datensätze Spezialsammlungen als CSV Datei",
+              "fr": "Jeux de données collections spéciales au format CSV",
+              "en": "Dataset special collections as CSV file",
+              "it": "Ricordi collezioni particolari come file CSV Datei",
+              "rm": "Datensätze Spezialsammlungen als CSV Datei"
+            },
+            "package_id": "03d8d103-31c9-4700-bc32-05ab5ef473d5",
+            "position": 0,
+            "resource_type": null,
+            "rights": "https://opendata.swiss/terms-of-use#terms_by",
+            "size": null,
+            "state": "active",
+            "temporal_resolution": "",
+            "title": {
+              "de": "Datensätze Spezialsammlungen als CSV Datei",
+              "fr": "Jeux de données collections spéciales au format CSV",
+              "en": "Dataset special collections as CSV file",
+              "it": "Ricordi collezioni particolari come file CSV Datei",
+              "rm": "Datensätze Spezialsammlungen als CSV Datei"
+            },
+            "uri": "",
+            "url": "https://media.nationalmuseum.ch/Open_data/Spezialsammlungen.csv",
+            "url_type": null
+          }
+        ],
+        "tags": [
+          {
+            "display_name": "musee-national-suisse",
+            "id": "25a71291-670e-4e18-bffa-2a5e02f15033",
+            "name": "musee-national-suisse",
+            "state": "active",
+            "vocabulary_id": null
+          },
+          {
+            "display_name": "museo-nazionale-svizzero",
+            "id": "8ed2890b-aa0b-45d5-a5a0-ea77892ec55a",
+            "name": "museo-nazionale-svizzero",
+            "state": "active",
+            "vocabulary_id": null
+          },
+          {
+            "display_name": "schweizerisches-nationalmuseum",
+            "id": "ec53f7de-9168-4020-8bb6-977aaa8e3fe8",
+            "name": "schweizerisches-nationalmuseum",
+            "state": "active",
+            "vocabulary_id": null
+          }
+        ],
+        "relationships_as_subject": [],
+        "relationships_as_object": []
+      },
+      {
+        "accrual_periodicity": "http://publications.europa.eu/resource/authority/frequency/ANNUAL",
+        "author": null,
+        "author_email": null,
+        "conforms_to": [],
+        "contact_points": [
+          {
+            "email": "info@snm.admin.ch",
+            "name": "Schweizerisches Nationalmuseum SNM"
+          }
+        ],
+        "creator_user_id": "af084126-f711-4016-a585-70354e997796",
+        "description": {
+          "de": "Die Sammlung umfasst Bodenfunde aus der Schweiz vom Paläolithikum bis zum frühen Mittelalter, d.h. von ca. 100'000 v. Chr. bis rund 800 n. Chr. Verschiedene Funde sind von internationaler Bedeutung.",
+          "fr": "La collection comprend des objets trouvés en Suisse depuis le Paléolithique jusqu'au début du Moyen Âge, soit entre environ 100 000 avant J.-C. et environ 800 après J.-C. Plusieurs découvertes revêtent une importance internationale.",
+          "it": "La collezione comprende reperti archeologici rinvenuti in Svizzera dal Paleolitico al primo Medioevo, ovvero dal 100 000 a.C. circa all'800 d.C. circa. Diversi reperti sono di importanza internazionale.",
+          "rm": "Repräsentative Auswahl aus der Sammlung „Archäologie“ des Schweizerischen Nationalmuseums",
+          "en": "The collection comprises archaeological finds from Switzerland dating from the Palaeolithic to the early Middle Ages, i.e. from around 100,000 BC to around 800 AD. Various finds are of international significance."
+        },
+        "display_name": {},
+        "documentation": [],
+        "id": "0bcf3180-4b42-4c74-b974-f0555db004ff",
+        "identifier": "achaeologie@schweizerisches-nationalmuseum-snm",
+        "isopen": false,
+        "issued": "2017-11-10T00:00:00",
+        "keywords": {
+          "en": [
+            "archaeology",
+            "art-of-the-paleolithic",
+            "mesozoic"
+          ],
+          "de": [
+            "altsteinzeit",
+            "archaologie",
+            "kunst-des-palaolithikums"
+          ],
+          "fr": [
+            "archeologie",
+            "art-du-paleolithique",
+            "mesozoique"
+          ],
+          "it": [
+            "archeologia",
+            "arte-paleolitica",
+            "mesozoico"
+          ]
+        },
+        "language": [
+          "de"
+        ],
+        "license_id": null,
+        "license_title": null,
+        "maintainer": null,
+        "maintainer_email": null,
+        "metadata_created": "2026-06-04T17:00:53.073529",
+        "metadata_modified": "2026-06-18T14:08:52.864223",
+        "modified": "2025-03-18T00:00:00",
+        "name": "reprasentative-auswahl-aus-der-sammlung-archaologie-des-schweizerischen-nationalmuseums",
+        "num_resources": 2,
+        "num_tags": 22,
+        "organization": {
+          "approval_status": "approved",
+          "created": "2017-12-07T10:13:36.830636",
+          "description": {
+            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
+            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
+            "de": "Unter dem Dach des Schweizerischen Nationalmuseums sind die drei Museen – Landesmuseum Zürich, Château de Prangins und das Forum Schweizer Geschichte Schwyz – sowie das Sammlungszentrum in Affoltern am Albis vereint. Die Museen präsentieren Schweizer Geschichte von den Anfängen bis heute, und erschliessen – auch mit temporären Ausstellungen zu aktuellen Themen – die schweizerischen Identitäten und die Vielfalt der Geschichte und Kultur unseres Landes.",
+            "it": "Il Museo nazionale svizzero (MNS) riunisce sotto lo stesso tetto il Museo nazionale Zurigo, il Castello di Prangins e il Forum della storia svizzera Svitto nonché il Centro delle collezioni di Affoltern am Albis. Con le loro mostre i musei presentano la storia della Svizzera dagli inizi ad oggi e valorizzano l’identità svizzera e la varietà storica e culturale del nostro Paese. Le mostre temporanee su temi attuali offrono ulteriori impressioni. Inoltre l’MNS cura la Casa della corporazione «Zur Meisen» Zurigo e il Museo doganale Cantine di Gandria."
+          },
+          "display_name": {
+            "de": "Schweizerisches Nationalmuseum SNM",
+            "en": "Swiss National Museum SNM",
+            "fr": "Musée national suisse MNS",
+            "it": "Museo nazionale svizzero MNS"
+          },
+          "id": "2c768667-6d3f-4643-bc8a-26fc9439075c",
+          "image_display_url": "https://ckan.opendata.swiss/uploads/group/snm.jpg",
+          "image_url": "https://ckan.opendata.swiss/uploads/group/snm.jpg",
+          "is_organization": true,
+          "name": "schweizerisches-nationalmuseum-snm",
+          "num_followers": 0,
+          "package_count": 10,
+          "political_level": "other",
+          "state": "active",
+          "title": {
+            "de": "Schweizerisches Nationalmuseum SNM",
+            "en": "Swiss National Museum SNM",
+            "fr": "Musée national suisse MNS",
+            "it": "Museo nazionale svizzero MNS"
+          },
+          "type": "organization",
+          "url": "http://www.nationalmuseum.ch",
+          "tags": [],
+          "groups": []
+        },
+        "owner_org": "2c768667-6d3f-4643-bc8a-26fc9439075c",
+        "private": false,
+        "publisher": {
+          "url": "",
+          "name": {
+            "de": "Schweizerisches Nationalmuseum (SNM)",
+            "fr": "Musée national suisse (MNS)",
+            "en": "Swiss National Museum (SNM)",
+            "it": "Museo nazionale svizzero (MNS)"
+          }
+        },
+        "qualified_relations": [],
+        "relations": [],
+        "see_alsos": [],
+        "spatial": "CH",
+        "state": "active",
+        "temporals": [],
+        "title": {
+          "de": "Repräsentative Auswahl aus der Sammlung \"Archäologie\" des Schweizerischen Nationalmuseums",
+          "rm": "Repräsentative Auswahl aus der Sammlung „Archäologie“ des Schweizerischen Nationalmuseums",
+          "en": "Representative selection from the \"Archaeology\" collection of the Swiss National Museum",
+          "fr": "Sélection représentative de la collection \" Archéologie \" du Musée national suisse",
+          "it": "Selezione rappresentativa dalla collezione \"Archeologia\" del Museo nazionale svizzero"
+        },
+        "title_for_slug": "reprasentative-auswahl-aus-der-sammlung-archaologie-des-schweizerischen-nationalmuseums",
+        "type": "dataset",
+        "url": "",
+        "version": null,
+        "extras": [
+          {
+            "key": "guid",
+            "value": "achaeologie@schweizerisches-nationalmuseum-snm"
+          },
+          {
+            "key": "uri",
+            "value": "https://register.ld.admin.ch/i14y/dataset/achaeologie"
+          },
+          {
+            "key": "harvest_object_id",
+            "value": "4f69cbfa-8389-4680-89a8-ef41d4935778"
+          }
+        ],
+        "groups": [
+          {
+            "description": {
+              "fr": "",
+              "de": "",
+              "en": "",
+              "it": ""
+            },
+            "display_name": {
+              "de": "Bildung, Kultur und Sport",
+              "en": "Education, culture and sport",
+              "fr": "Éducation, culture et sport",
+              "it": "Istruzione, cultura e sport"
+            },
+            "id": "b36d9b09-dc05-422c-997e-4e81b02afd6f",
+            "image_display_url": "",
+            "name": "educ",
+            "title": "{\"de\": \"Bildung, Kultur und Sport\", \"en\": \"Education, culture and sport\", \"fr\": \"Éducation, culture et sport\", \"it\": \"Istruzione, cultura e sport\"}"
+          }
+        ],
+        "resources": [
+          {
+            "access_services": [],
+            "byte_size": 208170940,
+            "cache_last_updated": null,
+            "cache_url": null,
+            "created": "2026-06-04T17:00:53.089348",
+            "datastore_active": false,
+            "datastore_contains_all_records_of_source_file": false,
+            "description": {
+              "de": "Download vom Server media.nationalmuseum.ch",
+              "fr": "Bilder Archäologie als ZIP Datei",
+              "en": "Bilder Archäologie als ZIP Datei",
+              "it": "Bilder Archäologie als ZIP Datei",
+              "rm": "Bilder Archäologie als ZIP Datei"
+            },
+            "display_name": {
+              "de": "Bilder Archäologie als ZIP Datei",
+              "fr": "Bilder Archäologie als ZIP Datei",
+              "en": "Bilder Archäologie als ZIP Datei",
+              "it": "Bilder Archäologie als ZIP Datei",
+              "rm": "Bilder Archäologie als ZIP Datei"
+            },
+            "documentation": [],
+            "download_url": "https://media.nationalmuseum.ch/Open_data/Pictures_achaeologie.zip",
+            "format": "ZIP",
+            "hash": "",
+            "id": "44a69fbb-3b0b-4300-9011-8202d460069c",
+            "identifier": "resource_2",
+            "language": [],
+            "last_modified": null,
+            "license": "https://opendata.swiss/terms-of-use#terms_by",
+            "media_type": "application/zip",
+            "metadata_modified": "2026-06-18T14:08:52.925993",
+            "mimetype": null,
+            "mimetype_inner": null,
+            "name": {
+              "de": "Bilder Archäologie als ZIP Datei",
+              "fr": "Bilder Archäologie als ZIP Datei",
+              "en": "Bilder Archäologie als ZIP Datei",
+              "it": "Bilder Archäologie als ZIP Datei",
+              "rm": "Bilder Archäologie als ZIP Datei"
+            },
+            "package_id": "0bcf3180-4b42-4c74-b974-f0555db004ff",
+            "position": 0,
+            "resource_type": null,
+            "rights": "https://opendata.swiss/terms-of-use#terms_by",
+            "size": null,
+            "state": "active",
+            "temporal_resolution": "",
+            "title": {
+              "de": "Bilder Archäologie als ZIP Datei",
+              "fr": "Bilder Archäologie als ZIP Datei",
+              "en": "Bilder Archäologie als ZIP Datei",
+              "it": "Bilder Archäologie als ZIP Datei",
+              "rm": "Bilder Archäologie als ZIP Datei"
+            },
+            "uri": "",
+            "url": "https://media.nationalmuseum.ch/Open_data/Pictures_achaeologie.zip",
+            "url_type": null
+          },
+          {
+            "access_services": [],
+            "byte_size": 102406,
+            "cache_last_updated": null,
+            "cache_url": null,
+            "created": "2026-06-04T17:00:53.089353",
+            "datastore_active": false,
+            "datastore_contains_all_records_of_source_file": false,
+            "description": {
+              "de": "Datensätze Archäologie als CSV Datei",
+              "fr": "Ensembles de données archéologiques sous forme de fichier CSV",
+              "en": "Archaeology data sets as CSV file",
+              "it": "Set di dati archeologici in formato CSV",
+              "rm": "Datensätze Archäologie als CSV Datei"
+            },
+            "display_name": {
+              "de": "Datensätze Archäologie als CSV Datei",
+              "fr": "Ensembles de données archéologiques sous forme de fichier CSV",
+              "en": "Archaeology data sets as CSV file",
+              "it": "Set di dati archeologici in formato CSV",
+              "rm": "Datensätze Archäologie als CSV Datei"
+            },
+            "documentation": [],
+            "download_url": "https://media.nationalmuseum.ch/Open_data/achaeologie.csv",
+            "format": "CSV",
+            "hash": "256edca48a10bf83707243bb8058c7bb",
+            "id": "198e3ff4-2f71-41a2-a1ec-9916ccfc947a",
+            "identifier": "resource_1",
+            "language": [],
+            "last_modified": null,
+            "license": "https://opendata.swiss/terms-of-use#terms_by",
+            "media_type": "text/csv",
+            "metadata_modified": "2026-06-18T14:08:52.926095",
+            "mimetype": null,
+            "mimetype_inner": null,
+            "name": {
+              "de": "Datensätze Archäologie als CSV Datei",
+              "fr": "Ensembles de données archéologiques sous forme de fichier CSV",
+              "en": "Archaeology data sets as CSV file",
+              "it": "Set di dati archeologici in formato CSV",
+              "rm": "Datensätze Archäologie als CSV Datei"
+            },
+            "package_id": "0bcf3180-4b42-4c74-b974-f0555db004ff",
+            "position": 1,
+            "resource_type": null,
+            "rights": "https://opendata.swiss/terms-of-use#terms_by",
+            "size": null,
+            "state": "active",
+            "temporal_resolution": "",
+            "title": {
+              "de": "Datensätze Archäologie als CSV Datei",
+              "fr": "Ensembles de données archéologiques sous forme de fichier CSV",
+              "en": "Archaeology data sets as CSV file",
+              "it": "Set di dati archeologici in formato CSV",
+              "rm": "Datensätze Archäologie als CSV Datei"
+            },
+            "uri": "",
+            "url": "https://media.nationalmuseum.ch/Open_data/achaeologie.csv",
+            "url_type": null
+          }
+        ],
+        "tags": [
+          {
+            "display_name": "altsteinzeit",
+            "id": "8ca04fa5-840b-43c8-a0bf-640e3f2be82f",
+            "name": "altsteinzeit",
+            "state": "active",
+            "vocabulary_id": null
+          },
+          {
+            "display_name": "archaeology",
+            "id": "3122d91e-4363-4f92-9b28-6f5f15cfd645",
+            "name": "archaeology",
+            "state": "active",
+            "vocabulary_id": null
+          },
+          {
+            "display_name": "archaologie",
+            "id": "d631588e-bc53-414a-a8a8-0b486df1e04c",
+            "name": "archaologie",
+            "state": "active",
+            "vocabulary_id": null
+          }
+        ],
+        "relationships_as_subject": [],
+        "relationships_as_object": []
+      },
+      {
+        "accrual_periodicity": "http://publications.europa.eu/resource/authority/frequency/IRREG",
+        "author": null,
+        "author_email": null,
+        "conforms_to": [],
+        "contact_points": [
+          {
+            "email": "info@snm.admin.ch",
+            "name": "Nationalmuseum Schweiz NMS"
+          }
+        ],
+        "creator_user_id": "af084126-f711-4016-a585-70354e997796",
+        "description": {
+          "de": "Malerei: Zum Bestand gehören die Gemälde mit Schwerpunkten bei der kirchlichen und historischen Kunst sowie der Porträtmalerei. Bei den Glasgemälden handelt es sich um die international grösste und bedeutendste Sammlung.\n\nBildhauerei: Das Museum besitzt einen hervorragenden Bestand an mittelalterlichen Holzskulpturen und Altarretabeln. Die Sammlung ist repräsentativ für den überlieferten Bestand an mittelalterlichen Skulpturen auf Schweizer Gebiet; entsprechend ist sie von internationaler Bedeutung.\n\nWandgemälde: Die Sammlung umfasst Wandgemälde und Fresken. Von Bedeutung sind die karolingischen Fresken aus Müstair, die Fresken von Ferdinand Hodler in der Ruhmeshalle des Landesmuseums Zürich sowie das Wandgemälde von Hans Erni. Wichtiger Bestand von romanischen Fresken aus verschiedenen Gebäudetypen.",
+          "en": "Painting: The collection includes paintings with an emphasis on ecclesiastical and historical art, and works of portraiture. The stained glass on display here constitutes the world’s largest and most important collection.\n\nSculpture: The museum boasts a superb collection of medieval woodcarvings and altarpieces. The collection is representative of the extant examples of medieval sculpture from the territory of contemporary Switzerland, and is thus of international significance.\n\nWall paintings: The collection includes wall paintings and frescoes. Of particular interest are the Carolingian frescoes from Müstair, Romanesque frescoes from various types of buildings and wall paintings by Hans Erni. On display are the frescoes of Ferdinand Hodler in the National Museum Zurich’s hall of fame.",
+          "fr": "Peinture: La collection compte principalement des tableaux représentatifs de l’art religieux et historique ainsi que des portraits. La collection de vitraux est, tant sur le plan quantitatif que qualitatif, la plus importante de son genre au niveau international.\n\nSculpture: Le musée possède une remarquable collection de sculptures en bois et de retables du Moyen Âge, qui est représentative du patrimoine artistique conservé sur le territoire suisse dans le domaine de la statuaire médiévale.\n\nPeintures murales: Cette collection est constituée de fresques et peintures murales, parmi lesquelles on mentionnera en particulier les fresques carolingiennes de Müstair, les nombreuses fresques romanes provenant de différents bâtiments ainsi que la peinture murale de Hans Erni. Les fresques de Ferdinand Hodler sont exposées dans la salle d’honneur du Musée national Zurich.",
+          "it": "Pittura: La collezione di dipinti accoglie principalmente opere rappresentative dell’arte religiosa e storica, nonché ritratti. La collezione di vetrate è, a livello internazionale, la più importante del suo genere sul piano sia qualitativo che quantitativo.\n\nScultura: Il museo possiede una pregevole collezione di sculture lignee e di pale d’altare medievali, rappresentativa del patrimonio artistico conservato sul territorio svizzero nell’ambito della statuaria medievale. Sotto questo profilo, essa presenta un interesse internazionale.\n\nDipinti murali: La collezione è costituita da affreschi e dipinti murali, tra i quali vanno annoverati in particolare gli affreschi carolingi di Müstair, numerosi affreschi romanici provenienti da vari edifici e il dipinto murale di Hans Erni. Nella sala d’onore del Museo nazionale Zurigo sono esposti gli affreschi di Ferdinand Hodler.",
+          "rm": "Repräsentative Auswahl aus der Sammlung „Malerei & Bildhauerei“ des Schweizerischen Nationalmuseums"
+        },
+        "display_name": {},
+        "documentation": [],
+        "id": "fd097d73-4535-48ec-8c9a-6aa8d8826403",
+        "identifier": "Malerei_Bildhauerei@schweizerisches-nationalmuseum-snm",
+        "isopen": false,
+        "issued": "2017-11-10T00:00:00",
+        "keywords": {
+          "en": [
+            "collection",
+            "painting",
+            "swiss-national-museum"
+          ],
+          "de": [
+            "gemalde",
+            "sammlung",
+            "schweizerisches-nationalmuseum"
+          ],
+          "fr": [
+            "collection",
+            "musee-national-suisse",
+            "peinture"
+          ],
+          "it": [
+            "collezione",
+            "dipinto",
+            "museo-nazionale-svizzero"
+          ]
+        },
+        "language": [
+          "de"
+        ],
+        "license_id": null,
+        "license_title": null,
+        "maintainer": null,
+        "maintainer_email": null,
+        "metadata_created": "2026-06-04T17:00:27.544428",
+        "metadata_modified": "2026-06-29T17:08:43.897264",
+        "name": "reprasentative-auswahl-aus-der-sammlung-malerei-bildhauerei-des-schweizerischen-nationalmuseums",
+        "num_resources": 1,
+        "num_tags": 11,
+        "organization": {
+          "approval_status": "approved",
+          "created": "2017-12-07T10:13:36.830636",
+          "description": {
+            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
+            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
+            "de": "Unter dem Dach des Schweizerischen Nationalmuseums sind die drei Museen – Landesmuseum Zürich, Château de Prangins und das Forum Schweizer Geschichte Schwyz – sowie das Sammlungszentrum in Affoltern am Albis vereint. Die Museen präsentieren Schweizer Geschichte von den Anfängen bis heute, und erschliessen – auch mit temporären Ausstellungen zu aktuellen Themen – die schweizerischen Identitäten und die Vielfalt der Geschichte und Kultur unseres Landes.",
+            "it": "Il Museo nazionale svizzero (MNS) riunisce sotto lo stesso tetto il Museo nazionale Zurigo, il Castello di Prangins e il Forum della storia svizzera Svitto nonché il Centro delle collezioni di Affoltern am Albis. Con le loro mostre i musei presentano la storia della Svizzera dagli inizi ad oggi e valorizzano l’identità svizzera e la varietà storica e culturale del nostro Paese. Le mostre temporanee su temi attuali offrono ulteriori impressioni. Inoltre l’MNS cura la Casa della corporazione «Zur Meisen» Zurigo e il Museo doganale Cantine di Gandria."
+          },
+          "display_name": {
+            "de": "Schweizerisches Nationalmuseum SNM",
+            "en": "Swiss National Museum SNM",
+            "fr": "Musée national suisse MNS",
+            "it": "Museo nazionale svizzero MNS"
+          },
+          "id": "2c768667-6d3f-4643-bc8a-26fc9439075c",
+          "image_display_url": "https://ckan.opendata.swiss/uploads/group/snm.jpg",
+          "image_url": "https://ckan.opendata.swiss/uploads/group/snm.jpg",
+          "is_organization": true,
+          "name": "schweizerisches-nationalmuseum-snm",
+          "num_followers": 0,
+          "package_count": 9,
+          "political_level": "other",
+          "state": "active",
+          "title": {
+            "de": "Schweizerisches Nationalmuseum SNM",
+            "en": "Swiss National Museum SNM",
+            "fr": "Musée national suisse MNS",
+            "it": "Museo nazionale svizzero MNS"
+          },
+          "type": "organization",
+          "url": "http://www.nationalmuseum.ch",
+          "tags": [],
+          "groups": []
+        },
+        "owner_org": "2c768667-6d3f-4643-bc8a-26fc9439075c",
+        "private": false,
+        "publisher": {
+          "url": "",
+          "name": {
+            "de": "Schweizerisches Nationalmuseum (SNM)",
+            "fr": "Musée national suisse (MNS)",
+            "en": "Swiss National Museum (SNM)",
+            "it": "Museo nazionale svizzero (MNS)"
+          }
+        },
+        "qualified_relations": [],
+        "relations": [],
+        "see_alsos": [],
+        "spatial": "CH",
+        "state": "active",
+        "temporals": [],
+        "title": {
+          "rm": "Repräsentative Auswahl aus der Sammlung „Malerei & Bildhauerei“ des Schweizerischen Nationalmuseums",
+          "de": "Repräsentative Auswahl aus der Sammlung „Malerei & Bildhauerei“ des Schweizerischen Nationalmuseums",
+          "en": "Representative selection from the \"Painting & sculpture\" collection of the Swiss National Museum",
+          "fr": "Sélection représentative de la collection \"Peinture et sculpture\" du Musée national suisse",
+          "it": "Selezione rappresentativa dalla collezione \"Pittura e scultura\" del Museo nazionale svizzero"
+        },
+        "title_for_slug": "reprasentative-auswahl-aus-der-sammlung-malerei-bildhauerei-des-schweizerischen-nationalmuseums",
+        "type": "dataset",
+        "url": "",
+        "version": null,
+        "extras": [
+          {
+            "key": "guid",
+            "value": "Malerei_Bildhauerei@schweizerisches-nationalmuseum-snm"
+          },
+          {
+            "key": "uri",
+            "value": "https://register.ld.admin.ch/i14y/dataset/Malerei_Bildhauerei"
+          },
+          {
+            "key": "harvest_object_id",
+            "value": "cc09bb73-1342-4897-a7ef-b799dc373c03"
+          }
+        ],
+        "groups": [
+          {
+            "description": {
+              "fr": "",
+              "de": "",
+              "en": "",
+              "it": ""
+            },
+            "display_name": {
+              "de": "Bildung, Kultur und Sport",
+              "en": "Education, culture and sport",
+              "fr": "Éducation, culture et sport",
+              "it": "Istruzione, cultura e sport"
+            },
+            "id": "b36d9b09-dc05-422c-997e-4e81b02afd6f",
+            "image_display_url": "",
+            "name": "educ",
+            "title": "{\"de\": \"Bildung, Kultur und Sport\", \"en\": \"Education, culture and sport\", \"fr\": \"Éducation, culture et sport\", \"it\": \"Istruzione, cultura e sport\"}"
+          }
+        ],
+        "resources": [
+          {
+            "access_services": [],
+            "byte_size": 615511,
+            "cache_last_updated": null,
+            "cache_url": null,
+            "created": "2026-06-18T14:08:13.850047",
+            "datastore_active": false,
+            "datastore_contains_all_records_of_source_file": false,
+            "description": {
+              "de": "Download vom Server media.nationalmuseum.ch",
+              "fr": "Téléchargement depuis le serveur media.nationalmuseum.ch",
+              "en": "Download from the server media.nationalmuseum.ch",
+              "it": "Download dal server media.nationalmuseum.ch",
+              "rm": "Datensätze Malerei & Bildhauerei als CSV Datei"
+            },
+            "display_name": {
+              "de": "Datensätze Malerei & Bildhauerei als CSV Datei",
+              "fr": "Jeux de données peinture et sculpture au format CSV",
+              "en": "Dataset painting & sculpture as CSV file",
+              "it": "Ricordi pittura e scultura come file CSV Datei",
+              "rm": "Datensätze Malerei & Bildhauerei als CSV Datei"
+            },
+            "documentation": [],
+            "download_url": "https://media.nationalmuseum.ch/Open_data/Malerei_Bildhauerei.csv",
+            "format": "CSV",
+            "hash": "447b6778ce6898b69e1344ea925bb6c0",
+            "id": "723d9e1d-b283-43c3-8297-9e8e333c0528",
+            "identifier": "resource_1",
+            "language": [],
+            "last_modified": null,
+            "license": "https://opendata.swiss/terms-of-use#terms_by",
+            "media_type": "text/csv",
+            "metadata_modified": "2026-06-29T17:08:43.907371",
+            "mimetype": null,
+            "mimetype_inner": null,
+            "name": {
+              "de": "Datensätze Malerei & Bildhauerei als CSV Datei",
+              "fr": "Jeux de données peinture et sculpture au format CSV",
+              "en": "Dataset painting & sculpture as CSV file",
+              "it": "Ricordi pittura e scultura come file CSV Datei",
+              "rm": "Datensätze Malerei & Bildhauerei als CSV Datei"
+            },
+            "package_id": "fd097d73-4535-48ec-8c9a-6aa8d8826403",
+            "position": 0,
+            "resource_type": null,
+            "rights": "https://opendata.swiss/terms-of-use#terms_by",
+            "size": null,
+            "state": "active",
+            "temporal_resolution": "",
+            "title": {
+              "de": "Datensätze Malerei & Bildhauerei als CSV Datei",
+              "fr": "Jeux de données peinture et sculpture au format CSV",
+              "en": "Dataset painting & sculpture as CSV file",
+              "it": "Ricordi pittura e scultura come file CSV Datei",
+              "rm": "Datensätze Malerei & Bildhauerei als CSV Datei"
+            },
+            "uri": "",
+            "url": "https://media.nationalmuseum.ch/Open_data/Malerei_Bildhauerei.csv",
+            "url_type": null
+          }
+        ],
+        "tags": [
+          {
+            "display_name": "collection",
+            "id": "eec2f800-b6a5-43c9-897a-f73ad6f9a03c",
+            "name": "collection",
+            "state": "active",
+            "vocabulary_id": null
+          },
+          {
+            "display_name": "collezione",
+            "id": "3353e739-0186-43a5-9c88-d01233796450",
+            "name": "collezione",
+            "state": "active",
+            "vocabulary_id": null
+          },
+          {
+            "display_name": "dipinto",
+            "id": "924735df-e388-4ef1-83bf-73c568cd5e77",
+            "name": "dipinto",
+            "state": "active",
+            "vocabulary_id": null
+          }
+        ],
+        "relationships_as_subject": [],
+        "relationships_as_object": []
+      }
+    ],
+    "sort": "score desc, metadata_modified desc",
+    "search_facets": {}
+  }
+}

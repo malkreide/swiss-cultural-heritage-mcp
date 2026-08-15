@@ -1,0 +1,35 @@
+{
+  "id": "G27",
+  "type": "Place",
+  "number": 27,
+  "createdAt": "Thu Dec 31 23:00:00 UTC 1970",
+  "createdAt_ts": 31532400,
+  "modifiedAt": "Fri Aug 30 10:18:27 UTC 2024",
+  "modifiedAt_ts": 1725013107,
+  "geo_zoom_level_s": "10.0",
+  "geo_wikidata_s": "72",
+  "geo_id": 27,
+  "geo_countryCode_s": "CH",
+  "geo_regionCode_s": "CH-ZH",
+  "geo_location": "47.36865,8.539183",
+  "geo_name_de": "Zürich",
+  "geo_name_en": "Zurich",
+  "geo_name_it": "Zurigo",
+  "geo_name_fr": "Zurich",
+  "geo_name_store": [
+    "de||Zürich||undefined",
+    "en||Zurich||undefined",
+    "fr||Zurich||undefined"
+  ],
+  "zombie_s": "no-zombie",
+  "booster": 0,
+  "geo_geo_store": [
+    "de||27||Zürich||ist die Hauptstadt von||3361||Zürich (Kanton)",
+    "en||27||Zurich||is the capital of||3361||Zurich (Canton)",
+    "it||27||Zurigo||è la capitale di||3361||Zurigo (Cantone)"
+  ],
+  "doc_lang_detected_s": "de",
+  "geo_referenced_count": 4594,
+  "_version_": 1863699861267808256,
+  "field_count": 24
+}
