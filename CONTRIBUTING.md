@@ -50,6 +50,20 @@ When adding new data sources, follow the **No-Auth-First** principle: Phase 1 us
 
 ---
 
+## The live suite: when it runs, and who sees a red result
+
+**Cadence:** daily at 04:17 UTC, plus on demand via *Actions → Nightly Live Tests → Run
+workflow*. See [`.github/workflows/nightly-live.yml`](.github/workflows/nightly-live.yml).
+
+**Who sees it:** A red run opens an issue labelled `nightly-live-failure` (title: “Nightly live tests failing against upstream APIs”). A second red run recognises the open issue **by its label**, not by its title, and appends to that same thread. Remove the label by hand and the next red run opens a second issue. A green run does **not** close the issue by itself — once the failure is fixed it needs closing by hand, otherwise the next reader mistakes the old failure for the new one.
+
+**A red live run does not necessarily mean *our* bug.** It means the contract
+with the source has changed, or the source is down. Both belong seen; only the
+first belongs fixed. Please read the run before disabling the job — that is how
+this check dies, and it is the only one in the repository that can contradict a
+wrong assumption about the upstream APIs (Memobase, Dodis, Helveticat). Every other test asserts against a fixture, and
+the fixture was written from the same assumption as the code.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
