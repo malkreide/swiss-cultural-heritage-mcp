@@ -48,7 +48,12 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=5.0.0",
     "respx>=0.21.0",
-    "ruff>=0.4.0",
+    # Exakt gepinnt, nicht `>=`: ruff-Releases ändern Regelsatz und Formatter.
+    # Eine andere Version als die der CI meldet lokal Abweichungen, die
+    # niemand verursacht hat — oder lässt lokal grün, was die CI rot färbt.
+    # Diese Zeile ist die einzige Quelle der Wahrheit für die ruff-Version;
+    # `ci.yml` installiert nichts mehr separat.
+    "ruff==0.16.1",
 ]
 # Optionales OpenTelemetry-Tracing (OBS-006). Nur nötig, wenn
 # OTEL_EXPORTER_OTLP_ENDPOINT gesetzt ist; sonst bleibt Tracing aus.

@@ -41,12 +41,11 @@ Ein Codex-Review auf einem PR wird beantwortet oder behoben, nie ignoriert.
 
 ## Teil 2 — dieses Repo
 
-**ruff-Pin: nur in der CI.** `.github/workflows/ci.yml` installiert
-`ruff==0.16.1`. Es gibt keine `.pre-commit-config.yaml`, und `[dev]` in
-`pyproject.toml` fordert nur `ruff>=0.4.0` — `pip install -e ".[dev]"` zieht
-also die jeweils neueste Version. Lokal darum explizit
-`pip install ruff==0.16.1`, sonst meldet ruff Abweichungen, die niemand
-verursacht hat.
+**ruff-Pin: in `pyproject.toml`, an einer Stelle.** `[dev]` fordert
+`ruff==0.16.1`; `pip install -e ".[dev]"` installiert damit lokal genau die
+Version der CI, und `ci.yml` installiert ruff nicht mehr separat. Eine
+`.pre-commit-config.yaml` gibt es nicht — wer eine anlegt, pinnt dort
+dieselbe Version oder verlagert den Pin ganz dorthin, aber nie beides.
 
 Gates, wörtlich aus `ci.yml` (Python 3.11 / 3.12 / 3.13):
 
