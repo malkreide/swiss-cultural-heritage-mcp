@@ -61,6 +61,9 @@ Version der CI, und `ci.yml` installiert ruff nicht mehr separat. Eine
 `.pre-commit-config.yaml` gibt es nicht — wer eine anlegt, pinnt dort
 dieselbe Version oder verlagert den Pin ganz dorthin, aber nie beides.
 
+Vor dem Lauf `ruff --version` prüfen: ein älteres ruff früher im `PATH`
+schlägt den Pin, ohne dass der Install etwas meldet.
+
 Gates, wörtlich aus `ci.yml` (Python 3.11 / 3.12 / 3.13):
 
 ```bash
