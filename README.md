@@ -326,11 +326,13 @@ Ruff is pinned to an exact version in `pyproject.toml` (`[project.optional-depen
 
 | Item | Value |
 |---|---|
-| Supported MCP protocol version | `2025-11-25` (negotiated by the SDK) |
-| SDK | `mcp[cli] >=1.0.0,<2.0.0` (pinned in `pyproject.toml`) |
+| SDK | `mcp[cli]>=2.0.0,<3` (pinned in `pyproject.toml`) |
+| Served via the `initialize` handshake | `2024-11-05` … `2025-11-25` — the handshake ceiling |
+| Served via the per-request envelope | `2026-07-28` |
+| Who picks | The client's first request, once per connection: a request carrying the `2026-07-28` `_meta` envelope opens a modern connection, anything else opens a handshake connection. A later claim from the other era is refused. |
 | Update policy | The SDK pin is the source of truth for the protocol version. [Dependabot](.github/dependabot.yml) opens monthly `mcp` update PRs; protocol-version bumps are reviewed there and recorded in [CHANGELOG.md](CHANGELOG.md). |
 
-The official `mcp` SDK negotiates the protocol version during `initialize`; this server does not override it. Pin the SDK (not a hand-rolled version string) to control which protocol version is spoken.
+This server does not override the negotiation — the official `mcp` SDK decides, and both eras are reachable over either transport (stdio and HTTP alike). Pin the SDK, not a hand-rolled version string, to control which protocol versions are spoken. The numbers above are the pinned SDK's own registry (`mcp_types.version`: `HANDSHAKE_PROTOCOL_VERSIONS`, `MODERN_PROTOCOL_VERSIONS`) — read them there rather than from this table if the pin has moved.
 
 ---
 
