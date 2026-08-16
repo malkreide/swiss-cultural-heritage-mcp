@@ -313,7 +313,13 @@ PYTHONPATH=src pytest tests/ -m "not live"
 
 # Integrationstests (Live-API-Aufrufe)
 pytest tests/ -m "live"
+
+# Linting und Formatierung, wörtlich wie in der CI
+ruff check src/ tests/ scripts/
+ruff format --check src/ tests/ scripts/
 ```
+
+Ruff ist in `pyproject.toml` exakt gepinnt (`[project.optional-dependencies] dev`). `pip install -e ".[dev]"` liefert damit die Version der CI, und die Lint-Gates stimmen mit ihr überein. Ein neueres ruff darübergesetzt ändert Regelsatz und Formatter und meldet Abweichungen auf Code, den niemand angefasst hat. Siehe [CONTRIBUTING.de.md](CONTRIBUTING.de.md#code-stil).
 
 ---
 
