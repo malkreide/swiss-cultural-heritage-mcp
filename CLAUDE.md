@@ -56,6 +56,19 @@ ruff format --check src/ tests/ scripts/
 python scripts/check_version_sync.py
 ```
 
+**Alle vier laufen in einem Job auf allen drei Versionen.** Kein zweiter Job,
+keine `if: matrix.python-version`-Ausnahme — ein grünes 3.13 heisst hier
+wirklich, dass alles auf 3.13 lief. (Im Portfolio nicht selbstverständlich:
+`swiss-food-safety-mcp` gated zwei Gates auf 3.11, `swiss-housing-mcp` fährt
+seine ruff-Gates in einem eigenen 3.11-Job.) Ein `fail-fast: false` steht
+nicht da: Eine rote 3.11 bricht 3.12 und 3.13 ab, bevor sie etwas sagen.
+
+Das `PYTHONPATH=src` in der ersten Zeile stammt wörtlich aus `ci.yml`, trägt
+aber nichts: Nach `pip install -e ".[dev]"` importiert
+`swiss_cultural_heritage_mcp` auch mit `env -u PYTHONPATH` — nachgemessen.
+Wer einen Importfehler über den Env-Eintrag erklärt, sucht an der falschen
+Stelle; es fehlt dann der Install.
+
 **Live-Tests laufen geplant.** `.github/workflows/nightly-live.yml` fährt
 `PYTHONPATH=src pytest tests/ -m live` täglich um 04:17 UTC (cron
 `17 4 * * *`) und öffnet bei Upstream-Fehlern ein Issue mit Label
