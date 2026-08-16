@@ -21,10 +21,11 @@ Bitte geben Sie an:
 
 1. Forken Sie das Repository
 2. Erstellen Sie einen Feature-Branch: `git checkout -b feat/mein-feature`
-3. Nehmen Sie Ihre Änderungen vor und ergänzen Sie Tests
-4. Stellen Sie sicher, dass alle Tests bestehen: `PYTHONPATH=src pytest tests/ -m "not live"`
-5. Committen Sie mit [Conventional Commits](https://www.conventionalcommits.org/): `feat: neues Tool ergänzen`
-6. Pushen Sie und eröffnen Sie einen Pull Request gegen `main`
+3. Installieren Sie die Dev-Abhängigkeiten: `pip install -e ".[dev]"` — damit kommt auch die ruff-Version, die die CI verwendet (siehe [Code-Stil](#code-stil))
+4. Nehmen Sie Ihre Änderungen vor und ergänzen Sie Tests
+5. Stellen Sie sicher, dass alle Tests bestehen: `PYTHONPATH=src pytest tests/ -m "not live"`
+6. Committen Sie mit [Conventional Commits](https://www.conventionalcommits.org/): `feat: neues Tool ergänzen`
+7. Pushen Sie und eröffnen Sie einen Pull Request gegen `main`
 
 ---
 
@@ -35,6 +36,24 @@ Bitte geben Sie an:
 - Type-Hints für alle öffentlichen Funktionen erforderlich
 - Tests für neue Tools erforderlich (`tests/test_server.py`)
 - Den bestehenden FastMCP-/Pydantic-v2-Mustern in `server.py` folgen
+
+**Ruff ist exakt gepinnt**, in `pyproject.toml` unter
+`[project.optional-dependencies] dev` — diese eine Zeile ist die einzige
+Stelle, an der die Version steht, und die CI installiert kein eigenes ruff.
+Fahren Sie die Lint-Gates deshalb aus derselben `pip install -e ".[dev]"`-
+Umgebung und setzen Sie kein `pip install -U ruff` darüber: Ein neueres ruff
+ändert Regelsatz und Formatter und meldet dann auf unberührtem Code
+Abweichungen, die niemand verursacht hat. Die zwei Gates, wörtlich wie in der
+CI:
+
+```bash
+ruff check src/ tests/ scripts/
+ruff format --check src/ tests/ scripts/
+```
+
+Für einen ruff-Wechsel diese eine Zeile in `pyproject.toml` ändern und im
+selben Pull Request neu formatieren — so zeigt der Diff, was die neue Version
+tatsächlich geändert hat.
 
 ---
 
