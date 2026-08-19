@@ -29,6 +29,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **SessionStart-Hook `.claude/hooks/session-start.sh`** — meldet beim
+  Sessionstart, wie viele Commits der ausgecheckte Stand hinter
+  `origin/<Standard-Branch>` liegt, und schweigt bei 0. Anlass: ein veralteter
+  Klon hat am 3.8.2026 zweimal eine rote CI erzeugt, deren Ursache nicht im
+  Diff stand — es fehlten jeweils genau die Commits, die das Gate einfuehrten,
+  an dem der Branch scheiterte. Der Handgriff stand schon in `CLAUDE.md`; neu
+  ist, dass niemand mehr daran denken muss.
+  Der Hook blockiert nie: kein `set -e` (Absicht, nicht Nachlaessigkeit — unter
+  `set -e` wuerde der erste fehlschlagende git-Aufruf mit dessen Exit-Code
+  enden, und ein Exit != 0 aus einem SessionStart-Hook wird gemeldet statt
+  still verworfen), unbedingtes `exit 0`, Zeitlimit auf jeden Netzaufruf
+  (Default 5 s), keine interaktiven git-Abfragen. Kein Repo, kein Remote,
+  leeres Repo, haengendes Netz — alles geht still durch.
+  Der Standard-Branch wird ueber `git ls-remote --symref origin HEAD`
+  ermittelt, nicht als `main` angenommen: drei Server im Portfolio heissen ihn
+  `master`. Derselbe Aufruf liefert auch die Spitze, weshalb der Normalfall
+  ohne `fetch` auskommt.
+  `tests/test_session_start_hook.py` faehrt das Skript gegen echte
+  Wegwerf-Repos mit lokalen `file://`-Remotes; kein Test braucht Netz.
+
 - **Aufgezeichnete Fixtures** in `tests/fixtures/` — zehn echte Antworten, eine
   je Abfrageform (vier Quellen, aber mehr Abfrageformen als Hosts). Abgegriffen
   über einen httpx-Response-Hook auf dem geteilten Client, ausgelöst von den
