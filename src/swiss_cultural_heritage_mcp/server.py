@@ -31,6 +31,7 @@ from typing import Any, Final, Literal, NoReturn, TypeVar
 import httpx
 import structlog
 from defusedxml import ElementTree as ET
+from mcp.server.caching import CacheHint
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -300,7 +301,31 @@ async def lifespan(_server: MCPServer) -> AsyncIterator[None]:
 
 
 # ─────────────────────────── Server ────────────────────────────────────────────
-mcp = MCPServer("swiss_cultural_heritage_mcp", lifespan=lifespan)
+# SEP-2549, Spec 2026-07-28: die auflistenden Methoden tragen `ttlMs` und
+# `cacheScope`. Das SDK setzt beides auf «sofort veraltet, nie geteilt» — ein
+# Server ohne `cache_hints` verhaelt sich also nicht neutral, sondern laesst
+# jeden Client bei jeder Verbindung neu auflisten, fuer Listen, die beim Import
+# feststehen und sich zur Laufzeit des Prozesses nicht aendern koennen.
+#
+# `public` folgt aus der Sache, nicht aus Bequemlichkeit: die 11 Tools werden
+# per Dekorator beim Import registriert, es gibt keine Filterung nach Aufrufer.
+# Sobald eine Liste vom Aufrufer abhaengt, muss der Scope im selben Commit auf
+# `private` wechseln.
+#
+# `resources/read` und `prompts/get` stehen bewusst nicht dabei: das waere eine
+# Zusicherung ueber den INHALT statt ueber das Verzeichnis. Die auflistenden
+# Methoden sagen, WAS es gibt, und nur das steht beim Import fest.
+LIST_CACHE_TTL_MS = 300_000
+
+CACHE_HINTS = {
+    "tools/list": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
+    "resources/list": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
+    "resources/templates/list": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
+    "prompts/list": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
+    "server/discover": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
+}
+
+mcp = MCPServer("swiss_cultural_heritage_mcp", lifespan=lifespan, cache_hints=CACHE_HINTS)
 
 
 # ─────────────────────────── Fehler-Maskierung (OBS-002) ───────────────────────
@@ -2970,6 +2995,18 @@ def build_transport_security(host: str, port: int):
     )
 
 
+# Die Header, nach denen Spec 2026-07-28 eine Streamable-HTTP-Anfrage routet —
+# in der Schreibweise des SDK (`mcp.shared.inbound`). Ein Browser darf einen
+# nicht safelisteten Header gar nicht erst senden, wenn der Server ihn nicht in
+# `Access-Control-Allow-Headers` nennt: ohne sie stirbt jede Cross-Origin-
+# Anfrage am Preflight, vor dem ersten MCP-Byte. stdio- und Python-Clients
+# kennen keinen Preflight und merken davon nichts — deshalb fiel es nicht auf.
+#
+# `Mcp-Param-*` fehlt bewusst: CORS kennt keinen Praefix-Wildcard, und kein
+# Tool-Schema dieses Servers traegt eine `x-mcp-header`-Annotation.
+CORS_ROUTING_HEADERS = ["Mcp-Method", "Mcp-Name", "Mcp-Protocol-Version"]
+
+
 def build_http_app(
     cors_origins: list[str] | None = None,
     host: str = "127.0.0.1",
@@ -3003,7 +3040,7 @@ def build_http_app(
         CORSMiddleware,
         allow_origins=cors_origins or [],
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["Mcp-Session-Id", "Content-Type"],
+        allow_headers=["Mcp-Session-Id", "Content-Type", *CORS_ROUTING_HEADERS],
         expose_headers=["Mcp-Session-Id"],
     )
     return app
