@@ -142,7 +142,7 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 ## Teil 2 — dieses Repo
 
 **ruff-Pin: in `pyproject.toml`, an einer Stelle.** `[dev]` fordert
-`ruff==0.16.1`; `pip install -e ".[dev]"` installiert damit lokal genau die
+`ruff==0.16.3`; `pip install -e ".[dev]"` installiert damit lokal genau die
 Version der CI, und `ci.yml` installiert ruff nicht mehr separat. Eine
 `.pre-commit-config.yaml` gibt es nicht — wer eine anlegt, pinnt dort
 dieselbe Version oder verlagert den Pin ganz dorthin, aber nie beides.
