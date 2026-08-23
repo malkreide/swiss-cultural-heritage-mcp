@@ -334,6 +334,12 @@ Ruff is pinned to an exact version in `pyproject.toml` (`[project.optional-depen
 
 This server does not override the negotiation — the official `mcp` SDK decides, and both eras are reachable over either transport (stdio and HTTP alike). Pin the SDK, not a hand-rolled version string, to control which protocol versions are spoken. The numbers above are the pinned SDK's own registry (`mcp_types.version`: `HANDSHAKE_PROTOCOL_VERSIONS`, `MODERN_PROTOCOL_VERSIONS`) — read them there rather than from this table if the pin has moved.
 
+Both revisions are pinned in
+[`tests/test_protocol_version.py`](tests/test_protocol_version.py) and asserted
+against the installed SDK — including the handshake ceiling, measured against a
+live `initialize` through the assembled ASGI stack. A Dependabot bump of `mcp`
+can no longer move either number without this table going stale unnoticed.
+
 ---
 
 ## Changelog
