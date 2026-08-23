@@ -335,6 +335,13 @@ Ruff ist in `pyproject.toml` exakt gepinnt (`[project.optional-dependencies] dev
 
 Dieser Server überschreibt die Aushandlung nicht — das offizielle `mcp`-SDK entscheidet, und beide Ären sind über beide Transporte erreichbar (stdio wie HTTP). Steuere die gesprochenen Protokoll-Versionen über den SDK-Pin, nicht über einen handgeschriebenen Versions-String. Die Zahlen oben stammen aus der Registry des gepinnten SDK selbst (`mcp_types.version`: `HANDSHAKE_PROTOCOL_VERSIONS`, `MODERN_PROTOCOL_VERSIONS`) — bei verschobenem Pin dort nachlesen, nicht in dieser Tabelle.
 
+Beide Revisionen sind in
+[`tests/test_protocol_version.py`](tests/test_protocol_version.py) gepinnt und
+werden gegen das installierte SDK geprueft — die Handshake-Obergrenze an einem
+echten `initialize` durch den zusammengebauten ASGI-Stack gemessen. Ein
+Dependabot-Bump von `mcp` kann keine der beiden Zahlen mehr verschieben, ohne
+dass diese Tabelle unbemerkt veraltet.
+
 ---
 
 ## Changelog
