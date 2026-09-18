@@ -53,7 +53,7 @@ dev = [
     # niemand verursacht hat — oder lässt lokal grün, was die CI rot färbt.
     # Diese Zeile ist die einzige Quelle der Wahrheit für die ruff-Version;
     # `ci.yml` installiert nichts mehr separat.
-    "ruff==0.16.3",
+    "ruff==0.16.5",
 ]
 # Optionales OpenTelemetry-Tracing (OBS-006). Nur nötig, wenn
 # OTEL_EXPORTER_OTLP_ENDPOINT gesetzt ist; sonst bleibt Tracing aus.
