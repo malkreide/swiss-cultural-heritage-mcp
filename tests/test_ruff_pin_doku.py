@@ -62,6 +62,13 @@ _GATE = _ROOT / "scripts" / "check_ruff_pin.py"
 # Der Lookbehind grenzt den Namen ab, sonst liest `xruff==0.16.3` oder
 # `my-ruff==0.16.3` als ruff und macht ein fremdes Paket zur Drift.
 #
+# Der PUNKT gehoert dazu. PEP 508 erlaubt ihn im Paketnamen, und PEP 503
+# normalisiert `.`, `-` und `_` auf dasselbe Zeichen — `my.ruff` ist also ein
+# gueltiger, fremder Dist-Name. Eine Fassung ohne `.` im Lookbehind las aus
+# `my.ruff==0.1.0` den Wert `0.1.0`, verglich ihn mit dem Pin und haette die
+# CI an einer Markdown-Datei rot gemacht, die eine ganz andere Abhaengigkeit
+# nennt. Aufgefallen durch einen Codex-Review (P3) auf PR #88.
+#
 # Gefangen wird der ganze Versions-Ausdruck, nicht nur sein Ziffernanfang.
 # `ruff==0.16.5.*`, `ruff==0.16.5+corp1` und `ruff==0.16.5-1` sind gueltige
 # Anforderungen, die etwas anderes waehlen als den exakten Pin — ein
@@ -75,7 +82,7 @@ _GATE = _ROOT / "scripts" / "check_ruff_pin.py"
 # alphanumerischen Stelle oder `*` — das Backtracking trennt beide Faelle,
 # ohne dass hier eine Liste von Satzzeichen stuende.
 _IN_DOKU = re.compile(
-    r"(?<![\w-])ruff\s*==\s*([0-9][0-9a-zA-Z.*+!_-]*[0-9a-zA-Z*]|[0-9])",
+    r"(?<![\w.-])ruff\s*==\s*([0-9][0-9a-zA-Z.*+!_-]*[0-9a-zA-Z*]|[0-9])",
     re.IGNORECASE,
 )
 
@@ -109,6 +116,10 @@ _SCHREIBWEISEN = [
     ("xruff==0.16.3", []),
     ("my-ruff==0.16.3", []),
     ("ruff-lsp==0.1.0", []),
+    # Punkte trennen Paketnamen genauso wie Bindestriche (PEP 503/508).
+    ("my.ruff==0.1.0", []),
+    ("foo.bar.ruff==2.0", []),
+    ("my_ruff==0.16.3", []),
 ]
 
 

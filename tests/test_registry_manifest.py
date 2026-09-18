@@ -209,6 +209,40 @@ def test_der_modul_docstring_nennt_jede_quelle(konstante: str) -> None:
     )
 
 
+def test_die_aufzaehlung_nennt_keine_quelle_mehr_die_es_nicht_gibt() -> None:
+    """Die Rueckrichtung — und ohne sie ist der Test oben halb blind.
+
+    Der Test darueber belegt, dass jede angebundene Quelle in der
+    Aufzaehlung steht. Er belegt NICHT, dass jede Zeile der Aufzaehlung zu
+    einer Quelle gehoert. Wird eine Integration entfernt — die
+    `SourceInfo`-Konstante und ihr `_MARKER`-Eintrag verschwinden, die
+    Docstring-Zeile bleibt stehen —, laeuft der Test darueber ueber die
+    verbliebenen Quellen und findet nichts zu beanstanden. Das Modul
+    bewuerbe dann eine Quelle, die es nicht mehr abfragen kann: genau die
+    Drift, gegen die diese Datei geschrieben ist, nur in die andere
+    Richtung.
+
+    Aufgefallen durch einen Codex-Review (P2) auf PR #88 — die erste Fassung
+    hatte die Luecke.
+
+    Geprueft wird zeilenweise und nicht ueber die Anzahl: Eine Zahl waere
+    wieder die Kopie einer Aufzaehlung, und sie sagte nicht, WELCHE Zeile
+    verwaist ist.
+    """
+    bekannt = {m for marker in _MARKER.values() for m in marker}
+    verwaist = [
+        zeile.strip()
+        for zeile in _docstring_aufzaehlung().splitlines()
+        if not any(m in zeile for m in bekannt)
+    ]
+    assert not verwaist, (
+        "Diese Zeilen der Quellen-Aufzaehlung im Modul-Docstring gehoeren zu "
+        "keiner SourceInfo-Konstante mehr:\n  " + "\n  ".join(verwaist) + "\n"
+        "Entweder ist die Quelle weggefallen — dann die Zeile streichen — oder "
+        "sie ist neu und braucht eine Konstante samt _MARKER-Eintrag."
+    )
+
+
 def test_die_ableitung_findet_ueberhaupt_etwas() -> None:
     """Sichert die Parametrisierungen oben gegen leere Eingaben ab.
 
