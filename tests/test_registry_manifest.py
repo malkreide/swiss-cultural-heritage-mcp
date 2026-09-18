@@ -21,6 +21,21 @@ Unterschied zur Vorlage in `swiss-democracy-mcp`, wo die fremden Quellen
 handgeschrieben stehen mussten: Hier fuehrt der Server selbst Buch
 darueber, was er nicht erreicht.
 
+Seit dem 18.09.2026 haelt dieselbe Mechanik jeden Ort, der diesen Server
+in einem Satz beschreibt, nicht mehr nur `server.json`:
+
+  - `server.json` — der Verzeichniseintrag,
+  - `[project].description` in `pyproject.toml` — der PyPI-Einzeiler, der
+    ueber `importlib.metadata` als `serverInfo.description` in JEDER Antwort
+    der Aera 2026-07-28 steht,
+  - `server.INSTRUCTIONS` — das einzige Feld, das `server/discover` neben
+    den Capabilities traegt.
+
+Der zweite war der Anlass: Er nannte drei der fuenf Quellen — genau der
+Fehlstand, den diese Datei fuer `server.json` schon hielt, an einer Stelle,
+an die sie nicht sah. Ein Ort mehr ist hier jetzt eine Zeile in
+`_beschreibungen()`.
+
 Was die Pruefungen NICHT leisten: Sie lesen keinen Text. Eine sachlich
 schiefe, aber marker-treue Beschreibung kommt durch. Sie fangen die
 mechanischen Klassen, die unten je einen Test tragen, und behaupten
@@ -110,6 +125,22 @@ def _manifest() -> dict:
     return json.loads(_SERVER_JSON.read_text(encoding="utf-8"))
 
 
+def _beschreibungen() -> dict[str, str | None]:
+    """Jeder Ort, der diesen Server in einem Satz beschreibt — je (Ort, Text).
+
+    `__summary__` wird aus den INSTALLIERTEN Paket-Metadaten gelesen und nicht
+    aus `pyproject.toml`: Geprueft werden soll, was ein Client zu sehen
+    bekommt. Ein Klon, dessen `pip install -e .` aelter ist als die Zeile in
+    `pyproject.toml`, faellt damit auf — und genau der liefert dann auch im
+    Betrieb die alte Beschreibung aus.
+    """
+    return {
+        "server.json → description": _manifest()["description"],
+        "pyproject.toml → [project].description (= serverInfo.description)": srv.__summary__,
+        "server.py → INSTRUCTIONS (= server/discover)": srv.INSTRUCTIONS,
+    }
+
+
 def test_die_beschreibung_haelt_die_schema_grenze() -> None:
     """Zu lang faellt sonst erst beim Release — und dort zu spaet.
 
@@ -134,31 +165,48 @@ def test_die_beschreibung_haelt_die_schema_grenze() -> None:
     assert len(beschreibung) <= grenze, f"{len(beschreibung)} Zeichen, erlaubt sind {grenze}."
 
 
+@pytest.mark.parametrize("ort", sorted(_beschreibungen()))
 @pytest.mark.parametrize("konstante", sorted(_quellen_konstanten()))
-def test_jede_angebundene_quelle_steht_im_verzeichniseintrag(konstante: str) -> None:
-    """Was der Server bedient, muss der Eintrag auch nennen."""
+def test_jede_angebundene_quelle_steht_in_jeder_beschreibung(konstante: str, ort: str) -> None:
+    """Was der Server bedient, muss jeder Ort nennen, der ihn beschreibt.
+
+    Ueber `_beschreibungen()` parametrisiert und nicht je Ort einmal
+    geschrieben: Der Anlass war ein Ort, den niemand mitgezogen hatte. Ein
+    Test je Ort haette denselben Ausgang gehabt — der neue Ort fehlte dann
+    eben als Test.
+    """
     marker = _MARKER.get(konstante)
     assert marker is not None, (
         f"{konstante} ist eine SourceInfo-Konstante des Servermoduls, aber in "
         "_MARKER nicht eingeordnet. Dort die Schreibweisen eintragen, unter "
         "denen die Quelle in der Beschreibung erscheinen darf."
     )
-    beschreibung = _manifest()["description"]
+    beschreibung = _beschreibungen()[ort]
+    assert beschreibung, f"{ort} ist leer — siehe test_die_ableitung_findet_ueberhaupt_etwas"
     assert any(m in beschreibung for m in marker), (
-        f"server.json nennt {konstante} nicht (erwartet eine von {list(marker)}), "
+        f"{ort} nennt {konstante} nicht (erwartet eine von {list(marker)}), "
         f"obwohl das Modul sie als {_quellen_konstanten()[konstante].name!r} fuehrt."
     )
 
 
+@pytest.mark.parametrize("ort", sorted(_beschreibungen()))
 @pytest.mark.parametrize("institution", sorted(_nicht_verbunden()))
-def test_der_eintrag_nennt_keine_quelle_die_der_server_nicht_erreicht(
+def test_keine_beschreibung_nennt_eine_quelle_die_der_server_nicht_erreicht(
     institution: str,
+    ort: str,
 ) -> None:
     """Der Rueckfall in genau den Fehler, der diese Datei ausgeloest hat.
 
     Abgeleitet statt aufgeschrieben: `_HERITAGE_COLLECTIONS` fuehrt den
     Status selbst. Faellt eine Institution von `active` auf etwas anderes,
     wird ihr Name hier automatisch verboten.
+
+    Das gilt auch fuer `INSTRUCTIONS`, und das ist eine bewusste Einschraenkung
+    ihres Textes: Ein Hinweis «Bundesarchiv ist NICHT angebunden» waere fuer
+    ein Modell nuetzlich, stuende aber unter demselben Verbot — ein Test, der
+    Nennung und Verneinung auseinanderhaelt, muesste Prosa lesen. Deshalb
+    verweisen die INSTRUCTIONS auf `list_heritage_collections`, das die
+    Abgrenzung aus `_HERITAGE_COLLECTIONS` selbst ausgibt.
     """
     marker = _NICHT_VERBUNDEN_MARKER.get(institution)
     assert marker is not None, (
@@ -166,9 +214,9 @@ def test_der_eintrag_nennt_keine_quelle_die_der_server_nicht_erreicht(
         "_NICHT_VERBUNDEN_MARKER kennt kein Wort dafuer. Dort eines eintragen, "
         "das keine verbundene Quelle trifft."
     )
-    beschreibung = _manifest()["description"]
+    beschreibung = _beschreibungen()[ort] or ""
     assert marker.lower() not in beschreibung.lower(), (
-        f"server.json nennt {marker!r}, aber _HERITAGE_COLLECTIONS fuehrt "
+        f"{ort} nennt {marker!r}, aber _HERITAGE_COLLECTIONS fuehrt "
         f"{_nicht_verbunden()[institution]!r} als nicht verbunden — der Server "
         "fragt diese Quelle nicht ab."
     )
@@ -252,6 +300,14 @@ def test_die_ableitung_findet_ueberhaupt_etwas() -> None:
     """
     quellen = _quellen_konstanten()
     assert quellen, "keine SourceInfo-Konstante gefunden — der Scan sucht falsch"
+    for ort, text in _beschreibungen().items():
+        assert text, (
+            f"{ort} ist leer oder fehlt — dann laufen die Marker-Tests fuer diesen "
+            "Ort ueber einen leeren String und saehen nichts. Bei "
+            "`pyproject.toml → [project].description` heisst leer: Die Paket-"
+            "Metadaten sind nicht installiert oder aelter als pyproject.toml. "
+            'Dann `pip install -e ".[dev]"` erneut ausfuehren.'
+        )
     assert _docstring_aufzaehlung(), (
         "der Modul-Docstring hat keine Aufzaehlungszeilen — dann prueft der "
         "Docstring-Test nichts. (python -OO entfernt Docstrings ganz; die "

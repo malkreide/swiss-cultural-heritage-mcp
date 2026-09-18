@@ -5,7 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name        = "swiss-cultural-heritage-mcp"
 version     = "0.5.0"
-description = "MCP Server for Swiss cultural heritage data — SIK-ISEA, Nationalmuseum, Nationalbibliothek"
+# Diese Zeile ist nicht nur der PyPI-Einzeiler: Sie wandert ueber
+# `importlib.metadata` in `serverInfo.description` und steht damit in JEDER
+# Antwort der Aera 2026-07-28. Sie nannte bis zum 18.09.2026 drei der fuenf
+# Quellen — derselbe Fehlstand, den `tests/test_registry_manifest.py` fuer
+# `server.json` und den Modul-Docstring schon hielt, an der Stelle, an die
+# dieser Test nicht sah. Er sieht jetzt auch hierher.
+description = "MCP server for Swiss cultural heritage data — SIKART (SIK-ISEA), Nationalmuseum, Helveticat, Memobase, Dodis"
 readme      = "README.md"
 license     = { file = "LICENSE" }
 requires-python = ">=3.11"
