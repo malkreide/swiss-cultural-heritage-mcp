@@ -2,10 +2,16 @@
 """
 Swiss Cultural Heritage MCP Server
 
-AI-nativer Zugang zu drei Schweizer Kulturerbe-Quellen:
+AI-nativer Zugang zu Schweizer Kulturerbe-Quellen:
   · SIK-ISEA:          SIKART-Künstlerdaten (~17'000) via opendata.swiss CKAN DataStore
   · Nationalmuseum:    Sammlungsdaten via opendata.swiss CKAN API
   · Nationalbibliothek: Helveticat (Schweizerische Nationalbibliografie) via OAI-PMH
+  · Memobase:          Audiovisuelles Kulturerbe (Memoriav) via Linked Open Data
+  · Dodis:             Diplomatische Dokumente der Schweiz via JSON-REST
+
+Hier steht bewusst keine Anzahl: Die Aufzählung ist die Quelle. Sie nannte
+lange «drei Quellen», während Memobase und Dodis über die föderierte Fassade
+längst dazugekommen waren.
 
 Kein API-Schlüssel erforderlich. Alle Daten öffentlich zugänglich unter offenen Lizenzen.
 """

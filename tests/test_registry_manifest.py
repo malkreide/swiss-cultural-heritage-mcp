@@ -96,6 +96,16 @@ def _nicht_verbunden() -> dict[str, str]:
     }
 
 
+def _docstring_aufzaehlung() -> str:
+    """Nur die Aufzaehlungszeilen des Modul-Docstrings.
+
+    Die Liste im Docstring beginnt jede Quelle mit «·». Alles andere ist
+    Fliesstext, der ueber die Quellen reden darf, ohne als Nennung zu zaehlen.
+    """
+    doku = srv.__doc__ or ""
+    return "\n".join(z for z in doku.splitlines() if z.lstrip().startswith("·"))
+
+
 def _manifest() -> dict:
     return json.loads(_SERVER_JSON.read_text(encoding="utf-8"))
 
@@ -164,6 +174,41 @@ def test_der_eintrag_nennt_keine_quelle_die_der_server_nicht_erreicht(
     )
 
 
+@pytest.mark.parametrize("konstante", sorted(_quellen_konstanten()))
+def test_der_modul_docstring_nennt_jede_quelle(konstante: str) -> None:
+    """Dieselbe Frage am zweiten Ort, an dem die Quellen aufgezaehlt werden.
+
+    Der Modul-Docstring ist das, was beim Lesen des Codes zuerst ins Auge
+    faellt — und er trug dieselbe Luecke wie der Verzeichniseintrag: Er
+    sprach von «drei Quellen» und zaehlte SIK-ISEA, Nationalmuseum und
+    Nationalbibliothek auf, waehrend Memobase und Dodis ueber die
+    foederierte Fassade laengst dazugekommen waren.
+
+    Das ist der Fall «Zahlen, die eine Aufzaehlung wiederholen» aus
+    CLAUDE.md, und er faellt nirgends von selbst auf: Ein Docstring hat
+    keine Gegenprobe. Geprueft wird gegen dieselbe abgeleitete Menge wie der
+    Eintrag, damit beide Orte nicht auseinanderlaufen koennen.
+
+    Gelesen werden nur die AUFZAEHLUNGSZEILEN, nicht der ganze Docstring.
+    Der Unterschied ist gemessen: Eine erste Fassung suchte im gesamten
+    Text — und blieb gruen, als die Memobase-Zeile aus der Liste entfernt
+    wurde, weil der erklaerende Absatz darunter den Namen ebenfalls nennt.
+    Die Prosa haette die Zusicherung entwertet, und zwar genau die, deren
+    Verletzung sie beschreibt. Die Aufzaehlung ist die Quelle; ein Satz, der
+    ueber sie redet, ist keine.
+    """
+    marker = _MARKER.get(konstante)
+    assert marker is not None, (
+        f"{konstante} ist in _MARKER nicht eingeordnet — siehe den Test darueber."
+    )
+    liste = _docstring_aufzaehlung()
+    assert any(m in liste for m in marker), (
+        f"Die Quellen-Aufzaehlung im Modul-Docstring nennt {konstante} nicht "
+        f"(erwartet eine von {list(marker)}), obwohl das Modul sie als "
+        f"{_quellen_konstanten()[konstante].name!r} fuehrt."
+    )
+
+
 def test_die_ableitung_findet_ueberhaupt_etwas() -> None:
     """Sichert die Parametrisierungen oben gegen leere Eingaben ab.
 
@@ -173,6 +218,12 @@ def test_die_ableitung_findet_ueberhaupt_etwas() -> None:
     """
     quellen = _quellen_konstanten()
     assert quellen, "keine SourceInfo-Konstante gefunden — der Scan sucht falsch"
+    assert _docstring_aufzaehlung(), (
+        "der Modul-Docstring hat keine Aufzaehlungszeilen — dann prueft der "
+        "Docstring-Test nichts. (python -OO entfernt Docstrings ganz; die "
+        "Suite laeuft ohne, und dieser Test waere dort gruen aus Mangel an "
+        "Pruefung.)"
+    )
     assert _nicht_verbunden(), (
         "_HERITAGE_COLLECTIONS fuehrt keine nicht verbundene Institution mehr — "
         "dann prueft der Negativ-Test nichts"

@@ -378,14 +378,26 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 
 ## Teil 2 — dieses Repo
 
-**ruff-Pin: in `pyproject.toml`, an einer Stelle.** `[dev]` fordert
-`ruff==0.16.3`; `pip install -e ".[dev]"` installiert damit lokal genau die
-Version der CI, und `ci.yml` installiert ruff nicht mehr separat. Eine
+**ruff-Pin: in `pyproject.toml`, an einer Stelle.** `[dev]` fordert ihn;
+`pip install -e ".[dev]"` installiert damit lokal genau die Version der CI,
+und `ci.yml` installiert ruff nicht mehr separat. Eine
 `.pre-commit-config.yaml` gibt es nicht — wer eine anlegt, pinnt dort
 dieselbe Version oder verlagert den Pin ganz dorthin, aber nie beides.
 
-Vor dem Lauf `ruff --version` prüfen: ein älteres ruff früher im `PATH`
-schlägt den Pin, ohne dass der Install etwas meldet.
+Die Nummer steht hier bewusst nicht mehr. Am 18.9.2026 stand an dieser
+Stelle `0.16.3`, während ein Dependabot-Lauf den Pin längst auf eine neuere
+Version gehoben hatte. Die Überschrift «an einer Stelle» stand also über
+einer Kopie, und wer ihr folgte, installierte genau das abweichende ruff,
+vor dem der Absatz darunter warnt — der Satz erzeugte den Fehler, den er
+verhindern sollte. Seither gleicht `tests/test_ruff_pin_doku.py` jede
+`ruff==`-Angabe in den versionierten Markdown-Dateien gegen den Pin ab; er
+verbietet sie nicht, er verlangt, dass sie stimmt.
+
+Den Abgleich macht `scripts/check_ruff_pin.py`, das erste Gate unten: Es
+liest den Pin aus `pyproject.toml` und nennt ihn in seiner Ausgabe.
+`ruff --version` von Hand genügt nicht — es sieht nur das Binary aus dem
+`PATH`, und ein älteres ruff früher darin schlägt den Pin, ohne dass der
+Install etwas meldet.
 
 Gates, wörtlich aus `ci.yml` (Python 3.11 / 3.12 / 3.13):
 
