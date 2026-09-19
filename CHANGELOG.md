@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Das Codex-Urteil ist jetzt ein Check** (`.github/workflows/codex-gate.yml`,
+  `scripts/classify_codex_review.py`). Anlass war die Frage nach Auto-Merge —
+  und der Befund, dass Auto-Merge das Problem nicht loest: Es wartet auf
+  *required status checks*, und Codex erzeugt keinen. Gemessen am 19.09.2026 an
+  PR #91 nennt `get_check_runs` nur die drei `test`-Jobs, die Commit-Statuses
+  sind leer (`total_count: 0`). Ein Befund ist ein Review-Objekt, ein
+  befundloser Lauf ein Issue-Kommentar — keines von beidem kann ein Check sein
+  oder «approven». Auto-Merge haette gemergt, sobald die CI gruen ist; das
+  dauerte auf #91 26 Sekunden, Codex startete 2 Sekunden nach «ready».
+
+  Die Einordnung steht in einem Skript neben ihrem Test und kennt die vier
+  dokumentierten Faelle — Review-Objekt, Befundlos-Meldung, Kontingent,
+  fehlende Environment — plus einen fuenften: Ein unbekannter Codex-Text wird
+  woertlich zitiert statt einsortiert. `quota` und `environment` faerben rot,
+  weil sie aussehen wie Stille und eine Absage sind; ein befundloser Lauf
+  faerbt gruen, weil er ein Beleg ist und kein fehlendes Review.
+
+  Gegenprobe je Zusicherung einzeln gefahren: entschaerfter Kontingent-Marker,
+  entfernte Commit-Bindung, entfernte Autor-Pruefung, nicht uebersprungene
+  Statustabelle und geschluckter Unbekannt-Text lassen jeweils genau den
+  zugehoerigen Test fallen. Der Poll-Loop des Workflows ist gegen Fixtures
+  gefahren (Befundlos in Runde 3, Kontingent, Timeout) und schreibt
+  `GITHUB_OUTPUT` genau einmal.
+
+  **Wirksam wird der Job erst als required check** fuer `main`; bis dahin ist
+  er ein Hinweis. Und er belegt nur, dass Codex diesen Commit angesehen hat —
+  ob ein gemeldeter Befund behoben wurde, prueft er nicht. Das steht so auch
+  in seiner Zusammenfassung.
+
 ### Fixed
 
 - **Die `instructions` schickten Clients auf das falsche Tool.** Die erste
