@@ -1,0 +1,186 @@
+name: Codex Review Gate
+
+# Gibt das Codex-Urteil als echten Check-Run aus — damit Auto-Merge und
+# Branch Protection darauf warten koennen.
+#
+# WARUM DAS NOETIG IST
+# --------------------
+# Auto-Merge wartet auf *required status checks*. Codex erzeugt keinen:
+# gemessen am 19.09.2026 an PR #91 nennt `get_check_runs` nur die drei
+# `test`-Jobs, und die Liste der Commit-Statuses ist leer (`total_count: 0`).
+# Ein Codex-Befund ist ein Review-Objekt, ein befundloser Lauf ein
+# gewoehnlicher Issue-Kommentar — keines von beidem kann ein Check sein oder
+# «approven». Ohne diesen Job waere Auto-Merge auf diesem Repo wirkungslos:
+# Die CI ist in ~26 s gruen, Codex startet erst danach.
+#
+# An #90 und #91 lagen fuenf bzw. vier Sekunden zwischen «ready for review»
+# und Merge; Codex startete beide Male NACH dem Merge. Die Zeile
+# «Codex-Review beantwortet oder behoben» im PR-Template war ein Haken, den
+# niemand haette setzen koennen.
+#
+# WIRKSAM WIRD DAS ERST ALS REQUIRED CHECK
+# ----------------------------------------
+# Dieser Job blockiert von sich aus nichts. Er muss in den Branch-Protection-
+# Regeln (oder einem Ruleset) fuer `main` als required check eingetragen
+# werden — Name: `codex-gate`. Solange das nicht geschehen ist, ist er ein
+# Hinweis und keine Schranke.
+#
+# WAS ER NICHT LEISTET
+# --------------------
+# Er belegt, dass Codex DIESEN Commit angesehen hat. Ob gemeldete Befunde
+# auch behoben oder beantwortet wurden, prueft er nicht — das bleibt die
+# Aufgabe der Reviewerin. Ein Gate, das mehr behauptet, als es misst, ist
+# genau der Haken, gegen den es gebaut ist.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write   # nur fuer den `@codex review`-Anstoss nach einem Push
+
+concurrency:
+  # Ein neuer Push macht das Warten auf den alten Head gegenstandslos.
+  group: codex-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  codex-gate:
+    name: codex-gate
+    # Codex laeuft auf Drafts gar nicht erst an — ein kommentarloser Draft ist
+    # kein Beleg, sondern ein nicht durchgefuehrter Test. Hier wird deshalb
+    # nicht gewartet, sondern uebersprungen.
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_API: ${{ github.api_url }}/repos/${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # Wie lange auf ein Urteil gewartet wird, bevor der Job rot wird.
+      WARTE_SEKUNDEN: "1200"
+      ABSTAND_SEKUNDEN: "30"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      # Der Stichtag fuer Kommentare. Ohne ihn zaehlte eine Befundlos-Meldung
+      # aus einem frueheren Lauf als Urteil ueber den Commit, der jetzt
+      # gemergt wird. Reviews haengen ohnehin an `commit_id`.
+      - name: Stichtag des Head-Commits holen
+        id: stichtag
+        run: |
+          set -euo pipefail
+          date=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GH_API/commits/$HEAD_SHA" | python -c \
+            'import json,sys; print(json.load(sys.stdin)["commit"]["committer"]["date"])')
+          echo "since=$date" >> "$GITHUB_OUTPUT"
+          echo "Stichtag: $date"
+
+      # Codex laeuft laut seinem eigenen Infokasten auf drei Ausloeser an:
+      # PR zum Review geoeffnet, Draft auf ready gestellt, oder ein
+      # `@codex review`-Kommentar. Ein PUSH ist keiner davon — ohne diesen
+      # Schritt haette der neue Head nie ein Urteil und das Gate liefe bei
+      # jedem Push in den Timeout.
+      #
+      # Ungeprueft ist, ob Codex auf einen Kommentar des GITHUB_TOKEN-Bots
+      # reagiert. Tut er es nicht, endet der Job im Timeout und sagt dort,
+      # dass ein Mensch `@codex review` schreiben muss.
+      - name: Nach einem Push einen Review anstossen
+        if: github.event.action == 'synchronize'
+        run: |
+          set -euo pipefail
+          curl -sS -X POST -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GH_API/issues/$PR/comments" \
+            -d '{"body":"@codex review"}' -o /dev/null
+          echo "Review nach Push angestossen."
+
+      - name: Auf das Codex-Urteil warten
+        id: gate
+        env:
+          SINCE: ${{ steps.stichtag.outputs.since }}
+        run: |
+          set -euo pipefail
+          ende=$(( $(date +%s) + WARTE_SEKUNDEN ))
+          while :; do
+            curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$GH_API/pulls/$PR/reviews?per_page=100" -o reviews.json
+            curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$GH_API/issues/$PR/comments?per_page=100" -o comments.json
+
+            # `env -u GITHUB_OUTPUT`: Das Skript schreibt dorthin, sobald die
+            # Variable gesetzt ist. In der Schleife waere das je Runde ein
+            # weiteres `state=` in derselben Datei — die Ausgabe des Jobs
+            # haenge dann daran, welchen Wert der Runner zuletzt liest.
+            # Geschrieben wird deshalb genau einmal, nach der Schleife.
+            state=$(env -u GITHUB_OUTPUT python scripts/classify_codex_review.py \
+              --head-sha "$HEAD_SHA" --reviews reviews.json \
+              --comments comments.json --since "$SINCE" | sed -n 's/^state=//p')
+            echo "[$(date -u +%H:%M:%S)] $state"
+
+            # Alles ausser `pending` ist ein Ergebnis — auch ein schlechtes.
+            # Auf eine Kontingent- oder Environment-Meldung weiterzuwarten
+            # hiesse, eine Absage fuer Stille zu halten.
+            [ "$state" != "pending" ] && break
+            [ "$(date +%s)" -ge "$ende" ] && break
+            sleep "$ABSTAND_SEKUNDEN"
+          done
+
+          # Dieselben Dateien, dieselbe Einordnung — nur diesmal mit
+          # `GITHUB_OUTPUT`, damit `state`, `reason` und `proven` je genau
+          # einmal in der Datei stehen.
+          python scripts/classify_codex_review.py \
+            --head-sha "$HEAD_SHA" --reviews reviews.json \
+            --comments comments.json --since "$SINCE"
+
+      # Ueber `env`, nicht ueber `${{ }}` im Skript: Der Grund kann einen
+      # woertlich zitierten Fremdtext enthalten, und `${{ }}` setzt ihn vor
+      # dem Start in die Shell ein.
+      - name: Ergebnis durchreichen
+        env:
+          STATE: ${{ steps.gate.outputs.state }}
+          REASON: ${{ steps.gate.outputs.reason }}
+          PROVEN: ${{ steps.gate.outputs.proven }}
+        run: |
+          {
+            echo "## Codex Review Gate"
+            echo
+            echo "**Ergebnis:** \`$STATE\`"
+            echo
+            echo "$REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$PROVEN" = "true" ]; then
+            echo "Codex hat $HEAD_SHA angesehen: $STATE"
+            exit 0
+          fi
+
+          {
+            echo
+            echo "### Was jetzt zu tun ist"
+            echo
+            echo "- \`pending\` — Codex ist nicht rechtzeitig fertig geworden."
+            echo "  \`@codex review\` auf dem PR kommentieren und diesen Job neu starten."
+            echo "- \`quota\` — Kontingent aufgebraucht. Es wurde **nichts** geprueft."
+            echo "  Das Kontingent haengt am Konto, nicht am Repo."
+            echo "- \`environment\` — fuer dieses Repo fehlt eine Codex-Environment."
+            echo "  Sie wird **je Repo** angelegt; eine fuers Konto genuegt nicht."
+            echo "- \`unknown\` — Codex hat etwas Unbekanntes geschrieben. Der Text"
+            echo "  steht oben woertlich. Einordnen und die Marker in"
+            echo "  \`scripts/classify_codex_review.py\` ergaenzen."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Kein Beleg, dass Codex $HEAD_SHA angesehen hat: $STATE"
+          echo "$REASON"
+          exit 1

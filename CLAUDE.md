@@ -422,6 +422,32 @@ aber nichts: Nach `pip install -e ".[dev]"` importiert
 Wer einen Importfehler über den Env-Eintrag erklärt, sucht an der falschen
 Stelle; es fehlt dann der Install.
 
+**Codex ist hier ein Check, sonst waere er keiner.**
+`.github/workflows/codex-gate.yml` gibt das Codex-Urteil als Check-Run
+`codex-gate` aus. Der Grund steht oben im Abschnitt ueber das zu schnelle
+Mergen, nur andersherum: Auto-Merge wartet auf *required status checks*, und
+Codex erzeugt keinen. Gemessen am 19.9.2026 an PR #91 nennt `get_check_runs`
+nur die drei `test`-Jobs, und die Commit-Statuses sind leer
+(`total_count: 0`). Ein Befund ist ein Review-Objekt, ein befundloser Lauf ein
+Issue-Kommentar — keines von beidem kann ein Check sein oder «approven».
+
+Die Einordnung steht in `scripts/classify_codex_review.py`, neben ihrem Test,
+und kennt alle vier Faelle von oben plus einen fuenften: Ein unbekannter
+Codex-Text wird woertlich zitiert statt in die naechstbeste Schublade
+gezwungen. `quota` und `environment` faerben rot — sie sehen aus wie Stille
+und sind eine Absage.
+
+Zwei Dinge dazu, die man wissen muss. **Der Job blockiert erst als required
+check**; bis er in den Branch-Protection-Regeln fuer `main` steht, ist er ein
+Hinweis. Und **er belegt nur, dass Codex diesen Commit angesehen hat** — ob
+gemeldete Befunde behoben wurden, prueft er nicht.
+
+Eine ungepruefte Annahme steckt darin: dass Codex sein Urteil weiterhin als
+eigenen Kommentar postet und nicht nur noch in der Statustabelle
+(`codex-pull-request-review-summary`), die auf #90 und #91 auf «Running»
+stehen blieb. Laeuft das Gate in den Timeout, obwohl Codex sichtbar fertig
+ist, ist das der erste Ort zum Nachsehen.
+
 **Live-Tests laufen geplant.** `.github/workflows/nightly-live.yml` fährt
 `PYTHONPATH=src pytest tests/ -m live` täglich um 04:17 UTC (cron
 `17 4 * * *`) und öffnet bei Upstream-Fehlern ein Issue mit Label

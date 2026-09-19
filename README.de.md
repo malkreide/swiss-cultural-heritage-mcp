@@ -342,6 +342,31 @@ echten `initialize` durch den zusammengebauten ASGI-Stack gemessen. Ein
 Dependabot-Bump von `mcp` kann keine der beiden Zahlen mehr verschieben, ohne
 dass diese Tabelle unbemerkt veraltet.
 
+### Codex Review Gate
+
+Der Check `codex-gate` gibt das Codex-Urteil zu einem Commit als echten
+Check-Run aus. Grund: Auto-Merge wartet auf *required status checks*, und Codex
+erzeugt keinen — ein Befund ist ein Review-Objekt, ein befundloser Lauf ein
+Issue-Kommentar. Ohne diesen Job merged Auto-Merge, sobald die CI grün ist, und
+überholt den Review.
+
+| Ergebnis | Bedeutung | Check |
+|---|---|---|
+| `reviewed` | Review-Objekt zum Head-Commit, Befunde liegen vor | grün |
+| `clear` | Befundlos-Meldung | grün |
+| `quota` | Codex-Kontingent aufgebraucht — es wurde **nichts** geprüft | rot |
+| `environment` | Für dieses Repo fehlt eine Codex-Environment (je Repo anzulegen) | rot |
+| `unknown` | Ein Codex-Text, der in keinen der vier Fälle passt — wörtlich zitiert | rot |
+| `pending` | Noch kein Urteil; nach Timeout rot | rot |
+
+Die Einordnung steht in
+[`scripts/classify_codex_review.py`](scripts/classify_codex_review.py) neben
+ihrem Test, nicht in einem `run:`-Block.
+
+**Der Job blockiert erst, wenn er als required check für `main` eingetragen
+ist** (Name: `codex-gate`). Und er belegt nur, dass Codex diesen Commit
+angesehen hat — ob ein gemeldeter Befund behoben wurde, prüft er nicht.
+
 ### Server-Identität
 
 | Feld | Wert | Quelle |
