@@ -353,7 +353,7 @@ Issue-Kommentar. Ohne diesen Job merged Auto-Merge, sobald die CI grün ist, und
 | Ergebnis | Bedeutung | Check |
 |---|---|---|
 | `reviewed` | Review-Objekt zum Head-Commit, Befunde liegen vor | grün |
-| `clear` | Befundlos-Meldung | grün |
+| `clear` | Statustabelle meldet `Completed` ohne Review-Objekt, oder die Befundlos-Meldung | grün |
 | `quota` | Codex-Kontingent aufgebraucht — es wurde **nichts** geprüft | rot |
 | `environment` | Für dieses Repo fehlt eine Codex-Environment (je Repo anzulegen) | rot |
 | `unknown` | Ein Codex-Text, der in keinen der vier Fälle passt — wörtlich zitiert | rot |

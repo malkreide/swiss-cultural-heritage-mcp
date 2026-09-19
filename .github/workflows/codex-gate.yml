@@ -49,9 +49,13 @@ concurrency:
 jobs:
   codex-gate:
     name: codex-gate
-    # Codex laeuft auf Drafts gar nicht erst an — ein kommentarloser Draft ist
-    # kein Beleg, sondern ein nicht durchgefuehrter Test. Hier wird deshalb
-    # nicht gewartet, sondern uebersprungen.
+    # Ein Draft wird nicht gemergt, also gibt es hier nichts zu schuetzen.
+    #
+    # Die Begruendung stand hier zuerst anders («Codex laeuft auf Drafts gar
+    # nicht erst an») und war falsch: Am 19.09.2026 kam auf dem Draft-PR #92
+    # acht Sekunden nach dem Anlegen die Environment-Meldung. Gewartet wird
+    # trotzdem nicht — nicht weil nichts kaeme, sondern weil ein Draft kein
+    # Merge-Kandidat ist.
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 25
