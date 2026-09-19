@@ -455,10 +455,20 @@ Commit-Spalte, weil sie in Ort fortgeschrieben wird und ihr `created_at`
 altert.
 
 **Und zwei Saetze weiter oben stimmen so nicht mehr.** «Der PR ist ein
-Draft — darauf laeuft Codex nicht an»: Am 19.9.2026 kam auf dem Draft-PR #92
-acht Sekunden nach dem Anlegen die Environment-Meldung. Und diese Meldung
-allein belegt nicht, dass in einem Repo keine Reviews laufen — dieselben
-Repos, #90 und #91, wurden am selben Morgen regulaer geprueft.
+Draft — darauf laeuft Codex nicht an»: Am 19.9.2026 kam auf den Draft-PRs #92
+(07:14:11) und #93 (07:22:36) je rund acht Sekunden nach dem Anlegen die
+Environment-Meldung. Zweimal innerhalb von acht Minuten, also kein Ausrutscher.
+
+Was die zwei Faelle hergeben und was nicht: Belegt ist, dass Codex sich auf
+einem Draft meldet. NICHT belegt ist, dass die Environment-Meldung die
+Draft-Antwort IST — dafuer braeuchte es einen Draft, der etwas anderes
+bekommt, oder ein Repo mit Environment, das auf einem Draft schweigt. Beides
+wurde nicht beobachtet.
+
+Sicher ist dagegen die Gegenrichtung, und die traegt die Reihenfolge im Gate:
+Diese Meldung allein belegt NICHT, dass in einem Repo keine Reviews laufen —
+#90 und #91 wurden am selben Morgen regulaer geprueft, im selben Repo, in dem
+#92 und #93 sie bekamen.
 
 **Eine Lehre ueber das Messen selbst.** Zwei Abfragen der Kommentare von #90
 (06:47 und 07:00 UTC) lieferten noch «Running» mit unveraendertem
