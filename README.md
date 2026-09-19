@@ -340,6 +340,34 @@ against the installed SDK — including the handshake ceiling, measured against 
 live `initialize` through the assembled ASGI stack. A Dependabot bump of `mcp`
 can no longer move either number without this table going stale unnoticed.
 
+### Server identity
+
+| Field | Value | Source |
+|---|---|---|
+| `name` | `swiss_cultural_heritage_mcp` | identifier, machine-readable |
+| `title` | Schweizer Kulturerbe | `server.SERVER_TITLE` |
+| `version` | the shipped package version | `pyproject.toml` via `importlib.metadata` |
+| `description` | the PyPI one-liner | `pyproject.toml` → `[project].description` |
+| `websiteUrl` | the project homepage | `pyproject.toml` → `[project.urls].Homepage` |
+| `instructions` | what this server is for | `server.INSTRUCTIONS` |
+
+The `2026-07-28` era has no handshake. Instead of sending `serverInfo` once per
+connection, the SDK stamps the identity into the `_meta` of **every** response,
+and `server/discover` carries exactly one field beyond the capabilities:
+`instructions`.
+
+The SDK supplies none of these on its own — `Server.server_info` says so
+outright: "An unversioned server reports an empty `version`; the SDK never
+substitutes its own." Until 18 September 2026 this server passed none of them and
+reported `"version": ""` on every call. That is now measured in
+[`tests/test_server_identity.py`](tests/test_server_identity.py), across both
+eras and through real HTTP requests: a constructor argument that is set is not
+yet a field on the wire.
+
+Version, description and URL are derived, not written. A literal in the shipped
+path would be a second truth next to `pyproject.toml` — the very drift
+`scripts/check_version_sync.py` forbids for the version number.
+
 ---
 
 ## Changelog

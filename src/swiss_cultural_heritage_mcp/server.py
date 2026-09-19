@@ -43,12 +43,17 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from . import __version__
+from . import __homepage__, __summary__, __version__
 
 # Wer fragt hier an? Ohne eigenen User-Agent geht der httpx-Default
 # hinaus und der Betreiber der Datenquelle sieht bloss eine Bibliothek.
-# Die Version stammt aus den Paket-Metadaten und kann nicht driften.
-USER_AGENT = f"swiss-cultural-heritage-mcp/{__version__} (+https://github.com/malkreide/swiss-cultural-heritage-mcp)"
+# Version UND Projekt-URL stammen aus den Paket-Metadaten und koennen nicht
+# driften. Die URL stand hier bis zum 18.09.2026 als Literal — und damit ein
+# zweites Mal neben `[project.urls].Homepage`. Fehlen die Metadaten (nicht
+# installiert, Lauf aus dem Quellbaum), faellt der Verweis weg statt falsch zu
+# werden; `__version__` degradiert an derselben Stelle auf `0.0.0+local`.
+_UA_REFERRER = f" (+{__homepage__})" if __homepage__ else ""
+USER_AGENT = f"swiss-cultural-heritage-mcp/{__version__}{_UA_REFERRER}"
 
 
 # ─────────────────────────── Konfiguration (ARCH-004) ──────────────────────────
@@ -331,7 +336,66 @@ CACHE_HINTS = {
     "server/discover": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
 }
 
-mcp = MCPServer("swiss_cultural_heritage_mcp", lifespan=lifespan, cache_hints=CACHE_HINTS)
+# ─────────────────────── Server-Identität (Spec 2026-07-28) ────────────────────
+# `name` ist ein Bezeichner (snake_case, maschinenlesbar). Was ein Mensch liest,
+# steht in `title`.
+SERVER_TITLE = "Schweizer Kulturerbe"
+
+# `instructions` ist das einzige Feld, das `server/discover` neben den
+# Capabilities trägt — die moderne Ära hat keinen Handshake, in dem sonst noch
+# etwas über diesen Server stünde. Die Spec sagt dazu: nicht wiederholen, was in
+# den Tool-Beschreibungen ohnehin steht. Hier steht deshalb, was KEIN einzelnes
+# Tool sagen kann — welche Quelle es überhaupt gibt, wann die föderierte Suche
+# der quellenspezifischen vorzuziehen ist, und dass jedes Ergebnis eine
+# Lizenzpflicht mitführt.
+#
+# Die Quellen sind hier aufgezählt und nicht aus den `SourceInfo`-Konstanten
+# erzeugt: Die stehen erst weiter unten im Modul, nach dem Dekorator-Ziel `mcp`.
+# Gegen die Drift, die eine Aufzählung von Hand erzeugt, steht
+# `tests/test_registry_manifest.py` — dieselbe Mechanik, die den
+# Verzeichniseintrag und den Modul-Docstring hält, in beide Richtungen.
+INSTRUCTIONS = """\
+Zugang zu fünf offenen Schweizer Kulturerbe-Quellen: SIKART (SIK-ISEA, \
+Künstler·innen), Schweizerisches Nationalmuseum (Sammlungsdatensätze), \
+Helveticat (Schweizerische Nationalbibliothek), Memobase (Memoriav, \
+audiovisuelles Kulturerbe) und Dodis (diplomatische Dokumente).
+
+Womit anfangen: `search_heritage` fragt mehrere Gedächtnisinstitutionen in \
+einem Aufruf ab und passt, solange die Quelle offen ist. Steht sie fest, ist \
+das quellenspezifische Tool genauer — es kennt die Filter der jeweiligen API. \
+`list_heritage_collections` sagt, welche Institutionen angebunden sind und \
+welche geprüft, aber bewusst nicht angebunden wurden; diese Abgrenzung nicht \
+raten.
+
+Jedes Ergebnis führt Quelle und Lizenz mit, und beides gehört in die Antwort \
+an die nutzende Person: Die Metadaten sind offen, die Digitalisate und \
+Dokumente tragen je Objekt eigene Rechte.
+
+`response_format='json'` liefert denselben Inhalt strukturiert (mit \
+`outputSchema`), `'markdown'` ist für die direkte Anzeige gedacht.\
+"""
+
+# `version`, `description` und `website_url` kommen aus den Paket-Metadaten,
+# nicht aus Literalen — dieselbe Quelle, die PyPI und den Verzeichniseintrag
+# speist.
+#
+# Ohne `version` meldet dieses SDK den LEEREN String und setzt bewusst nichts
+# Eigenes ein (`Server.server_info`: «An unversioned server reports an empty
+# version; the SDK never substitutes its own»). Das wog unter `initialize` je
+# Verbindung einmal; seit `2026-07-28` stempelt das SDK `serverInfo` in
+# `_meta` JEDER Antwort — gemessen am 18.09.2026 an `tools/list`,
+# `resources/list`, `prompts/list` und `server/discover`, alle vier mit
+# `"version": ""`.
+mcp = MCPServer(
+    "swiss_cultural_heritage_mcp",
+    title=SERVER_TITLE,
+    description=__summary__,
+    instructions=INSTRUCTIONS,
+    website_url=__homepage__,
+    version=__version__,
+    lifespan=lifespan,
+    cache_hints=CACHE_HINTS,
+)
 
 
 # ─────────────────────────── Fehler-Maskierung (OBS-002) ───────────────────────

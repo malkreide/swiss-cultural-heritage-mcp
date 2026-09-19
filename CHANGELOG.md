@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Der Server meldete bei jedem Aufruf `"version": ""`.** `MCPServer` nimmt
+  `version`, `title`, `description`, `website_url` und `instructions` entgegen
+  und setzt fuer keines davon etwas Eigenes ein — das SDK sagt es selbst
+  (`Server.server_info`): «An unversioned server reports an empty `version`;
+  the SDK never substitutes its own.» Uebergeben wurde keines der fuenf.
+
+  Unter `initialize` stand `serverInfo` einmal je Verbindung. Seit
+  `2026-07-28` gibt es keinen Handshake mehr, und das SDK stempelt die
+  Identitaet stattdessen in `_meta` **jeder** Antwort — gemessen am 18.09.2026
+  an `tools/list`, `resources/list`, `prompts/list` und `server/discover`, alle
+  vier mit leerer Version. `server/discover`, die Methode, mit der die moderne
+  Aera ueberhaupt erst nach dem Server fragt, lieferte ausserdem
+  `"instructions": null`: Ein Client erfuhr, WAS es gibt, nie wofuer.
+
+  Version, Beschreibung und Projekt-URL kommen jetzt aus den Paket-Metadaten,
+  nicht aus Literalen. Die URL stand bis dahin als Literal im User-Agent, ein
+  zweites Mal neben `[project.urls].Homepage`.
+
+  `tests/test_server_identity.py` misst alle fuenf Felder durch echte
+  HTTP-Anfragen auf beiden Aeren: Ein gesetztes Konstruktor-Argument ist noch
+  kein Feld auf dem Draht — `instructions` etwa traegt `server/discover`, aber
+  keine der auflistenden Methoden. Gegenprobe je Feld einzeln gefahren, keines
+  blieb bei entferntem Argument gruen.
+
+- **Der PyPI-Einzeiler nannte drei der fuenf Quellen.**
+  `[project].description` sagte «SIK-ISEA, Nationalmuseum,
+  Nationalbibliothek» — Memobase und Dodis fehlten. Genau der Fehlstand, den
+  `tests/test_registry_manifest.py` fuer `server.json` und den Modul-Docstring
+  schon hielt, an einer Stelle, an die er nicht sah. Er wiegt jetzt schwerer
+  als vorher: Dieselbe Zeile ist seit dieser Aenderung
+  `serverInfo.description` und steht damit in jeder Antwort der Aera
+  `2026-07-28`.
+
+  Die Marker-Pruefung laeuft neu ueber `_beschreibungen()` und damit ueber
+  jeden Ort, der diesen Server in einem Satz beschreibt — `server.json`,
+  `[project].description` und `INSTRUCTIONS`. Ein Ort mehr ist dort eine
+  Zeile. Gegenprobe: Mit der alten Beschreibung fallen genau die beiden
+  fehlenden Quellen auf.
+
 - **Browser-Clients scheiterten am Preflight.** Spec `2026-07-28` routet eine
   Streamable-HTTP-Anfrage über `Mcp-Method`, `Mcp-Name` und
   `Mcp-Protocol-Version`; die CORS-Freigabeliste nannte nur `Mcp-Session-Id`
