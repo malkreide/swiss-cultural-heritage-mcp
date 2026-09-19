@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name        = "swiss-cultural-heritage-mcp"
-version     = "0.5.0"
+version     = "0.6.0"
 # Diese Zeile ist nicht nur der PyPI-Einzeiler: Sie wandert ueber
 # `importlib.metadata` in `serverInfo.description` und steht damit in JEDER
 # Antwort der Aera 2026-07-28. Sie nannte bis zum 18.09.2026 drei der fuenf

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-19
+
 ### Added
 
 - **Das Codex-Urteil ist jetzt ein Check** (`.github/workflows/codex-gate.yml`,
@@ -59,6 +61,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Aufgezeichnet statt nachgebaut: Die Statustabelle in beiden Zustaenden und
   die Environment-Meldung samt Markdown-Link stehen woertlich mit Aufnahme-
   datum in `tests/test_classify_codex_review.py`.
+
+- **Frischehinweise auf den auflistenden Methoden** (SEP-2549, Spec
+  `2026-07-28`): `tools/list`, `resources/list`, `resources/templates/list`,
+  `prompts/list` und `server/discover` antworten mit `ttlMs` 300000 und
+  `cacheScope` `public`. Das SDK setzt sonst «sofort veraltet, nie geteilt» und
+  lässt damit jeden Client bei jeder Verbindung neu auflisten — für
+  Verzeichnisse, die per Dekorator beim Import feststehen.
+
+  `resources/read` und `prompts/get` bleiben ohne Hinweis: das wäre eine
+  Zusicherung über den Inhalt statt über das Verzeichnis.
+
+- **Die Pruefsummen im Fixture-Nachweis waren Zierde.** `PROVENANCE.md` fuehrt
+  je Datei einen SHA-256 — um genau einen Fall zu fangen: eine Aufzeichnung,
+  die nach dem Lauf von Hand nachgebessert wurde. Eine korrigierte Antwort ist
+  wieder eine erfundene, und von aussen ist ihr das nicht anzusehen.
+  Nachgerechnet hat sie kein Test. `test_die_pruefsumme_im_nachweis_stimmt`
+  tut es jetzt, ueber die Bytes auf der Platte statt ueber den Loader — genau
+  die hat der Recorder gehasht.
+
+- **Der Fixture-Nachweis wies jede gekürzte Aufzeichnung als vollständig aus.**
+  `_kuerze` gab seine Zähler als `return vorher, nachher, geh(daten)` zurück.
+  Python wertet von links nach rechts aus und liest die beiden Zahlen, **bevor**
+  `geh` sie hochzählt — sie waren immer `(0, 0)`. Über jeder gekürzten Datei
+  stand «ungekuerzt»; neun der zehn Aufzeichnungen sind es, die grösste trägt
+  159 von 192 Listeneinträgen. Die Fixtures sind neu aufgezeichnet, damit die
+  Zahlen aus einem echten Lauf stammen, und
+  `test_der_nachweis_meldet_was_gekuerzt_wurde` fällt, wenn die Zähler wieder
+  blind werden.
+
+- **Protokoll-Gate: beide Spec-Aeren gepinnt und geprueft**
+  (`tests/test_protocol_version.py`). `mcp` 2.x bedient zwei Aeren ueber
+  denselben Server — den `initialize`-Handshake, der bei `2025-11-25`
+  deckelt, und den Pro-Request-Envelope, der `2026-07-28` erreicht.
+  `LATEST_PROTOCOL_VERSION` ist ein Alias auf die **moderne** Aera; wer nur
+  dagegen pinnt, laesst genau die Aera frei wandern, die heutige Clients
+  aushandeln. Beide sind jetzt einzeln gepinnt, ein Dependabot-Bump von
+  `mcp` kann keine davon still verschieben.
+
+  Nachgemessen statt aus Konstantennamen geschlossen: ein echter `initialize`
+  durch den zusammengebauten ASGI-Stack. Ein Client, der ueber den Handshake
+  nach `2026-07-28` fragt, bekommt `2025-11-25` zurueck.
+
+  Beide READMEs beschreiben die Aeren; ein Test haelt jede Sprache einzeln
+  dagegen — im Portfolio sind EN und DE desselben Repos schon dreimal
+  auseinandergelaufen, weil nur eine Fassung nachgezogen wurde.
+
+- **`Mcp-Session-Id` ist weiterhin freigegeben — und das steht jetzt in einem
+  Test statt in einem Satz.** Der Docstring von `tests/test_cors.py` nannte den
+  Header die Spur einer Mechanik, die `2026-07-28` abgeschafft habe. Das stimmt
+  nicht: `mcp` 2.x bedient beide Protokoll-Aeren, die Session gehoert zur
+  Handshake-Aera, und der Server gibt den Header nicht ohne Grund auch in
+  `expose_headers` frei.
+
+  Nachgemessen statt aus Spec-Text geschlossen: `MCP_SESSION_ID_HEADER` steht
+  unveraendert in `mcp/server/streamable_http.py`, und ein echter `initialize`
+  durch den zusammengebauten ASGI-Stack bekommt eine Session-ID im
+  Antwort-Header zurueck.
+
+  `test_der_session_header_ist_weiterhin_freigegeben` haelt beides fest. Die
+  Gegenprobe zeigt, dass es die Luecke wirklich gab: nimmt man den Header aus
+  der Freigabeliste, faellt genau dieser eine Test, und die sieben bestehenden
+  bleiben gruen.
+
+- **SessionStart-Hook `.claude/hooks/session-start.sh`** — meldet beim
+  Sessionstart, wie viele Commits der ausgecheckte Stand hinter
+  `origin/<Standard-Branch>` liegt, und schweigt bei 0. Anlass: ein veralteter
+  Klon hat am 3.8.2026 zweimal eine rote CI erzeugt, deren Ursache nicht im
+  Diff stand — es fehlten jeweils genau die Commits, die das Gate einfuehrten,
+  an dem der Branch scheiterte. Der Handgriff stand schon in `CLAUDE.md`; neu
+  ist, dass niemand mehr daran denken muss.
+  Der Hook blockiert nie: kein `set -e` (Absicht, nicht Nachlaessigkeit — unter
+  `set -e` wuerde der erste fehlschlagende git-Aufruf mit dessen Exit-Code
+  enden, und ein Exit != 0 aus einem SessionStart-Hook wird gemeldet statt
+  still verworfen), unbedingtes `exit 0`, Zeitlimit auf jeden Netzaufruf
+  (Default 5 s), keine interaktiven git-Abfragen. Kein Repo, kein Remote,
+  leeres Repo, haengendes Netz — alles geht still durch.
+  Der Standard-Branch wird ueber `git ls-remote --symref origin HEAD`
+  ermittelt, nicht als `main` angenommen: drei Server im Portfolio heissen ihn
+  `master`. Derselbe Aufruf liefert auch die Spitze, weshalb der Normalfall
+  ohne `fetch` auskommt.
+  `tests/test_session_start_hook.py` faehrt das Skript gegen echte
+  Wegwerf-Repos mit lokalen `file://`-Remotes; kein Test braucht Netz.
+
+- **Aufgezeichnete Fixtures** in `tests/fixtures/` — zehn echte Antworten, eine
+  je Abfrageform (vier Quellen, aber mehr Abfrageformen als Hosts). Abgegriffen
+  über einen httpx-Response-Hook auf dem geteilten Client, ausgelöst von den
+  Werkzeugen selbst. Herkunft, Datum, Auswahlregel und SHA-256 je Datei in
+  `tests/fixtures/PROVENANCE.md`, neu aufzeichnen mit
+  `scripts/record_fixtures.py`, geladen über `tests/fixture_data.py`.
+  Portfolio-Konvention, gleich wie in `meteoswiss-mcp` und
+  `swiss-statistics-mcp`.
+
+  Zugeordnet wird beim Abspielen nach der **Anfrage** und nicht nach der
+  Reihenfolge: `heritage_cross_search` und `search_heritage` fragen mehrere
+  Quellen in einem Aufruf ab. Die Sets der Nationalbibliothek bleiben
+  ungekürzt — das Werkzeug listet den Bestand, gekürzt log es.
+
+- **`OaiError` und `_raise_if_oai_error`.** OAI-PMH meldet Fehler *im Rumpf*
+  und mit HTTP 200: ein `<error code="…">` statt einer Trefferliste. Ohne
+  Erkennung parst man null Records und meldet «keine Publikationen gefunden» —
+  ein Ausfall in der Form eines gültigen Negativbefunds. `OaiError` erbt von
+  `ValueError` und damit von `ExpectedUpstreamError`, dasselbe Muster wie
+  `UpstreamSchemaError`: in `heritage_cross_search` fällt nur diese Quelle aus,
+  während die anderen weiter antworten.
 
 ### Fixed
 
@@ -141,117 +247,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Anfrage starb vor dem ersten MCP-Byte, während stdio und Python, für die kein
   Preflight gilt, weiterliefen. Deshalb war nichts rot.
 
-### Added
-
-- **Frischehinweise auf den auflistenden Methoden** (SEP-2549, Spec
-  `2026-07-28`): `tools/list`, `resources/list`, `resources/templates/list`,
-  `prompts/list` und `server/discover` antworten mit `ttlMs` 300000 und
-  `cacheScope` `public`. Das SDK setzt sonst «sofort veraltet, nie geteilt» und
-  lässt damit jeden Client bei jeder Verbindung neu auflisten — für
-  Verzeichnisse, die per Dekorator beim Import feststehen.
-
-  `resources/read` und `prompts/get` bleiben ohne Hinweis: das wäre eine
-  Zusicherung über den Inhalt statt über das Verzeichnis.
-
-
-- **Die Pruefsummen im Fixture-Nachweis waren Zierde.** `PROVENANCE.md` fuehrt
-  je Datei einen SHA-256 — um genau einen Fall zu fangen: eine Aufzeichnung,
-  die nach dem Lauf von Hand nachgebessert wurde. Eine korrigierte Antwort ist
-  wieder eine erfundene, und von aussen ist ihr das nicht anzusehen.
-  Nachgerechnet hat sie kein Test. `test_die_pruefsumme_im_nachweis_stimmt`
-  tut es jetzt, ueber die Bytes auf der Platte statt ueber den Loader — genau
-  die hat der Recorder gehasht.
-
-- **Der Fixture-Nachweis wies jede gekürzte Aufzeichnung als vollständig aus.**
-  `_kuerze` gab seine Zähler als `return vorher, nachher, geh(daten)` zurück.
-  Python wertet von links nach rechts aus und liest die beiden Zahlen, **bevor**
-  `geh` sie hochzählt — sie waren immer `(0, 0)`. Über jeder gekürzten Datei
-  stand «ungekuerzt»; neun der zehn Aufzeichnungen sind es, die grösste trägt
-  159 von 192 Listeneinträgen. Die Fixtures sind neu aufgezeichnet, damit die
-  Zahlen aus einem echten Lauf stammen, und
-  `test_der_nachweis_meldet_was_gekuerzt_wurde` fällt, wenn die Zähler wieder
-  blind werden.
-
-- **Protokoll-Gate: beide Spec-Aeren gepinnt und geprueft**
-  (`tests/test_protocol_version.py`). `mcp` 2.x bedient zwei Aeren ueber
-  denselben Server — den `initialize`-Handshake, der bei `2025-11-25`
-  deckelt, und den Pro-Request-Envelope, der `2026-07-28` erreicht.
-  `LATEST_PROTOCOL_VERSION` ist ein Alias auf die **moderne** Aera; wer nur
-  dagegen pinnt, laesst genau die Aera frei wandern, die heutige Clients
-  aushandeln. Beide sind jetzt einzeln gepinnt, ein Dependabot-Bump von
-  `mcp` kann keine davon still verschieben.
-
-  Nachgemessen statt aus Konstantennamen geschlossen: ein echter `initialize`
-  durch den zusammengebauten ASGI-Stack. Ein Client, der ueber den Handshake
-  nach `2026-07-28` fragt, bekommt `2025-11-25` zurueck.
-
-  Beide READMEs beschreiben die Aeren; ein Test haelt jede Sprache einzeln
-  dagegen — im Portfolio sind EN und DE desselben Repos schon dreimal
-  auseinandergelaufen, weil nur eine Fassung nachgezogen wurde.
-
-- **`Mcp-Session-Id` ist weiterhin freigegeben — und das steht jetzt in einem
-  Test statt in einem Satz.** Der Docstring von `tests/test_cors.py` nannte den
-  Header die Spur einer Mechanik, die `2026-07-28` abgeschafft habe. Das stimmt
-  nicht: `mcp` 2.x bedient beide Protokoll-Aeren, die Session gehoert zur
-  Handshake-Aera, und der Server gibt den Header nicht ohne Grund auch in
-  `expose_headers` frei.
-
-  Nachgemessen statt aus Spec-Text geschlossen: `MCP_SESSION_ID_HEADER` steht
-  unveraendert in `mcp/server/streamable_http.py`, und ein echter `initialize`
-  durch den zusammengebauten ASGI-Stack bekommt eine Session-ID im
-  Antwort-Header zurueck.
-
-  `test_der_session_header_ist_weiterhin_freigegeben` haelt beides fest. Die
-  Gegenprobe zeigt, dass es die Luecke wirklich gab: nimmt man den Header aus
-  der Freigabeliste, faellt genau dieser eine Test, und die sieben bestehenden
-  bleiben gruen.
-
-### Added
-
-- **SessionStart-Hook `.claude/hooks/session-start.sh`** — meldet beim
-  Sessionstart, wie viele Commits der ausgecheckte Stand hinter
-  `origin/<Standard-Branch>` liegt, und schweigt bei 0. Anlass: ein veralteter
-  Klon hat am 3.8.2026 zweimal eine rote CI erzeugt, deren Ursache nicht im
-  Diff stand — es fehlten jeweils genau die Commits, die das Gate einfuehrten,
-  an dem der Branch scheiterte. Der Handgriff stand schon in `CLAUDE.md`; neu
-  ist, dass niemand mehr daran denken muss.
-  Der Hook blockiert nie: kein `set -e` (Absicht, nicht Nachlaessigkeit — unter
-  `set -e` wuerde der erste fehlschlagende git-Aufruf mit dessen Exit-Code
-  enden, und ein Exit != 0 aus einem SessionStart-Hook wird gemeldet statt
-  still verworfen), unbedingtes `exit 0`, Zeitlimit auf jeden Netzaufruf
-  (Default 5 s), keine interaktiven git-Abfragen. Kein Repo, kein Remote,
-  leeres Repo, haengendes Netz — alles geht still durch.
-  Der Standard-Branch wird ueber `git ls-remote --symref origin HEAD`
-  ermittelt, nicht als `main` angenommen: drei Server im Portfolio heissen ihn
-  `master`. Derselbe Aufruf liefert auch die Spitze, weshalb der Normalfall
-  ohne `fetch` auskommt.
-  `tests/test_session_start_hook.py` faehrt das Skript gegen echte
-  Wegwerf-Repos mit lokalen `file://`-Remotes; kein Test braucht Netz.
-
-- **Aufgezeichnete Fixtures** in `tests/fixtures/` — zehn echte Antworten, eine
-  je Abfrageform (vier Quellen, aber mehr Abfrageformen als Hosts). Abgegriffen
-  über einen httpx-Response-Hook auf dem geteilten Client, ausgelöst von den
-  Werkzeugen selbst. Herkunft, Datum, Auswahlregel und SHA-256 je Datei in
-  `tests/fixtures/PROVENANCE.md`, neu aufzeichnen mit
-  `scripts/record_fixtures.py`, geladen über `tests/fixture_data.py`.
-  Portfolio-Konvention, gleich wie in `meteoswiss-mcp` und
-  `swiss-statistics-mcp`.
-
-  Zugeordnet wird beim Abspielen nach der **Anfrage** und nicht nach der
-  Reihenfolge: `heritage_cross_search` und `search_heritage` fragen mehrere
-  Quellen in einem Aufruf ab. Die Sets der Nationalbibliothek bleiben
-  ungekürzt — das Werkzeug listet den Bestand, gekürzt log es.
-
-- **`OaiError` und `_raise_if_oai_error`.** OAI-PMH meldet Fehler *im Rumpf*
-  und mit HTTP 200: ein `<error code="…">` statt einer Trefferliste. Ohne
-  Erkennung parst man null Records und meldet «keine Publikationen gefunden» —
-  ein Ausfall in der Form eines gültigen Negativbefunds. `OaiError` erbt von
-  `ValueError` und damit von `ExpectedUpstreamError`, dasselbe Muster wie
-  `UpstreamSchemaError`: in `heritage_cross_search` fällt nur diese Quelle aus,
-  während die anderen weiter antworten.
-
-### Fixed
-
 - **`heritage_search_museum_datasets` lieferte zu jeder Anfrage nichts.** Der
   Organisationsfilter hiess `schweizerisches-nationalmuseum`; auf
   opendata.swiss heisst die Organisation `schweizerisches-nationalmuseum-snm`.
@@ -259,44 +254,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   HTTP 200 und null Treffern, ohne Fehler und ohne Warnung. Gemessen am
   15.08.2026: ohne Kürzel 0 Datensätze, mit 10. Betroffen war auch die
   SNM-Spur von `heritage_cross_search`.
-
-### Bekannt / Known
-
-- **`heritage_search_helveticat` und `heritage_get_publication` liefern keine
-  Datensätze.** Sie fragen OAI-PMH mit `metadataPrefix=oai_dc` und ohne `set`.
-  Die Schnittstelle verlangt ein `set` (`<error code="badArgument">The request
-  is missing required set argument</error>`) und publiziert `oai_dc` nicht:
-  `ListMetadataFormats` nennt mods, oai_dc, oai_qdc, marc21 und etdms, Records
-  liefert aber nur `marc21` — dort 100 je Set (`helveticat`,
-  `helveticat4slsp`, `xehelv`, `xdigicoll`; gemessen am 15.08.2026).
-
-  Behoben ist damit die *Stummheit*, nicht die Funktion: statt «keine
-  Publikationen gefunden» sagen die Werkzeuge jetzt, dass die Quelle die
-  Anfrage abgelehnt hat. Damit sie wieder Datensätze liefern, muss
-  `_parse_oai_records` MARC21 lesen können statt Dublin Core — ein eigener
-  Schritt. Bis dahin gibt es für diese beiden Werkzeuge auch keine
-  Erfolgs-Aufzeichnung; `tests/fixtures/PROVENANCE.md` sagt, warum.
-
-- **Eine unerwartete Dodis-Antwort wurde zu null Treffern.** `_search_dodis`
-  las `data if isinstance(data, list) else data.get("results", [])`.
-
-  Zwei Formen sind hier wirklich gültig — Dodis antwortet als nackte
-  Trefferliste **und** als Objekt mit `results`. Der stille Rest war der dritte
-  Fall: ein Objekt **ohne** `results` — eine Fehlerseite mit HTTP 200, eine
-  umgebaute Antwort — wurde zu null Treffern, und das liest sich wie «Dodis
-  kennt dazu nichts».
-
-  Der dritte Fall wirft jetzt `UpstreamSchemaError` mit den tatsächlich
-  vorhandenen Schlüsseln. Beide gültigen Formen gehen unverändert durch; eine
-  Bestätigung, die die Listenform mitgefangen hätte, hätte die Quelle
-  kaputtgemacht statt sie zu prüfen.
-
-  Nachtrag zum Portfolio-Durchlauf
-  ([`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)):
-  Der CKAN-Sweep reparierte die sechs CKAN-Stellen dieses Servers, Dodis ist
-  die siebte Quelle.
-
-### Fixed
 
 - **Sechs CKAN-Stellen schrieben eine Strukturänderung in eine Leermenge um.**
   Dreimal auf `records` (DataStore), zweimal auf `results` (`package_search`),
@@ -331,8 +288,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)
   am 2026-08-07: Acht Server im Portfolio sprechen mit CKAN, alle acht prüfen
   das `success`-Envelope, sieben defaulteten `result` danach.
-
-### Fixed
 
 - **The retry had six defects, all inherited from the shared template.** This
   server copied its retry from `reference/retry_backoff.py` in
@@ -375,6 +330,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   New `tests/test_retry_policy.py`: `Retry-After` in both forms plus the
   refusal cases, the jitter spread, that the cap binds after jittering, and the
   one-sided `Retry-After` jitter.
+
+### Bekannt / Known
+
+- **`heritage_search_helveticat` und `heritage_get_publication` liefern keine
+  Datensätze.** Sie fragen OAI-PMH mit `metadataPrefix=oai_dc` und ohne `set`.
+  Die Schnittstelle verlangt ein `set` (`<error code="badArgument">The request
+  is missing required set argument</error>`) und publiziert `oai_dc` nicht:
+  `ListMetadataFormats` nennt mods, oai_dc, oai_qdc, marc21 und etdms, Records
+  liefert aber nur `marc21` — dort 100 je Set (`helveticat`,
+  `helveticat4slsp`, `xehelv`, `xdigicoll`; gemessen am 15.08.2026).
+
+  Behoben ist damit die *Stummheit*, nicht die Funktion: statt «keine
+  Publikationen gefunden» sagen die Werkzeuge jetzt, dass die Quelle die
+  Anfrage abgelehnt hat. Damit sie wieder Datensätze liefern, muss
+  `_parse_oai_records` MARC21 lesen können statt Dublin Core — ein eigener
+  Schritt. Bis dahin gibt es für diese beiden Werkzeuge auch keine
+  Erfolgs-Aufzeichnung; `tests/fixtures/PROVENANCE.md` sagt, warum.
+
+- **Eine unerwartete Dodis-Antwort wurde zu null Treffern.** `_search_dodis`
+  las `data if isinstance(data, list) else data.get("results", [])`.
+
+  Zwei Formen sind hier wirklich gültig — Dodis antwortet als nackte
+  Trefferliste **und** als Objekt mit `results`. Der stille Rest war der dritte
+  Fall: ein Objekt **ohne** `results` — eine Fehlerseite mit HTTP 200, eine
+  umgebaute Antwort — wurde zu null Treffern, und das liest sich wie «Dodis
+  kennt dazu nichts».
+
+  Der dritte Fall wirft jetzt `UpstreamSchemaError` mit den tatsächlich
+  vorhandenen Schlüsseln. Beide gültigen Formen gehen unverändert durch; eine
+  Bestätigung, die die Listenform mitgefangen hätte, hätte die Quelle
+  kaputtgemacht statt sie zu prüfen.
+
+  Nachtrag zum Portfolio-Durchlauf
+  ([`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)):
+  Der CKAN-Sweep reparierte die sechs CKAN-Stellen dieses Servers, Dodis ist
+  die siebte Quelle.
 
 ## [0.5.0] - 2026-07-31
 
