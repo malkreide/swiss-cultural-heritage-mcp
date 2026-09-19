@@ -45,18 +45,47 @@ deshalb `unknown` und WOERTLICH zitiert, statt in die naechstbeste gezwungen
 zu werden. Ein Gate, das einen unbekannten Text als «kein Befund» liest, ist
 schlimmer als keines.
 
-DER STATUS-KOMMENTAR IST KEIN URTEIL
-------------------------------------
-Codex setzt seit September 2026 zusaetzlich eine Statustabelle als Kommentar
-(erkennbar am HTML-Marker `codex-pull-request-review-summary`). Sie trug auf
-#90 und #91 «🔄 Running» und wurde nie fortgeschrieben. Sie wird hier
-uebersprungen, sonst waere jeder frisch getriggerte PR sofort `unknown`.
+DIE STATUSTABELLE IST DAS URTEIL — GEMESSEN, NICHT ANGENOMMEN
+-------------------------------------------------------------
+Codex setzt seit September 2026 eine Statustabelle als Kommentar (HTML-Marker
+`codex-pull-request-review-summary`) und schreibt sie in Ort fort:
 
-Das ist die EINE ungepruefte Annahme dieses Skripts: dass Codex sein Urteil
-weiterhin auch als eigenen Kommentar postet und nicht nur noch in dieser
-Tabelle fuehrt. Beobachtet ist es aus der Zeit vor der Tabelle. Laeuft das
-Gate in den Timeout, obwohl Codex sichtbar fertig ist, ist das hier der erste
-Ort zum Nachsehen.
+    | \U0001f4dd **Code Review** | \u2705 **Completed** <relative-time ...> | `bfe7ab7` | ... |
+
+Die erste Fassung dieses Skripts hat sie uebersprungen und nur auf einen
+eigenen Kommentar gewartet («Didn't find any major issues»). Das war falsch,
+und zwar in die gefaehrliche Richtung: Gemessen am 19.09.2026 an PR #90 und
+#91 lief der Review durch — `Completed` um 06:37:08 bzw. 06:57:34, je rund
+60 Sekunden nach dem Merge — und Codex hinterliess WEDER ein Review-Objekt
+NOCH einen eigenen Kommentar. Das Urteil stand nur in der Tabelle. Ein Gate,
+das sie ueberspringt, haette jeden sauberen PR 20 Minuten blockiert und dann
+rot gemeldet.
+
+Deshalb wird die Tabelle jetzt gelesen, und zwar VOR den Einzelkommentaren:
+
+  Completed zum Head  → geprueft. Liegt kein Review-Objekt vor, gab es keine
+                        Befunde.
+  Running zum Head    → laeuft noch, weiterwarten.
+  anderer Status      → `unknown`, woertlich zitiert.
+
+Gebunden wird ueber die Commit-Spalte, nicht ueber den Zeitstempel: Die
+Tabelle wird fortgeschrieben, ihr `created_at` ist deshalb aelter als die
+Aussage, die sie heute trifft.
+
+Die Reihenfolge ist auch inhaltlich richtig. Am 19.09.2026 kam auf PR #92
+(Draft) die Environment-Meldung, waehrend #90 und #91 am selben Morgen
+regulaer geprueft wurden — die Meldung allein belegt also nicht, dass in
+diesem Repo keine Reviews laufen. Sagt die Tabelle `Completed`, gilt sie;
+fehlt eine Zeile zum Head, faellt die Einordnung auf die Meldungstexte
+durch und wird rot.
+
+EINE LEHRE UEBER DAS MESSEN SELBST
+-----------------------------------
+Zwei Abfragen der Kommentare von #90 (06:47 und 07:00 UTC) lieferten noch
+`Running` mit unveraendertem `updated_at`, obwohl die Tabelle bereits um
+06:37:10 auf `Completed` stand. Ein einzelner Blick auf einen
+fortgeschriebenen Kommentar ist eine Momentaufnahme, keine Feststellung —
+und eine zwischengespeicherte Antwort sieht genauso aus wie eine aktuelle.
 
 Aufruf:
     python scripts/classify_codex_review.py --head-sha <sha> \
@@ -68,6 +97,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -110,6 +140,29 @@ def _parse_iso(value: str | None) -> datetime | None:
         return None
 
 
+# Eine Commit-Spalte traegt einen abgekuerzten SHA in Backticks. Kopf- und
+# Trennzeile der Tabelle fallen an dieser Pruefung heraus, ohne dass jemand
+# sie zaehlen muss — «Commit» und «---» sind keine Hex-Ziffern.
+_KURZ_SHA = re.compile(r"^[0-9a-f]{7,40}$")
+
+
+def _statuszeilen(body: str) -> list[tuple[str, str]]:
+    """(Status, Kurz-SHA) je Datenzeile der Codex-Statustabelle."""
+    zeilen: list[tuple[str, str]] = []
+    for roh in body.splitlines():
+        zeile = roh.strip()
+        if not zeile.startswith("|"):
+            continue
+        zellen = [z.strip() for z in zeile.strip("|").split("|")]
+        if len(zellen) < 3:
+            continue
+        commit = zellen[2].strip("`").strip()
+        if not _KURZ_SHA.match(commit):
+            continue
+        zeilen.append((zellen[1], commit))
+    return zeilen
+
+
 def classify(
     reviews: list[dict[str, Any]],
     comments: list[dict[str, Any]],
@@ -119,15 +172,16 @@ def classify(
     """(state, reason) aus Reviews und Kommentaren eines PR.
 
     Zwei verschiedene Abfragen, und beide werden gebraucht: Das Review-Objekt
-    kommt aus `pulls/{n}/reviews`, alle drei Meldungstexte aus
-    `issues/{n}/comments`. Wer nur eine nimmt, uebersieht den Rest — genau so
-    ist die Kontingent-Meldung im Portfolio zuerst durchgerutscht.
+    kommt aus `pulls/{n}/reviews`, Statustabelle und Meldungstexte aus
+    `issues/{n}/comments`. Wer nur eine nimmt, uebersieht den Rest.
 
-    Das Review-Objekt wird ueber `commit_id` an den Head gebunden, die
-    Kommentare ueber `since`: Ein Review aus einem frueheren Commit belegt
-    nichts ueber den, der gemergt wird.
+    Reihenfolge: Review-Objekt, dann Statustabelle, dann Einzelkommentare.
+    Jede Stufe bindet an den Head — das Objekt ueber `commit_id`, die Tabelle
+    ueber ihre Commit-Spalte, die Kommentare ueber `since`. Ein Urteil zu
+    einem frueheren Commit belegt nichts ueber den, der gemergt wird.
     """
     grenze = _parse_iso(since)
+    kurz = head_sha[:7] if head_sha else ""
 
     for review in reviews:
         if not _codex_authored(review):
@@ -136,8 +190,40 @@ def classify(
             continue
         return (
             REVIEWED,
-            f"Codex-Review-Objekt zu {head_sha[:7]} — Befunde liegen vor und "
-            "gehoeren beantwortet oder behoben, bevor gemergt wird.",
+            f"Codex-Review-Objekt zu {kurz} — Befunde liegen vor und gehoeren "
+            "beantwortet oder behoben, bevor gemergt wird.",
+        )
+
+    laeuft = False
+    fertig = False
+    fremder_status: str | None = None
+    for comment in comments:
+        if not _codex_authored(comment) or STATUS_MARKER not in str(comment.get("body", "")):
+            continue
+        for status, commit in _statuszeilen(str(comment.get("body", ""))):
+            if head_sha and not head_sha.startswith(commit):
+                continue
+            gesenkt = status.lower()
+            if "running" in gesenkt or "queued" in gesenkt or "in progress" in gesenkt:
+                laeuft = True
+            elif "completed" in gesenkt:
+                fertig = True
+            elif fremder_status is None:
+                fremder_status = " ".join(status.split())[:200]
+
+    if fremder_status is not None:
+        return (
+            UNKNOWN,
+            f"Die Codex-Statustabelle fuehrt zu {kurz} einen unbekannten Status. "
+            f"Woertlich: «{fremder_status}» — einordnen statt durchwinken.",
+        )
+    if laeuft:
+        return PENDING, f"Codex-Review zu {kurz} laeuft noch."
+    if fertig:
+        return (
+            CLEAR,
+            f"Codex hat den Review zu {kurz} abgeschlossen und kein Review-Objekt "
+            "hinterlassen — also keine Befunde.",
         )
 
     unbekannt: list[str] = []
@@ -146,7 +232,7 @@ def classify(
             continue
         body = str(comment.get("body", ""))
         if STATUS_MARKER in body:
-            continue  # Statustabelle, kein Urteil — siehe Modul-Docstring.
+            continue  # oben schon gelesen; hier waere sie ein «fremder Text».
         erstellt = _parse_iso(comment.get("created_at"))
         if grenze is not None and erstellt is not None and erstellt < grenze:
             continue
@@ -163,7 +249,8 @@ def classify(
         if any(m in gesenkt for m in _ENVIRONMENT_MARKERS):
             return (
                 ENVIRONMENT,
-                "Fuer dieses Repo fehlt eine Codex-Environment. Sie wird je "
+                "Fuer dieses Repo fehlt eine Codex-Environment, und die "
+                "Statustabelle nennt keinen Lauf zu diesem Commit. Sie wird je "
                 "Repo angelegt (chatgpt.com/codex/cloud/settings/environments); "
                 "eine fuers Konto genuegt nicht.",
             )
@@ -172,12 +259,12 @@ def classify(
     if unbekannt:
         return (
             UNKNOWN,
-            "Codex hat etwas geschrieben, das in keinen der vier bekannten "
-            f"Faelle passt. Woertlich: «{unbekannt[0]}» — einordnen und die "
-            "Marker in scripts/classify_codex_review.py ergaenzen, statt es "
-            "als «kein Befund» durchzuwinken.",
+            "Codex hat etwas geschrieben, das in keinen der bekannten Faelle "
+            f"passt. Woertlich: «{unbekannt[0]}» — einordnen und die Marker in "
+            "scripts/classify_codex_review.py ergaenzen, statt es als «kein "
+            "Befund» durchzuwinken.",
         )
-    return PENDING, f"Noch kein Codex-Urteil zu {head_sha[:7] if head_sha else '?'}."
+    return PENDING, f"Noch kein Codex-Urteil zu {kurz or '?'}."
 
 
 def main(argv: list[str] | None = None) -> int:

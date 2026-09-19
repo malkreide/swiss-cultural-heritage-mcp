@@ -442,11 +442,41 @@ check**; bis er in den Branch-Protection-Regeln fuer `main` steht, ist er ein
 Hinweis. Und **er belegt nur, dass Codex diesen Commit angesehen hat** — ob
 gemeldete Befunde behoben wurden, prueft er nicht.
 
-Eine ungepruefte Annahme steckt darin: dass Codex sein Urteil weiterhin als
-eigenen Kommentar postet und nicht nur noch in der Statustabelle
-(`codex-pull-request-review-summary`), die auf #90 und #91 auf «Running»
-stehen blieb. Laeuft das Gate in den Timeout, obwohl Codex sichtbar fertig
-ist, ist das der erste Ort zum Nachsehen.
+**Das Urteil steht heute in der Statustabelle, nicht in einem Kommentar.**
+Die erste Fassung des Gates wartete auf einen eigenen Kommittentext und
+uebersprang die Tabelle (`codex-pull-request-review-summary`). Das war falsch,
+und zwar in die teure Richtung. Gemessen am 19.9.2026 an #90 und #91: Der
+Review lief durch — `✅ Completed` um 06:37:08 bzw. 06:57:34, je rund 60
+Sekunden NACH dem Merge — und Codex hinterliess weder ein Review-Objekt noch
+einen eigenen Kommentar. Ein Gate, das die Tabelle ueberspringt, haette jeden
+sauberen PR zwanzig Minuten blockiert und dann rot gemeldet. Sie wird deshalb
+gelesen, und zwar vor den Meldungstexten; gebunden wird ueber ihre
+Commit-Spalte, weil sie in Ort fortgeschrieben wird und ihr `created_at`
+altert.
+
+**Und zwei Saetze weiter oben stimmen so nicht mehr.** «Der PR ist ein
+Draft — darauf laeuft Codex nicht an»: Am 19.9.2026 kam auf den Draft-PRs #92
+(07:14:11) und #93 (07:22:36) je rund acht Sekunden nach dem Anlegen die
+Environment-Meldung. Zweimal innerhalb von acht Minuten, also kein Ausrutscher.
+
+Was die zwei Faelle hergeben und was nicht: Belegt ist, dass Codex sich auf
+einem Draft meldet. NICHT belegt ist, dass die Environment-Meldung die
+Draft-Antwort IST — dafuer braeuchte es einen Draft, der etwas anderes
+bekommt, oder ein Repo mit Environment, das auf einem Draft schweigt. Beides
+wurde nicht beobachtet.
+
+Sicher ist dagegen die Gegenrichtung, und die traegt die Reihenfolge im Gate:
+Diese Meldung allein belegt NICHT, dass in einem Repo keine Reviews laufen —
+#90 und #91 wurden am selben Morgen regulaer geprueft, im selben Repo, in dem
+#92 und #93 sie bekamen.
+
+**Eine Lehre ueber das Messen selbst.** Zwei Abfragen der Kommentare von #90
+(06:47 und 07:00 UTC) lieferten noch «Running» mit unveraendertem
+`updated_at`, obwohl die Tabelle bereits um 06:37:10 auf «Completed» stand.
+Daraus wurde zweimal berichtet, Codex habe nie hingesehen. Ein einzelner Blick
+auf einen fortgeschriebenen Kommentar ist eine Momentaufnahme, keine
+Feststellung, und eine zwischengespeicherte Antwort sieht aus wie eine
+aktuelle.
 
 **Live-Tests laufen geplant.** `.github/workflows/nightly-live.yml` fährt
 `PYTHONPATH=src pytest tests/ -m live` täglich um 04:17 UTC (cron

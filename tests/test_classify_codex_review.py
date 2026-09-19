@@ -55,14 +55,44 @@ def review(commit_id: str, *, user=CODEX) -> dict:
     return {"user": user, "commit_id": commit_id, "state": "COMMENTED"}
 
 
-# Woertlich der Kommentar, den Codex am 19.09.2026 auf PR #90 gesetzt hat —
-# gekuerzt, aber mit dem Marker und dem «Running»-Status, auf die es ankommt.
-STATUSTABELLE = (
-    "<!-- codex-pull-request-review-summary -->\n\n## Codex Review Summary\n\n"
-    "| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n"
-    "| 📝 **Code Review** | 🔄 **Running** since 2026-09-19T06:36:09Z | "
-    "`bfe7ab7` | Draft marked ready |\n"
+def _statustabelle(status: str, commit: str) -> str:
+    """Die Statustabelle in der Form, in der Codex sie wirklich setzt.
+
+    Kopf- und Trennzeile stehen bewusst drin: Sie sind der Grund, warum die
+    Commit-Spalte auf eine Hex-Form geprueft wird und nicht auf eine
+    Zeilennummer. Ein Parser, der sie mitzaehlt, liest «Commit» als Commit.
+    """
+    return (
+        "<!-- codex-pull-request-review-summary -->\n\n## Codex Review Summary\n\n"
+        "This comment shows the latest Codex review activity on this pull request.\n\n"
+        "| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n"
+        f"| 📝 **Code Review** | {status} | `{commit}` | Draft marked ready |\n"
+    )
+
+
+# ─── Woertlich aufgezeichnet, mit Aufnahmedatum ────────────────────────────────
+# PR #90, abgerufen am 19.09.2026: erst 06:36:13Z «Running», dann 06:37:10Z
+# «Completed» — dieselbe Kommentar-ID, in Ort fortgeschrieben.
+LAEUFT = _statustabelle(
+    '🔄 **Running** since <relative-time datetime="2026-09-19T06:36:09.750345Z">'
+    "2026-09-19T06:36:09.750345Z</relative-time>",
+    "bfe7ab7",
 )
+FERTIG = _statustabelle(
+    '✅ **Completed** <relative-time datetime="2026-09-19T06:37:08.642071Z">'
+    "2026-09-19T06:37:08.642071Z</relative-time>",
+    "bfe7ab7",
+)
+# PR #92 (Draft), 19.09.2026 07:14:11Z — woertlich, samt Markdown-Link.
+ENVIRONMENT_MELDUNG = (
+    "To use Codex here, [create an environment for this repo]"
+    "(https://chatgpt.com/codex/cloud/settings/environments)."
+)
+
+# Der Head, auf den sich LAEUFT und FERTIG beziehen.
+HEAD_90 = "bfe7ab705ecc2a7beae94cc9bbeba4cc732bebd6"
+
+STATUSTABELLE = LAEUFT
 
 
 # ─────────────────────────── Die belegenden Faelle ─────────────────────────────
@@ -252,3 +282,103 @@ def test_fehlende_oder_kaputte_dateien_machen_das_gate_nicht_gruen(tmp_path: Pat
     )
     assert f"state={PENDING}" in ergebnis.stdout
     assert "proven=false" in ergebnis.stdout
+
+
+# ─────────────────────── Die Statustabelle als Urteil ──────────────────────────
+
+
+def test_eine_abgeschlossene_tabelle_ohne_review_objekt_heisst_keine_befunde() -> None:
+    """Der Fall, der die erste Fassung dieses Skripts widerlegt hat.
+
+    Gemessen am 19.09.2026 an PR #90 und #91: Der Review lief durch
+    (`Completed` um 06:37:08 bzw. 06:57:34) und Codex hinterliess WEDER ein
+    Review-Objekt NOCH einen eigenen Kommentar — das Urteil stand nur in der
+    Tabelle. Die erste Fassung uebersprang sie und haette jeden sauberen PR
+    zwanzig Minuten blockiert, um ihn dann rot zu melden.
+    """
+    state, _ = classify([], [kommentar(FERTIG)], HEAD_90)
+    assert state == CLEAR
+    assert state in PROVEN
+
+
+def test_eine_laufende_tabelle_ist_kein_urteil() -> None:
+    state, _ = classify([], [kommentar(LAEUFT)], HEAD_90)
+    assert state == PENDING
+    assert state not in PROVEN
+
+
+def test_die_tabelle_bindet_an_den_commit_nicht_an_die_zeit() -> None:
+    """Die Tabelle wird in Ort fortgeschrieben — ihr `created_at` altert.
+
+    Auf #90 stand sie um 06:36:13 auf «Running» und um 06:37:10 auf
+    «Completed», bei unveraenderter Kommentar-ID. Ein `since`-Filter auf
+    `created_at` wuerde das fertige Urteil wegwerfen, sobald der Head-Commit
+    juenger ist als der erste Tabellen-Post.
+    """
+    alt = kommentar(FERTIG, created_at="2026-09-19T06:36:13Z")
+    assert classify([], [alt], HEAD_90, since="2026-09-19T06:37:00Z")[0] == CLEAR
+
+
+def test_eine_tabelle_zu_einem_anderen_commit_belegt_den_head_nicht() -> None:
+    state, _ = classify([], [kommentar(_statustabelle("✅ **Completed**", "0df577e"))], HEAD_90)
+    assert state == PENDING
+
+
+def test_ein_unbekannter_tabellen_status_wird_zitiert() -> None:
+    state, reason = classify([], [kommentar(_statustabelle("💥 **Exploded**", "bfe7ab7"))], HEAD_90)
+    assert state == UNKNOWN
+    assert "Exploded" in reason
+
+
+def test_laeuft_schlaegt_fertig_wenn_beides_dasteht() -> None:
+    """Zwei Reviews zum selben Commit, einer noch offen — dann wird gewartet.
+
+    Sonst gaebe ein abgeschlossener Code-Review gruenes Licht, waehrend der
+    Security-Review noch laeuft.
+    """
+    zwei = _statustabelle("✅ **Completed**", "bfe7ab7") + (
+        "| 🔒 **Security Review** | 🔄 **Running** | `bfe7ab7` | Draft marked ready |\n"
+    )
+    assert classify([], [kommentar(zwei)], HEAD_90)[0] == PENDING
+
+
+def test_die_environment_meldung_woertlich_aus_pr_92() -> None:
+    """Mit Markdown-Link, so wie Codex sie wirklich gesetzt hat."""
+    state, _ = classify([], [kommentar(ENVIRONMENT_MELDUNG)], HEAD)
+    assert state == ENVIRONMENT
+    assert state not in PROVEN
+
+
+def test_eine_fertige_tabelle_schlaegt_eine_environment_meldung() -> None:
+    """Die Reihenfolge, und sie ist gemessen begruendet.
+
+    Am 19.09.2026 kam auf PR #92 (Draft) die Environment-Meldung, waehrend
+    #90 und #91 am selben Morgen regulaer geprueft wurden. Die Meldung allein
+    belegt also nicht, dass in diesem Repo keine Reviews laufen — sagt die
+    Tabelle `Completed`, gilt sie.
+    """
+    state, _ = classify([], [kommentar(ENVIRONMENT_MELDUNG), kommentar(FERTIG)], HEAD_90)
+    assert state == CLEAR
+
+
+def test_ohne_tabellenzeile_zum_head_gilt_die_environment_meldung() -> None:
+    """Die Gegenrichtung — sonst waere der Test darueber ein Freifahrtschein."""
+    fremd = _statustabelle("✅ **Completed**", "0df577e")
+    state, _ = classify([], [kommentar(ENVIRONMENT_MELDUNG), kommentar(fremd)], HEAD_90)
+    assert state == ENVIRONMENT
+
+
+def test_die_kopfzeile_der_tabelle_ist_keine_statuszeile() -> None:
+    """Ohne Head-SHA gibt es keine Commit-Bindung — dann traegt die Hex-Pruefung.
+
+    Diese Zusicherung stand zuerst ohne Fall da und fiel in der Gegenprobe
+    nicht: Mit gesetztem Head filtert schon die Commit-Bindung jede Kopf- und
+    Trennzeile heraus (`head_sha.startswith("Commit")` ist nie wahr), und die
+    Pruefung auf Hex-Ziffern sah nur so aus, als tue sie etwas.
+
+    `--head-sha` ist optional und meint «alles zeigen, was Codex gesagt hat».
+    Genau dort wuerde eine Kopfzeile sonst als Status «Status» gelesen und die
+    Einordnung auf `unknown` werfen.
+    """
+    state, _ = classify([], [kommentar(FERTIG)], "")
+    assert state == CLEAR

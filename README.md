@@ -351,7 +351,7 @@ review.
 | Result | Meaning | Check |
 |---|---|---|
 | `reviewed` | Review object for the head commit; findings exist | green |
-| `clear` | The "no findings" message | green |
+| `clear` | Status table reports `Completed` with no review object, or the "no findings" message | green |
 | `quota` | Codex quota exhausted — **nothing** was reviewed | red |
 | `environment` | No Codex environment for this repo (created per repo) | red |
 | `unknown` | A Codex message matching none of the four cases — quoted verbatim | red |

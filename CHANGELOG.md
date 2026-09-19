@@ -38,6 +38,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ob ein gemeldeter Befund behoben wurde, prueft er nicht. Das steht so auch
   in seiner Zusammenfassung.
 
+  **Die Statustabelle ist das Urteil, nicht ein Kommentar daneben.** Die erste
+  Fassung dieses Gates wartete auf einen eigenen Kommittentext und uebersprang
+  die Tabelle (`codex-pull-request-review-summary`). Die echten Daten des
+  eigenen PR haben das widerlegt, bevor es Schaden anrichten konnte: Auf #90
+  und #91 lief der Review durch (`Completed` um 06:37:08 bzw. 06:57:34, je rund
+  60 Sekunden nach dem Merge) und Codex hinterliess WEDER ein Review-Objekt
+  NOCH einen eigenen Kommentar. Das Gate haette jeden sauberen PR zwanzig
+  Minuten blockiert und dann rot gemeldet. Die Tabelle wird jetzt gelesen, vor
+  den Meldungstexten, und ueber ihre Commit-Spalte gebunden statt ueber einen
+  Zeitstempel — sie wird in Ort fortgeschrieben, ihr `created_at` altert.
+
+  Zwei weitere Annahmen sind damit korrigiert, beide datiert in CLAUDE.md:
+  Codex meldet sich sehr wohl auf einem Draft (#92, acht Sekunden nach dem
+  Anlegen, Environment-Meldung), und diese Meldung allein belegt nicht, dass
+  in einem Repo keine Reviews laufen — #90 und #91 wurden am selben Morgen
+  regulaer geprueft. Deshalb schlaegt eine `Completed`-Zeile zum Head die
+  Environment-Meldung; fehlt die Zeile, gilt die Meldung und das Gate wird rot.
+
+  Aufgezeichnet statt nachgebaut: Die Statustabelle in beiden Zustaenden und
+  die Environment-Meldung samt Markdown-Link stehen woertlich mit Aufnahme-
+  datum in `tests/test_classify_codex_review.py`.
+
 ### Fixed
 
 - **Die `instructions` schickten Clients auf das falsche Tool.** Die erste
