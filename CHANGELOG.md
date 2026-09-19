@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Die `instructions` schickten Clients auf das falsche Tool.** Die erste
+  Fassung (PR #90) zaehlte fuenf Quellen auf und nannte danach
+  `search_heritage` als DEN quellenuebergreifenden Einstieg. Dieses Tool
+  erreicht nur Memobase und Dodis — `HeritageCollection` fuehrt genau diese
+  zwei plus `all`. Fuer SIKART, Nationalmuseum und Helveticat gibt es ein
+  zweites, `heritage_cross_search` («Quellenuebergreifende Kulturerbe-Suche
+  (SIK-ISEA + SNM + NB)»), das ungenannt blieb. Eine Frage nach Ferdinand
+  Hodler waere damit auf das Tool geroutet worden, das SIKART gar nicht kennt.
+
+  Zwei weitere Saetze im selben Text waren falsch:
+  `list_heritage_collections` war als Auskunft darueber ausgewiesen, «welche
+  Institutionen angebunden sind» — es fuehrt aber nur die
+  Gedaechtnisinstitutionen (memobase, dodis, bar, landesmuseum), sodass ein
+  Client SIKART, Nationalmuseum und Helveticat als nicht verfuegbar gemeldet
+  haette, im Widerspruch zu `serverInfo.description` und `tools/list`. Und
+  «`response_format='json'` liefert denselben Inhalt» stimmt nicht:
+  `get_heritage_item` entfernt `_DODIS_FULLTEXT_FIELDS` nur aus dem
+  JSON-Zweig, waehrend die Markdown-Ansicht eine Whitelist ist, die
+  `doc_summary` kuerzt. Keines der beiden Formate enthaelt das andere.
+
+  Das wiegt, weil `instructions` das einzige Feld ist, das `server/discover`
+  neben den Capabilities traegt: In der Aera `2026-07-28` ist es das Einzige,
+  was ein Client ueber diesen Server erfaehrt, bevor er ein Tool waehlt.
+
+  Gefunden hat es ein Review, kein Test — der Marker-Test prueft
+  Quellennamen als Teilzeichenketten, und alle drei Saetze kamen dort gruen
+  durch. `tests/test_server_identity.py` haelt jetzt wenigstens die
+  mechanische Haelfte: Jeder Tool-Name, den die `instructions` in Backticks
+  nennen, muss ein registriertes Tool sein, und es muessen mindestens zwei
+  sein. Fliesstext liest auch dieser Test nicht, und das steht dort.
+
 - **Der Server meldete bei jedem Aufruf `"version": ""`.** `MCPServer` nimmt
   `version`, `title`, `description`, `website_url` und `instructions` entgegen
   und setzt fuer keines davon etwas Eigenes ein — das SDK sagt es selbst
