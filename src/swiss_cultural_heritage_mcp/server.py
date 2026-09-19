@@ -360,19 +360,26 @@ Künstler·innen), Schweizerisches Nationalmuseum (Sammlungsdatensätze), \
 Helveticat (Schweizerische Nationalbibliothek), Memobase (Memoriav, \
 audiovisuelles Kulturerbe) und Dodis (diplomatische Dokumente).
 
-Womit anfangen: `search_heritage` fragt mehrere Gedächtnisinstitutionen in \
-einem Aufruf ab und passt, solange die Quelle offen ist. Steht sie fest, ist \
-das quellenspezifische Tool genauer — es kennt die Filter der jeweiligen API. \
-`list_heritage_collections` sagt, welche Institutionen angebunden sind und \
-welche geprüft, aber bewusst nicht angebunden wurden; diese Abgrenzung nicht \
-raten.
+Es gibt ZWEI quellenübergreifende Einstiege, und sie decken verschiedene \
+Quellen ab: `heritage_cross_search` fragt SIKART, Nationalmuseum und \
+Helveticat in einem Aufruf ab, `search_heritage` die Gedächtnisinstitutionen \
+Memobase und Dodis. Keiner von beiden erreicht die Quellen des anderen. \
+Steht die Quelle fest, ist das quellenspezifische Tool genauer — es kennt \
+die Filter der jeweiligen API.
+
+`list_heritage_collections` beschreibt ausschliesslich die \
+Gedächtnisinstitutionen hinter `search_heritage`, samt den geprüften, aber \
+bewusst nicht angebundenen Häusern. Über SIKART, Nationalmuseum und \
+Helveticat sagt es nichts; die Tools dafür stehen in `tools/list`.
 
 Jedes Ergebnis führt Quelle und Lizenz mit, und beides gehört in die Antwort \
 an die nutzende Person: Die Metadaten sind offen, die Digitalisate und \
 Dokumente tragen je Objekt eigene Rechte.
 
-`response_format='json'` liefert denselben Inhalt strukturiert (mit \
-`outputSchema`), `'markdown'` ist für die direkte Anzeige gedacht.\
+`response_format='json'` liefert die Felder der Quelle strukturiert (mit \
+`outputSchema`), `'markdown'` eine kuratierte, teils gekürzte Ansicht für die \
+direkte Anzeige. Die beiden sind nicht deckungsgleich — wer vollständige \
+Felder braucht, nimmt `json`.\
 """
 
 # `version`, `description` und `website_url` kommen aus den Paket-Metadaten,

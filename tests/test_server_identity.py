@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import tomllib
 from typing import Any
 
@@ -263,3 +264,77 @@ def test_die_identitaet_kommt_aus_den_paket_metadaten() -> None:
         "Datenquellen sehen dann keinen Verweis auf das Projekt."
     )
     assert srv.USER_AGENT.startswith(f"swiss-cultural-heritage-mcp/{__version__}")
+
+
+# ─────────────────── Die Tool-Namen IN den INSTRUCTIONS ────────────────────────
+# Was hier steht, hat einen Anlass: Die erste Fassung der INSTRUCTIONS (gemergt
+# am 19.09.2026 als PR #90) nannte `search_heritage` als DEN
+# quellenuebergreifenden Einstieg, nachdem sie fuenf Quellen aufgezaehlt hatte.
+# Dieses Tool erreicht aber nur Memobase und Dodis; fuer SIKART, Nationalmuseum
+# und Helveticat gibt es ein zweites, `heritage_cross_search`, das ungenannt
+# blieb. Eine Hodler-Frage waere damit auf das Tool geroutet worden, das SIKART
+# gar nicht kennt.
+#
+# Gefunden hat das ein Review, kein Test — und das ist die ehrliche Grenze der
+# Pruefung unten: Sie liest keinen Fliesstext. Sie belegt nur, dass jeder
+# Tool-Name, den die INSTRUCTIONS in Backticks nennen, auch wirklich ein
+# registriertes Tool ist. Das faengt die mechanische Haelfte (umbenannt,
+# entfernt, vertippt), nicht die inhaltliche.
+#
+# Der Marker-Test in `tests/test_registry_manifest.py` faengt beides nicht: Er
+# prueft Quellennamen als Teilzeichenketten, und alle drei fehlerhaften Saetze
+# kamen dort gruen durch.
+
+_BACKTICK = re.compile(r"`([a-z][a-z0-9_]{4,})`")
+
+
+def _in_instructions_genannte_bezeichner() -> set[str]:
+    """Alle `backtick`-Bezeichner der INSTRUCTIONS in Tool-Namens-Form."""
+    return set(_BACKTICK.findall(srv.INSTRUCTIONS))
+
+
+async def _registrierte_tools() -> set[str]:
+    return {tool.name for tool in await srv.mcp.list_tools()}
+
+
+async def test_jeder_genannte_tool_name_ist_ein_registriertes_tool() -> None:
+    """Ein Tool-Name in den INSTRUCTIONS, den es nicht gibt, ist eine Sackgasse.
+
+    Gegen die registrierten Tools geprueft und nicht gegen eine Liste in dieser
+    Datei: Wer ein Tool umbenennt, faellt hier auf, ohne dass jemand daran
+    gedacht haben muss.
+
+    Nicht jeder Bezeichner in Backticks ist ein Tool — `json`, `markdown`,
+    `outputSchema` und `tools/list` stehen dort ebenfalls. Gefiltert wird
+    deshalb ueber die Namensform des Repos (`snake_case`, mindestens fuenf
+    Zeichen) und danach gegen die tatsaechliche Tool-Liste geschnitten; was
+    weder Tool noch Tool-foermig ist, faellt vorher heraus.
+    """
+    registriert = await _registrierte_tools()
+    genannt = _in_instructions_genannte_bezeichner()
+    verdaechtig = {n for n in genannt if "_" in n}
+    unbekannt = sorted(verdaechtig - registriert)
+    assert not unbekannt, (
+        f"Die INSTRUCTIONS nennen {unbekannt}, aber der Server registriert diese "
+        f"Tools nicht. Registriert sind: {sorted(registriert)}. Entweder ist der "
+        "Name veraltet (Tool umbenannt oder entfernt) oder vertippt — in beiden "
+        "Faellen schickt der Text jeden Client auf ein Tool, das es nicht gibt."
+    )
+
+
+async def test_die_instructions_nennen_ueberhaupt_tools() -> None:
+    """Sichert den Test darueber gegen eine leere Eingabe ab.
+
+    Naehme jemand alle Tool-Namen aus den INSTRUCTIONS, liefe er ueber eine
+    leere Menge und bliebe gruen — gruen aus Mangel an Pruefung, und
+    ausgerechnet fuer den Text, dessen Zweck das Wegweisen ist.
+    """
+    registriert = await _registrierte_tools()
+    genannt = _in_instructions_genannte_bezeichner() & registriert
+    assert len(genannt) >= 2, (
+        f"Die INSTRUCTIONS nennen nur {sorted(genannt)}. Der Server hat zwei "
+        "quellenuebergreifende Einstiege mit disjunkten Quellen "
+        "(`heritage_cross_search` und `search_heritage`); wer nur einen nennt, "
+        "verschweigt die Haelfte der Quellen — genau der Befund, der diese "
+        "Datei erweitert hat."
+    )
