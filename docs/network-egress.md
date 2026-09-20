@@ -9,7 +9,7 @@ The list is declared as an immutable `frozenset` in `src/swiss_cultural_heritage
 ```python
 ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({
     "ckan.opendata.swiss",     # CKAN API — SIKART artist data + Nationalmuseum datasets
-    "helveticat.nb.admin.ch",  # OAI-PMH provider — Nationalbibliothek (Helveticat)
+    "helveticat.nb.admin.ch",  # SRU + OAI-PMH — Nationalbibliothek (Helveticat)
     "api.memobase.ch",         # Linked-Open-Data API — Memoriav / Memobase (JSON-LD)
     "beta.dodis.ch",           # JSON-REST / Solr backend — Diplomatic Documents (Dodis)
 })

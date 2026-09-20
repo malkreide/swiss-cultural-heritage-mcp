@@ -1065,11 +1065,11 @@
       ]
     }
   ],
-  "hydra:totalItems": 51119,
+  "hydra:totalItems": 51089,
   "hydra:view": {
     "@id": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&size=5",
     "hydra:first": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&size=5",
-    "hydra:last": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&offset=51115&size=5",
+    "hydra:last": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&offset=51085&size=5",
     "hydra:limit": 5,
     "hydra:next": "https://api.memobase.ch/?q=Z%C3%BCrich&format=JsonLd&offset=5&size=5"
   }

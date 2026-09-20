@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+  <version>1.2</version>
+  <numberOfRecords>12675</numberOfRecords>
+  <records>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>... et labora</dc:title>
+          <dc:contributor>Curiger, Bice 1948- (DE-588)124237002 gnd edt</dc:contributor>
+          <dc:contributor>Fondation Vincent van Gogh Arles (DE-588)1224048-5 gnd isb orm</dc:contributor>
+          <dc:type>text</dc:type>
+          <dc:date>2020</dc:date>
+          <dc:language>fre</dc:language>
+          <dc:description>Bibliographie</dc:description>
+          <dc:subject>700</dc:subject>
+          <dc:subject>Fondation Herzog</dc:subject>
+          <dc:subject>Fotografie</dc:subject>
+          <dc:subject>Arbeit</dc:subject>
+          <dc:subject>Arbeit</dc:subject>
+          <dc:subject>Kunst</dc:subject>
+          <dc:subject>Votivtafel</dc:subject>
+          <dc:coverage>Provence (DE-588)4047564-5 gnd</dc:coverage>
+          <dc:identifier>(Sz)991018035429403976</dc:identifier>
+          <dc:identifier>9791094966211</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991018035429403976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991018035429403976</recordIdentifier>
+      <recordPosition>1</recordPosition>
+    </record>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>...Sequenzen... [eine Art Retrospektive der Schweizerischen St. Lukasgesellschaft] : [Ausstellung, Kunstmuseum Olten, 14. Dezember 1994 bis 22. Januar 1995] : [Katalog]</dc:title>
+          <dc:contributor>Brentini, Fabrizio 1957- (DE-588)120345005 gnd</dc:contributor>
+          <dc:contributor>Killer, Peter 1945- (DE-588)12210272X gnd</dc:contributor>
+          <dc:contributor>Kunstmuseum Olten (DE-588)1088745-3 gnd</dc:contributor>
+          <dc:contributor>Schweizerische St. Lukasgesellschaft für Kunst und Kirche (DE-588)1046364-1 gnd</dc:contributor>
+          <dc:type>text</dc:type>
+          <dc:publisher>Luzern 6 (Postfach 6313, 6000)</dc:publisher>
+          <dc:publisher>Edition SSL</dc:publisher>
+          <dc:date>[1994]</dc:date>
+          <dc:date>1994</dc:date>
+          <dc:language>ger</dc:language>
+          <dc:coverage>Erscheint zum 70jährigen Jubiläum der Schweizerischen St. Lukasgesellschaft, SSL</dc:coverage>
+          <dc:identifier>(Sz)38170-41snl_51</dc:identifier>
+          <dc:identifier>(Sz)vtls000038170</dc:identifier>
+          <dc:identifier>(Sz)000038170</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991001691509703976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991001691509703976</recordIdentifier>
+      <recordPosition>2</recordPosition>
+    </record>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>'I promise when the sun comes up I promise, I'll be true'</dc:title>
+          <dc:contributor>Stauffer, Michael 1972- (DE-588)12347891X gnd</dc:contributor>
+          <dc:contributor>Urs Engeler Editor (DE-588)1066127018 gnd pbl</dc:contributor>
+          <dc:type>text</dc:type>
+          <dc:publisher>Basel [etc.]</dc:publisher>
+          <dc:publisher>U. Engeler</dc:publisher>
+          <dc:date>cop. 2001</dc:date>
+          <dc:date>2001</dc:date>
+          <dc:language>ger</dc:language>
+          <dc:language>Nur deutscher Text</dc:language>
+          <dc:subject>830</dc:subject>
+          <dc:identifier>(Sz)1286124-41snl_51</dc:identifier>
+          <dc:identifier>(Sz)vtls001286124</dc:identifier>
+          <dc:identifier>(Sz)001286124</dc:identifier>
+          <dc:identifier>3905591170</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991015430649703976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991015430649703976</recordIdentifier>
+      <recordPosition>3</recordPosition>
+    </record>
+  </records>
+  <nextRecordPosition>4</nextRecordPosition>
+  <extraResponseData xmlns:xb="http://www.exlibris.com/repository/search/xmlbeans/">
+    <xb:exact>true</xb:exact>
+    <xb:responseDate>2026-09-20T15:12:28+0200</xb:responseDate>
+  </extraResponseData>
+</searchRetrieveResponse>

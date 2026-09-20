@@ -26,6 +26,7 @@ from swiss_cultural_heritage_mcp.server import (
     DODIS_API,
     MEMOBASE_API,
     NB_OAI_PMH,
+    NB_SRU,
     SIKART_RESOURCE_ID,
     ArtistDetailInput,
     ArtistSearchInput,
@@ -261,6 +262,111 @@ MOCK_OAI_RECORDS = """<?xml version="1.0" encoding="UTF-8"?>
       </metadata>
     </record>
     <resumptionToken>abc123token</resumptionToken>
+  </ListRecords>
+</OAI-PMH>"""
+
+# SRU (`recordSchema=dc`) — die Antwortform der Volltextsuche. Der Schwanz an
+# `dc:contributor` ist kein Schmuck: Alma haengt GND-Nummer, Herkunft und
+# MARC-Relator-Code an jeden Namen, und `dc:creator` bleibt leer. Beides steht
+# hier drin, damit die Tests es widerlegen koennen.
+MOCK_SRU_RECORDS = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+  <version>1.2</version>
+  <numberOfRecords>960</numberOfRecords>
+  <records>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/"
+                   xmlns:srw_dc="info:srw/schema/1/dc-schema">
+          <dc:title>Geschichte der Schweizer Volksschule</dc:title>
+          <dc:contributor>Muster, Anna 1961- (DE-588)124364993 gnd aut</dc:contributor>
+          <dc:date>2023</dc:date>
+          <dc:language>de</dc:language>
+          <dc:subject>Bildungsgeschichte</dc:subject>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991016034239703976</recordIdentifier>
+      <recordPosition>1</recordPosition>
+    </record>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/"
+                   xmlns:srw_dc="info:srw/schema/1/dc-schema">
+          <dc:title>Kunstpädagogik in der Schule</dc:title>
+          <dc:contributor>Beispiel, Hans</dc:contributor>
+          <dc:date>[2022]</dc:date>
+          <dc:date>2022</dc:date>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991012724919703976</recordIdentifier>
+      <recordPosition>2</recordPosition>
+    </record>
+  </records>
+</searchRetrieveResponse>"""
+
+MOCK_SRU_LEER = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+  <version>1.2</version>
+  <numberOfRecords>0</numberOfRecords>
+</searchRetrieveResponse>"""
+
+# HTTP 200 mit einer Absage im Rumpf — dieselbe Mechanik wie bei OAI-PMH.
+MOCK_SRU_DIAGNOSE = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/"
+                        xmlns:diag="http://www.loc.gov/zing/srw/diagnostic/">
+  <version>1.2</version>
+  <diagnostics>
+    <diag:diagnostic>
+      <diag:uri>200812</diag:uri>
+      <diag:message>Invalid query</diag:message>
+    </diag:diagnostic>
+  </diagnostics>
+</searchRetrieveResponse>"""
+
+# MARCXML im OAI-Rumpf — das Format, das die Quelle fuer 66 der 68 Sets
+# ausliefert und das `oai_dc` bis zum 20.09.2026 verdeckte.
+MOCK_OAI_MARC_RECORDS = """<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <responseDate>2026-09-20T00:00:00Z</responseDate>
+  <ListRecords>
+    <record>
+      <header>
+        <identifier>oai:helveticat.nb.admin.ch:991005338049703976</identifier>
+        <datestamp>2025-08-21T13:57:38Z</datestamp>
+        <setSpec>helveticat</setSpec>
+        <setSpec>swissbook</setSpec>
+      </header>
+      <metadata>
+        <record xmlns="http://www.loc.gov/MARC21/slim">
+          <leader>00891nas a2200337 i 4500</leader>
+          <controlfield tag="001">991005338049703976</controlfield>
+          <datafield tag="024" ind1="7" ind2=" ">
+            <subfield code="a">https://permalink.snl.ch/bib/sz001264756</subfield>
+          </datafield>
+          <datafield tag="100" ind1="1" ind2=" ">
+            <subfield code="a">Muster, Anna</subfield>
+            <subfield code="d">1961-</subfield>
+          </datafield>
+          <datafield tag="245" ind1="0" ind2="0">
+            <subfield code="a">Geschichte der Schweizer Volksschule</subfield>
+            <subfield code="b">ein Überblick</subfield>
+          </datafield>
+          <datafield tag="260" ind1=" " ind2=" ">
+            <subfield code="a">Zürich</subfield>
+            <subfield code="b">WEKA-Verlag</subfield>
+            <subfield code="c">2000-</subfield>
+          </datafield>
+          <datafield tag="650" ind1=" " ind2="7">
+            <subfield code="a">Bildungsgeschichte</subfield>
+          </datafield>
+          <datafield tag="041" ind1="0" ind2=" ">
+            <subfield code="a">ger</subfield>
+          </datafield>
+        </record>
+      </metadata>
+    </record>
   </ListRecords>
 </OAI-PMH>"""
 
@@ -778,9 +884,9 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_search_helveticat_markdown(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(
+            respx.get(NB_SRU).mock(
                 return_value=httpx.Response(
-                    200, text=MOCK_OAI_RECORDS, headers={"content-type": "text/xml"}
+                    200, text=MOCK_SRU_RECORDS, headers={"content-type": "text/xml"}
                 )
             )
             params = HelvticatSearchInput(query="Volksschule")
@@ -792,8 +898,8 @@ class TestHeritageNB:
     @pytest.mark.asyncio
     async def test_search_helveticat_json(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
-            params = HelvticatSearchInput(response_format=ResponseFormat.JSON)
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_RECORDS))
+            params = HelvticatSearchInput(query="Volksschule", response_format=ResponseFormat.JSON)
             result = await heritage_search_helveticat(params)
 
         assert isinstance(result, ResultEnvelope)
@@ -802,17 +908,18 @@ class TestHeritageNB:
         assert result.source.name.startswith("Schweizerische Nationalbibliothek")
 
     @pytest.mark.asyncio
-    async def test_search_helveticat_query_filter(self):
+    async def test_search_helveticat_sammlung_ueber_oai(self):
+        """Mit `set_spec` geht es ueber OAI-PMH — und mit `marc21`."""
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
-            # query that matches only first record
-            params = HelvticatSearchInput(query="Volksschule")
-            result = await heritage_search_helveticat(params)
+            route = respx.get(NB_OAI_PMH).mock(
+                return_value=httpx.Response(200, text=MOCK_OAI_MARC_RECORDS)
+            )
+            result = await heritage_search_helveticat(HelvticatSearchInput(set_spec="swissbook"))
 
+        frage = str(route.calls[0].request.url)
+        assert "metadataPrefix=marc21" in frage, frage
+        assert "set=swissbook" in frage, frage
         assert "Geschichte der Schweizer Volksschule" in result
-        # "Kunstpädagogik" should not appear since we filtered on Volksschule
-        # (It actually COULD appear if the subject matches too, but let's check it ran)
-        assert "Fehler" not in result
 
     @pytest.mark.asyncio
     async def test_list_nb_collections(self):
@@ -861,7 +968,7 @@ class TestHeritageCrossSearch:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_RECORDS))
             params = CrossSearchInput(query="Hodler", limit_per_source=3)
             result = await heritage_cross_search(params)
 
@@ -918,7 +1025,7 @@ class TestStructuredOutput:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_RECORDS))
             params = CrossSearchInput(
                 query="Hodler", limit_per_source=3, response_format=ResponseFormat.JSON
             )
@@ -929,7 +1036,7 @@ class TestStructuredOutput:
         assert {s.name for s in result.source} == {
             "SIK-ISEA / SIKART",
             "Schweizerisches Nationalmuseum (opendata.swiss)",
-            "Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
+            "Schweizerische Nationalbibliothek (Helveticat)",
         }
         assert result.count == sum(len(r.get("items", [])) for r in result.results)
 
@@ -975,7 +1082,7 @@ class TestAttribution:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_RECORDS))
             # "Volksschule" matches the NB fixture so all three sections have items
             result = await heritage_cross_search(
                 CrossSearchInput(query="Volksschule", limit_per_source=3)
@@ -997,7 +1104,7 @@ class TestAttribution:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_RECORDS))
             result = await heritage_cross_search(
                 CrossSearchInput(query="Hodler", response_format=ResponseFormat.JSON)
             )
@@ -1034,7 +1141,7 @@ class TestProgressReporting:
             respx.get(f"{CKAN_API}/package_search").mock(
                 return_value=httpx.Response(200, json=MOCK_CKAN_RESPONSE)
             )
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_RECORDS))
             params = CrossSearchInput(query="Volksschule", limit_per_source=3)
             await heritage_cross_search(params, ctx=ctx)
 
@@ -1164,7 +1271,7 @@ class TestFuzzyMatch:
     @pytest.mark.asyncio
     async def test_helveticat_none_is_structured(self):
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(200, text=MOCK_OAI_RECORDS))
+            respx.get(NB_SRU).mock(return_value=httpx.Response(200, text=MOCK_SRU_LEER))
             params = HelvticatSearchInput(
                 query="zzz-kein-treffer", response_format=ResponseFormat.JSON
             )
@@ -1873,10 +1980,71 @@ class TestLiveSNM:
 
 @pytest.mark.live
 class TestLiveNB:
+    """Die Drift-Wache fuer die Profilkarte der Nationalbibliothek.
+
+    Bis zum 20.09.2026 stand hier nur `test_live_list_sets`. `ListSets`
+    braucht kein Publishing Profile und war als einziges NB-Verb nie kaputt —
+    der naechtliche Lauf blieb also gruen, waehrend zwei der drei Werkzeuge
+    zu jeder Eingabe einen Fehler lieferten. Ein Live-Test, der genau den
+    Pfad meidet, der ausfallen kann, ist keine Wache.
+
+    Welcher `metadataPrefix` je Set abrufbar ist, entscheidet das Haus und
+    nicht die Software. Aendert es die Konfiguration, faellt es hier auf.
+    """
+
     @pytest.mark.asyncio
     async def test_live_list_sets(self):
         result = await heritage_list_nb_collections()
         assert "Fehler" not in result
+
+    @pytest.mark.asyncio
+    async def test_live_volltextsuche_liefert_treffer(self):
+        """Ueber SRU — der Pfad, den `heritage_cross_search` mitbenutzt."""
+        result = await heritage_search_helveticat(
+            HelvticatSearchInput(query="Volksschule", limit=3)
+        )
+        assert "Fehler" not in result
+        assert "Keine Publikationen" not in result
+        assert "Gefunden:" in result
+
+    @pytest.mark.asyncio
+    async def test_live_sammlung_liefert_records(self):
+        """Ueber OAI-PMH mit `marc21` — 66 der 68 Sets tragen dieses Profil."""
+        result = await heritage_search_helveticat(HelvticatSearchInput(set_spec="xrara", limit=3))
+        assert "Fehler" not in result
+        assert "Gefunden:" in result
+
+    @pytest.mark.asyncio
+    async def test_live_die_zwei_sonderfaelle_der_profilkarte(self):
+        """`RFN` und `RFN2` haben KEIN marc21-Profil, aber je ein anderes.
+
+        Zugleich die Positivkontrolle: `oai_dc` und `oai_qdc` sind nicht
+        kaputt, sie sind nur fast nirgends publiziert.
+        """
+        for set_spec in ("RFN", "RFN2"):
+            result = await heritage_search_helveticat(
+                HelvticatSearchInput(set_spec=set_spec, limit=2)
+            )
+            assert "Fehler" not in result, f"{set_spec}: {result[:200]}"
+            assert "Gefunden:" in result, f"{set_spec}: {result[:200]}"
+
+    @pytest.mark.asyncio
+    async def test_live_die_bruecke_von_der_suche_zum_abruf(self):
+        """Ein Identifier aus der Suche muss den Einzelabruf beantworten.
+
+        Das ist die Zusicherung, die mit `oai_dc` fiel: `GetRecord` meldete
+        `idDoesNotExist` fuer Datensaetze, die dieselbe Quelle eine Sekunde
+        vorher ausgeliefert hatte.
+        """
+        treffer = await heritage_search_helveticat(
+            HelvticatSearchInput(query="Volksschule", limit=1, response_format=ResponseFormat.JSON)
+        )
+        assert isinstance(treffer, ResultEnvelope) and treffer.results
+        kennung = treffer.results[0]["oai_identifier"]
+
+        detail = await heritage_get_publication(PublicationDetailInput(identifier=kennung))
+        assert "Keine Publikation gefunden" not in detail, detail[:200]
+        assert kennung in detail
 
 
 @pytest.mark.live

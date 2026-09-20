@@ -35,7 +35,7 @@ If you add an APM or log-aggregation service (Sentry, Datadog, etc.), use the EU
 The server's allow-list (`docs/network-egress.md`) restricts outbound traffic to:
 
 - `ckan.opendata.swiss` — opendata.swiss CKAN portal (Swiss Confederation)
-- `helveticat.nb.admin.ch` — Helveticat OAI-PMH (Schweizerische Nationalbibliothek)
+- `helveticat.nb.admin.ch` — Helveticat, SRU und OAI-PMH (Schweizerische Nationalbibliothek)
 
 Both upstreams are Swiss federal services, so the server itself does not generate cross-border data transfers regardless of where it is deployed. The residency concern applies to the deployment host (which receives request strings) and any logging/observability backend you attach.
 
