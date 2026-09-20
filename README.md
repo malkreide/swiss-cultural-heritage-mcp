@@ -23,7 +23,7 @@
 |--------|------|-----|
 | **SIK-ISEA (SIKART)** | ~17,000 Swiss artists — SIKART biographical data | opendata.swiss CKAN |
 | **Nationalmuseum (SNM)** | Museum collections (numismatics, seals, special collections) | opendata.swiss CKAN |
-| **Nationalbibliothek (NB)** | Swiss national bibliography (Helveticat) | OAI-PMH |
+| **Nationalbibliothek (NB)** | Swiss national bibliography (Helveticat) | SRU (search) + OAI-PMH (sets, single record) |
 | **Memoriav / Memobase** | Audiovisual heritage (photo, audio, video) | Linked Open Data (JSON-LD / Hydra) |
 | **Dodis** | Diplomatic Documents of Switzerland (documents, persons, organisations) | JSON-REST (Solr) + permalinks |
 
@@ -180,9 +180,31 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 
 | Tool | Description |
 |------|-------------|
-| `heritage_search_helveticat` | Search Swiss national bibliography via OAI-PMH |
+| `heritage_search_helveticat` | Search the Swiss national bibliography — server-side full text via SRU, or page through one set via OAI-PMH |
 | `heritage_list_nb_collections` | List available OAI-PMH sets |
-| `heritage_get_publication` | Full Dublin Core metadata for a publication |
+| `heritage_get_publication` | Full metadata for a publication (MARCXML mapped onto Dublin Core keys) |
+
+#### Two ways into the same source
+
+The National Library answers on two endpoints, and the call picks one:
+
+- **`query` without `set_spec` → SRU.** A real server-side full-text search across
+  the whole holdings, with a total count. If it finds nothing, the query is relaxed
+  once (all words instead of the phrase) and the result is marked `match_type: fuzzy`.
+- **`set_spec` → OAI-PMH.** Pages through one collection. `query` then only filters
+  *within* the page that was fetched, and the output says so.
+
+The split is measured, not taste: SRU does not know the OAI sets
+(`alma.mms_memberOf="helveticat"` returns 0 hits), and OAI-PMH has no full-text
+search. Identifiers are the same on both paths, so `heritage_get_publication`
+accepts any result from either.
+
+The OAI `metadataPrefix` is **per set**, not per repository — the endpoint runs on
+Ex Libris Alma, where a prefix is a property of a publishing profile. Measured on
+20 September 2026 across all 68 sets × all 5 advertised prefixes (340 requests):
+`marc21` answers for 66 sets, `oai_dc` only for `RFN`, `oai_qdc` only for `RFN2`,
+`mods` and `etdms` for none. `ListMetadataFormats` describes what the software can
+do, not what this institution publishes.
 
 ### Cross-Source
 
@@ -222,7 +244,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
                         │  2 Prompts                   │◀────│  opendata.swiss / CKAN   │
                         │  Stdio | SSE                 │     ├──────────────────────────┤
                         │                              │────▶│  Nationalbibliothek (NB) │
-                        │  No authentication required  │◀────│  OAI-PMH (Helveticat)    │
+                        │  No authentication required  │◀────│  SRU+OAI-PMH (Helveticat)│
                         │                              │     ├──────────────────────────┤
                         │  search_heritage facade      │────▶│  Memobase (JSON-LD/Hydra)│
                         │                              │◀────│  Dodis (JSON-REST/Solr)  │
@@ -235,7 +257,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 |--------|----------|----------|------|
 | SIK-ISEA (SIKART) | CKAN DataStore | ~17,000 Swiss artists | None |
 | Nationalmuseum | CKAN DataStore | Museum collections | None |
-| Nationalbibliothek | OAI-PMH | Swiss national bibliography | None |
+| Nationalbibliothek | SRU (search) + OAI-PMH (sets) | Swiss national bibliography | None |
 | Memoriav / Memobase | Linked Open Data (JSON-LD / Hydra, RiC-O) | Audiovisual heritage (~460k records) | None |
 | Dodis | JSON-REST (Solr) + stable permalinks | Diplomatic documents, persons, organisations | None |
 
@@ -299,7 +321,9 @@ swiss-cultural-heritage-mcp/
 
 - **SIK-ISEA:** Artist data is updated periodically; very recent acquisitions may not yet be reflected
 - **Nationalmuseum:** Only datasets published on opendata.swiss are accessible; not all SNM collections are available
-- **Nationalbibliothek:** OAI-PMH harvesting is rate-limited; large result sets require pagination
+- **Nationalbibliothek:** full-text search runs over SRU; OAI-PMH only pages through a
+  named set, and its `metadataPrefix` depends on that set. Large result sets require
+  pagination on both paths.
 - **Cross-search:** Response time depends on the slowest of the three sources
 
 ---

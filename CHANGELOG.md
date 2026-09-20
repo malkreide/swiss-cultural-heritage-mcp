@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Helveticat: nicht die Quelle war zu, der `metadataPrefix` war falsch**
+  (PR #95 Probe, PR #96 Umbau). `heritage_search_helveticat` und
+  `heritage_list_nb_collections` fragten mit `oai_dc` an und bekamen
+  `noRecordsMatch: No Publishing profile exists for given set and
+  metadataPrefix`. Das las sich wie eine Absage der Quelle; es war die Antwort
+  auf eine Anfrage, die es so nicht gibt.
+
+  Der Endpunkt laeuft auf Ex Libris Alma. Dort ist ein `metadataPrefix` KEINE
+  Eigenschaft des Repositoriums, sondern eines *Publishing Profile* je Set —
+  `ListMetadataFormats` beschreibt also, was die Software kann, und nicht, was
+  dieses Haus publiziert. Gemessen am 20.09.2026 ueber alle 68 Sets x alle 5
+  angebotenen Prefixe, 340 `ListIdentifiers`-Abfragen (Bericht:
+  `PROBE_REPORT_helveticat.md`):
+
+  | Prefix | antwortet fuer |
+  |---|---|
+  | `marc21` | 66 von 68 Sets (alle ausser `RFN`, `RFN2`) |
+  | `oai_dc` | 1 von 68 (nur `RFN`) |
+  | `oai_qdc` | 1 von 68 (nur `RFN2`) |
+  | `mods` | 0 von 68 |
+  | `etdms` | 0 von 68 |
+
+  `oai_dc` war damit fuer 67 der 68 Sets das einzige Format, das *nicht* geht.
+  Die Tabelle steht als `NB_PREFIX_BY_SET` im Code und nicht bloss im Bericht,
+  damit der naechste Griff nach `oai_dc` an ihr vorbeimuss.
+
+  Zweiter, stiller Teil desselben Defekts: Der Parser griff fest auf
+  `oai_dc:dc` zu. Fuer ein MARCXML-Record fand er kein einziges Feld und gab
+  einen Datensatz ohne Titel zurueck — sichtbar als «Ohne Titel» in der
+  Ausgabe, nicht als Fehler. Er nimmt jetzt das Kindelement von `<metadata>`,
+  wie es kommt: MARCXML ueber eine Feldkarte, alles andere Dublin-Core-artig.
+  Das traegt `oai_dc` und `oai_qdc` mit demselben Code.
+
+### Added
+
+- **SRU als zweiter Zugang zur Nationalbibliothek** (PR #96). `query` ohne
+  `set_spec` geht neu ueber SRU
+  (`helveticat.nb.admin.ch/view/sru/41SNL_51_INST`): eine echte serverseitige
+  Volltextsuche ueber den Gesamtbestand, mit Trefferzahl, und bei null Treffern
+  einmal gelockert wiederholt (`match_type: fuzzy`). `set_spec` geht weiter
+  ueber OAI-PMH, wo `query` nur noch innerhalb der abgerufenen Seite filtert —
+  die Ausgabe sagt das jetzt.
+
+  Die Trennung ist gemessen, nicht gewaehlt: SRU kennt die OAI-Sets nicht
+  (`alma.mms_memberOf="helveticat"` → 0 Treffer), OAI-PMH kennt keine
+  Volltextsuche. Die Identifier sind auf beiden Wegen dieselben, also nimmt
+  `heritage_get_publication` jedes Ergebnis von beiden entgegen.
+
+  Damit faellt die Einschraenkung, die seit dem ersten Release in beiden
+  READMEs stand: Die Volltextsuche ist nicht mehr clientseitige Filterung auf
+  der ersten Seite. Kein neuer Host in der Egress-Allow-List — SRU liegt auf
+  `helveticat.nb.admin.ch`, das schon drin ist.
+
+### Changed
+
+- **`serverInfo.name` traegt den Bezeichner des Portfolios** (PR #97):
+  `swiss-cultural-heritage-mcp` statt `swiss_cultural_heritage_mcp`. Die alte
+  Form war die Schreibweise des Python-MODULS; als Server-Bezeichner gibt es
+  sie sonst nirgends — `server.json` fuehrt
+  `io.github.malkreide/swiss-cultural-heritage-mcp`, so heissen PyPI-Paket,
+  Repo und Konsolen-Skript, und der User-Agent meldete es schon immer mit
+  Bindestrichen. Der Name steht jetzt als `__dist__` an einer Stelle und wird
+  von dort bezogen, statt je Verwendungsstelle hingeschrieben zu werden.
+
+  **Fuer Clients, die auf `serverInfo.name` abgleichen, ist das eine
+  Aenderung** — und seit der Aera `2026-07-28` sichtbar in `_meta` JEDER
+  Antwort statt einmal je Verbindung. Der Modulpfad bleibt
+  `swiss_cultural_heritage_mcp`; Python erlaubt keine Bindestriche in
+  Paketnamen, `python -m swiss_cultural_heritage_mcp.server` ist deshalb kein
+  Fehlstand.
+
+- **Doku nachgezogen** (dieser PR): Beide READMEs beschrieben Helveticat
+  weiterhin als reinen OAI-PMH-Zugang mit Dublin Core. Neu nennen sie beide
+  Zugaenge, wann welcher greift, und die Prefix-Messung. Die Aenderung aus
+  PR #97 hatte ihre Doku selbst mitgebracht; die aus #95/#96 nicht.
+
+### Wiederfreigabe der Tool-Oberflaeche (SEC-022)
+
+Die Beschreibung von `heritage_search_helveticat` hat sich mit PR #96
+geaendert — sie nennt jetzt beide Zugaenge und was der Aufruf auswaehlt. Der
+Pin in `audits/tool-pins/current.json` wurde dort mit neu erzeugt
+(`manifest_sha256` `fc22092d…` → `5cc3f4da…`, Tool-Hash `1924d12d…` →
+`08429dcd…`); 11 Tools vorher wie nachher, kein weiterer Hash bewegt.
+
+Diese Notiz ist der Teil, der gefehlt hat: `scripts/pin_tools.py` verlangt sie
+ausdruecklich («commit the updated `current.json` together with a CHANGELOG
+note (re-approval prompt) describing what changed and why»), und der Pin ohne
+sie ist eine neue Zahl ohne Begruendung.
+
+`generated_for_version` steht weiterhin auf `0.6.0` und ist damit korrekt: Das
+Feld nennt die in `pyproject.toml` deklarierte Version zum Zeitpunkt der
+Erzeugung, und die bleibt bis zum naechsten Bump stehen. Es bedeutet also
+NICHT, dass diese Oberflaeche als `0.6.0` ausgeliefert wurde — die
+veroeffentlichte `0.6.0` traegt die alte Beschreibung. Wer den Pin gegen ein
+Release halten will, liest ihn zusammen mit diesem Abschnitt.
+
 ## [0.6.0] - 2026-09-19
 
 ### Added

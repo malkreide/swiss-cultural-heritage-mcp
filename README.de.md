@@ -23,7 +23,7 @@
 |--------|-------|-----|
 | **SIK-ISEA (SIKART)** | ~17'000 Schweizer Künstler·innen — SIKART-Biografiedaten | opendata.swiss CKAN |
 | **Nationalmuseum (SNM)** | Sammlungsdaten (Numismatik, Siegel, Spezialsammlungen) | opendata.swiss CKAN |
-| **Nationalbibliothek (NB)** | Schweizerische Nationalbibliografie (Helveticat) | OAI-PMH |
+| **Nationalbibliothek (NB)** | Schweizerische Nationalbibliografie (Helveticat) | SRU (Suche) + OAI-PMH (Sammlungen, Einzelabruf) |
 | **Memoriav / Memobase** | Audiovisuelles Kulturerbe (Foto, Ton, Video) | Linked Open Data (JSON-LD / Hydra) |
 | **Dodis** | Diplomatische Dokumente der Schweiz (Dokumente, Personen, Organisationen) | JSON-REST (Solr) + Permalinks |
 
@@ -181,9 +181,32 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 
 | Tool | Beschreibung |
 |------|-------------|
-| `heritage_search_helveticat` | Schweizerische Nationalbibliografie via OAI-PMH durchsuchen |
+| `heritage_search_helveticat` | Nationalbibliografie durchsuchen — serverseitige Volltextsuche via SRU, oder eine Sammlung via OAI-PMH durchblättern |
 | `heritage_list_nb_collections` | Verfügbare OAI-PMH-Sets auflisten |
-| `heritage_get_publication` | Vollständige Dublin-Core-Metadaten einer Publikation |
+| `heritage_get_publication` | Vollständige Metadaten einer Publikation (MARCXML auf Dublin-Core-Schlüssel abgebildet) |
+
+#### Zwei Zugänge derselben Quelle
+
+Die Nationalbibliothek antwortet auf zwei Endpunkten, und der Aufruf wählt:
+
+- **`query` ohne `set_spec` → SRU.** Eine echte serverseitige Volltextsuche über den
+  Gesamtbestand, mit Trefferzahl. Findet die Anfrage nichts, wird sie einmal
+  gelockert wiederholt (alle Wörter statt der Wortfolge) und das Ergebnis als
+  `match_type: fuzzy` markiert.
+- **`set_spec` → OAI-PMH.** Liefert eine Sammlung seitenweise aus. `query` filtert
+  dann nur noch *innerhalb* der abgerufenen Seite; die Ausgabe sagt das.
+
+Die Trennung ist nicht Geschmack, sondern gemessen: SRU kennt die OAI-Sets nicht
+(`alma.mms_memberOf="helveticat"` → 0 Treffer), und OAI-PMH kennt keine
+Volltextsuche. Die Identifier sind auf beiden Wegen dieselben, also frisst
+`heritage_get_publication` jedes Ergebnis von beiden.
+
+Der OAI-`metadataPrefix` gilt **je Set**, nicht je Repositorium — der Endpunkt läuft
+auf Ex Libris Alma, wo ein Prefix die Eigenschaft eines Publishing Profile ist.
+Gemessen am 20.09.2026 über alle 68 Sets × alle 5 angebotenen Prefixe (340
+Abfragen): `marc21` antwortet für 66 Sets, `oai_dc` nur für `RFN`, `oai_qdc` nur für
+`RFN2`, `mods` und `etdms` für keines. `ListMetadataFormats` beschreibt, was die
+Software kann — nicht, was dieses Haus publiziert.
 
 ### Quellenübergreifend
 
@@ -223,7 +246,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
                         │  2 Prompts                   │◀────│  opendata.swiss / CKAN   │
                         │  Stdio | SSE                 │     ├──────────────────────────┤
                         │                              │────▶│  Nationalbibliothek (NB) │
-                        │  Keine Authentifizierung     │◀────│  OAI-PMH (Helveticat)    │
+                        │  Keine Authentifizierung     │◀────│  SRU+OAI-PMH (Helveticat)│
                         │                              │     ├──────────────────────────┤
                         │  search_heritage-Fassade     │────▶│  Memobase (JSON-LD/Hydra)│
                         │                              │◀────│  Dodis (JSON-REST/Solr)  │
@@ -236,7 +259,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 |--------|-----------|--------|------|
 | SIK-ISEA (SIKART) | CKAN DataStore | ~17'000 Schweizer Künstler·innen | Keine |
 | Nationalmuseum | CKAN DataStore | Museumssammlungen | Keine |
-| Nationalbibliothek | OAI-PMH | Schweizerische Nationalbibliografie | Keine |
+| Nationalbibliothek | SRU (Suche) + OAI-PMH (Sammlungen) | Schweizerische Nationalbibliografie | Keine |
 | Memoriav / Memobase | Linked Open Data (JSON-LD / Hydra, RiC-O) | Audiovisuelles Kulturerbe (~460k Records) | Keine |
 | Dodis | JSON-REST (Solr) + stabile Permalinks | Diplomatische Dokumente, Personen, Organisationen | Keine |
 
@@ -300,7 +323,9 @@ swiss-cultural-heritage-mcp/
 
 - **SIK-ISEA:** Künstlerdaten werden periodisch aktualisiert; sehr neue Einträge sind ggf. noch nicht verfügbar
 - **Nationalmuseum:** Nur auf opendata.swiss veröffentlichte Datensätze zugänglich; nicht alle SNM-Sammlungen sind erfasst
-- **Nationalbibliothek:** OAI-PMH-Abfragen sind ratenlimitiert; grosse Resultatsmengen erfordern Paginierung
+- **Nationalbibliothek:** Die Volltextsuche läuft über SRU; OAI-PMH blättert nur eine
+  benannte Sammlung durch, und sein `metadataPrefix` hängt von dieser Sammlung ab.
+  Grosse Resultatsmengen erfordern auf beiden Wegen Paginierung.
 - **Quellenübergreifende Suche:** Antwortzeit hängt von der langsamsten der drei Quellen ab
 
 ---
