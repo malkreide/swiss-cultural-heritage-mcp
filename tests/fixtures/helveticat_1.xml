@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+  <version>1.2</version>
+  <numberOfRecords>4</numberOfRecords>
+  <records>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>[Diverses, Freie Schule Aussersihl]</dc:title>
+          <dc:contributor>Freie Schule Aussersihl (DE-588)1086951719 gnd aut</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Aussersihl (DE-588)1141309602 gnd aut</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Zürich-Aussersihl (DE-588)1141309874 gnd aut</dc:contributor>
+          <dc:contributor>Evangelische Schule Baumacker (DE-588)2145290-8 gnd aut</dc:contributor>
+          <dc:contributor>Baumackerschule (DE-588)16002734-2 gnd aut</dc:contributor>
+          <dc:type>collection</dc:type>
+          <dc:type>text</dc:type>
+          <dc:date>1890</dc:date>
+          <dc:language>ger</dc:language>
+          <dc:description>Namenswechsel der Körperschaft: anfänglich: Freie Schule Aussersihl - zwischenzeitlich: Freie Evangelische Volksschule Aussersihl - dann: Freie Evangelische Volksschule Zürich-Aussersihl - dann: Evangelische Schule Baumacker - aktuell: Baumackerschule Zürich</dc:description>
+          <dc:subject>370</dc:subject>
+          <dc:coverage>Enthält auch Jubiläumsschrift/Jahresbericht 1987/1988</dc:coverage>
+          <dc:identifier>(Sz)1909121-41snl_51</dc:identifier>
+          <dc:identifier>(Sz)vtls001909121</dc:identifier>
+          <dc:identifier>(Sz)001909121</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991016034239703976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991016034239703976</recordIdentifier>
+      <recordPosition>1</recordPosition>
+    </record>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>[Statuten, Reglemente und Leitbilder, Die Freie Schule]</dc:title>
+          <dc:contributor>Die Freie Schule aut</dc:contributor>
+          <dc:contributor>Evangelische Schule Baumacker (DE-588)2145290-8 gnd aut</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Aussersihl (DE-588)1141309602 gnd aut</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Zürich-Aussersihl (DE-588)1141309874 gnd aut</dc:contributor>
+          <dc:contributor>Evangelische Schule Baumacker aut</dc:contributor>
+          <dc:contributor>Baumackerschule Zürich-Nord aut</dc:contributor>
+          <dc:type>collection</dc:type>
+          <dc:type>text</dc:type>
+          <dc:date>1905</dc:date>
+          <dc:language>ger</dc:language>
+          <dc:description>Namenswechsel der Körperschaft: anfänglich: Die Freie Schule - zwischenzeitlich: Freie Evangelische Volksschule Aussersihl - dann: Freie Evangelische Volksschule Zürich-Aussersihl - dann: Evangelische Schule Baumacker - dann: Baumackerschule Zürich-Oerlikon - dann: Baumackerschule Zürich-Nord - aktuell: Baumackerschule Zürich</dc:description>
+          <dc:subject>370</dc:subject>
+          <dc:identifier>(Sz)1909120-41snl_51</dc:identifier>
+          <dc:identifier>(Sz)vtls001909120</dc:identifier>
+          <dc:identifier>(Sz)001909120</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991013546879703976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991013546879703976</recordIdentifier>
+      <recordPosition>2</recordPosition>
+    </record>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>[Tätigkeitsberichte, Freie Schule Aussersihl]</dc:title>
+          <dc:contributor>Freie Schule Aussersihl (DE-588)1086951719 gnd aut</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Aussersihl (DE-588)1141309602 gnd aut</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Zürich-Aussersihl (DE-588)1141309874 gnd aut</dc:contributor>
+          <dc:contributor>Evangelische Schule Baumacker (DE-588)2145290-8 gnd aut</dc:contributor>
+          <dc:contributor>Baumackerschule (DE-588)16002734-2 gnd aut</dc:contributor>
+          <dc:type>collection</dc:type>
+          <dc:type>text</dc:type>
+          <dc:date>1890</dc:date>
+          <dc:language>ger</dc:language>
+          <dc:description>Namenswechsel der Körperschaft: anfänglich: Freie Schule Aussersihl - zwischenzeitlich: Freie Evangelische Volksschule Aussersihl - dann: Freie Evangelische Volksschule Zürich-Aussersihl - dann: Evangelische Schule Baumacker - aktuell: Baumackerschule Zürich</dc:description>
+          <dc:subject>370</dc:subject>
+          <dc:identifier>(Sz)1909117-41snl_51</dc:identifier>
+          <dc:identifier>(Sz)vtls001909117</dc:identifier>
+          <dc:identifier>(Sz)001909117</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991007416129703976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991007416129703976</recordIdentifier>
+      <recordPosition>3</recordPosition>
+    </record>
+    <record>
+      <recordSchema>dc</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <srw_dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:srw_dc="info:srw/schema/1/dc-schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:srw/schema/1/dc-schema http://www.loc.gov/standards/sru/resources/dc-schema.xsd">
+          <dc:title>75 Jahre Freie evangelische Volksschule Zürich-Aussersihl, 1883-1963</dc:title>
+          <dc:contributor>Freie Schule Aussersihl (DE-588)1086951719 gnd</dc:contributor>
+          <dc:contributor>Freie Evangelische Volksschule Aussersihl (DE-588)1141309602 gnd</dc:contributor>
+          <dc:type>text</dc:type>
+          <dc:publisher>Zürich</dc:publisher>
+          <dc:publisher>[s.n.]</dc:publisher>
+          <dc:date>1963.</dc:date>
+          <dc:date>1963</dc:date>
+          <dc:language>ger</dc:language>
+          <dc:description>1900357906 dea ps NB034-2001 nt</dc:description>
+          <dc:identifier>(Sz)401498-41snl_51</dc:identifier>
+          <dc:identifier>(Sz)vtls000401498</dc:identifier>
+          <dc:identifier>(Sz)000401498</dc:identifier>
+          <dc:identifier>alma:41SNL_51_INST/bibs/991010715149703976</dc:identifier>
+        </srw_dc:dc>
+      </recordData>
+      <recordIdentifier>991010715149703976</recordIdentifier>
+      <recordPosition>4</recordPosition>
+    </record>
+  </records>
+  <extraResponseData xmlns:xb="http://www.exlibris.com/repository/search/xmlbeans/">
+    <xb:exact>true</xb:exact>
+    <xb:responseDate>2026-09-20T15:12:24+0200</xb:responseDate>
+  </extraResponseData>
+</searchRetrieveResponse>

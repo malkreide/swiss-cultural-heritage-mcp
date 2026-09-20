@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     snm_org: str = "schweizerisches-nationalmuseum-snm"
     sikart_resource_id: str = "ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea"
     nb_oai_pmh: str = "https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request"
+    # Zweiter Zugang derselben Quelle, gleiche Domain (die Allow-List unten
+    # bleibt unveraendert). OAI-PMH kennt keine Volltextsuche — es liefert
+    # Seiten eines Sets. Ein Suchbegriff blieb damit eine clientseitige
+    # Filterung ueber die ersten 100 Records, also ueber 100 von Millionen in
+    # einer Reihenfolge, die niemand waehlt. SRU sucht serverseitig und nennt
+    # die Gesamtzahl der Treffer. Gemessen am 20.09.2026: `alma.title="Volks-
+    # schule"` → 960 Treffer in ~0,17 s.
+    nb_sru: str = "https://helveticat.nb.admin.ch/view/sru/41SNL_51_INST"
     # Gedächtnisinstitutionen — föderierte Fassade (Live-Probe 2026-07-19):
     #   Memobase = Linked-Open-Data-API (JSON-LD/Hydra, RiC-O), No-Auth.
     #   Dodis    = JSON-REST (Solr-Backend der neuen Angular-App), No-Auth.
@@ -260,6 +268,7 @@ CKAN_API = settings.ckan_api
 SNM_ORG = settings.snm_org
 SIKART_RESOURCE_ID = settings.sikart_resource_id
 NB_OAI_PMH = settings.nb_oai_pmh
+NB_SRU = settings.nb_sru
 MEMOBASE_API = settings.memobase_api
 DODIS_API = settings.dodis_api
 
@@ -277,6 +286,53 @@ OAI_NS = {
     "oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
     "dc": "http://purl.org/dc/elements/1.1/",
 }
+
+# MARCXML und SRU/SRW — die Namensraeume der beiden Antwortformen, die dieser
+# Server von der Nationalbibliothek tatsaechlich bekommt.
+MARC_NS = {"marc": "http://www.loc.gov/MARC21/slim"}
+SRW_NS = {
+    "srw": "http://www.loc.gov/zing/srw/",
+    "diag": "http://www.loc.gov/zing/srw/diagnostic/",
+    "dc": "http://purl.org/dc/elements/1.1/",
+}
+
+# ─────────────────── Die Profilkarte der Nationalbibliothek ────────────────────
+# Der Endpunkt laeuft auf Ex Libris Alma. Dort ist ein `metadataPrefix` KEINE
+# Eigenschaft des Repositoriums, sondern eines *Publishing Profile* je Set.
+# `ListMetadataFormats` beschreibt deshalb, was die Software kann, nicht was
+# dieses Haus publiziert — es nennt fuenf Formate, von denen vier fast nirgends
+# abrufbar sind.
+#
+# Gemessen am 20.09.2026 ueber alle 68 Sets x alle 5 Prefixe (340 Abfragen,
+# `ListIdentifiers`; siehe PROBE_REPORT_helveticat.md):
+#
+#     marc21    66/68   alle ausser RFN, RFN2
+#     oai_dc     1/68   nur RFN
+#     oai_qdc    1/68   nur RFN2
+#     mods       0/68
+#     etdms      0/68
+#
+# Bis dahin stand hier `oai_dc` — fuer 67 von 68 Sets das einzige Format, das
+# nicht geht. Die Quelle antwortete mit `noRecordsMatch: No Publishing profile
+# exists for given set and metadataPrefix`, und das las sich wie eine Absage
+# der Quelle. Sie war die Antwort auf eine Anfrage, die es so nicht gibt.
+#
+# Diese Tabelle steht hier und nicht bloss im Report, damit der naechste Griff
+# nach `oai_dc` — `ListMetadataFormats` fuehrt es ja auf — an ihr vorbeimuss.
+NB_PREFIX_DEFAULT: Final = "marc21"
+NB_PREFIX_BY_SET: Final[dict[str, str]] = {"RFN": "oai_dc", "RFN2": "oai_qdc"}
+
+
+def _nb_prefix(set_spec: str | None) -> str:
+    """Der `metadataPrefix`, den die Quelle fuer dieses Set publiziert.
+
+    Fuer die Listen-Verben (`ListRecords`, `ListIdentifiers`) entscheidend:
+    ohne passendes Profil antwortet Alma mit `noRecordsMatch` statt mit Daten.
+    `GetRecord` ist davon nicht betroffen — dort hat `marc21` am 20.09.2026
+    auch fuer einen Record aus `RFN` geantwortet, das fuer die Listen-Verben
+    kein marc21-Profil hat.
+    """
+    return NB_PREFIX_BY_SET.get(set_spec or "", NB_PREFIX_DEFAULT)
 
 
 # ─────────────────────────── HTTP-Client-Lifecycle (SDK-001) ───────────────────
@@ -523,7 +579,10 @@ SOURCE_SNM: Final = SourceInfo(
     url="https://www.nationalmuseum.ch",
 )
 SOURCE_NB: Final = SourceInfo(
-    name="Schweizerische Nationalbibliothek (Helveticat OAI-PMH)",
+    # Ohne Protokollangabe: die Quelle hat zwei Zugaenge (SRU fuer die Suche,
+    # OAI-PMH fuer Sammlungen und Einzelabruf), und ein Lizenzhinweis, der
+    # einen davon nennt, waere fuer die Haelfte der Ergebnisse falsch.
+    name="Schweizerische Nationalbibliothek (Helveticat)",
     license="offen / pro Datensatz",
     url="https://www.nb.admin.ch",
 )
@@ -904,6 +963,16 @@ class OaiError(ValueError):
     """
 
 
+class SruError(ValueError):
+    """Der SRU-Endpunkt hat die Abfrage abgelehnt.
+
+    Wie OAI-PMH meldet SRU im Rumpf und mit HTTP 200 — ein
+    `<diag:diagnostic>` statt einer Trefferliste. Erbt aus demselben Grund von
+    ``ValueError`` wie ``OaiError``: in ``heritage_cross_search`` soll nur
+    *diese* Quelle ausfallen, nicht die ganze foederierte Suche.
+    """
+
+
 def _raise_if_oai_error(xml_text: str) -> None:
     """Wirft `OaiError`, wenn die Antwort ein `<error>`-Element traegt.
 
@@ -929,8 +998,141 @@ def _raise_if_oai_error(xml_text: str) -> None:
     )
 
 
+def _ein_wert(wert: Any) -> str:
+    """Ein Feld als EIN String — der erste Eintrag, wenn es eine Liste ist.
+
+    Dublin Core erlaubt jedes Element mehrfach, und die Nationalbibliothek
+    nutzt das: `['[2010]', '2010']` fuer ein Erscheinungsjahr ist der
+    Normalfall, nicht die Ausnahme. Wer hier `str()` nimmt, schreibt die
+    Python-Repraesentation der Liste in die Antwort.
+    """
+    if isinstance(wert, list):
+        return str(wert[0]) if wert else ""
+    return str(wert) if wert else ""
+
+
+# Der Normdaten-Apparat, den Alma an Personen- und Koerperschaftsnamen haengt:
+# «Peter, Matthias 1961- (DE-588)124364993 gnd aut». Das ist die GND-Nummer,
+# ihre Herkunft und ein MARC-Relator-Code — fuer eine Anzeige Rauschen, das
+# den Namen unlesbar macht. Der OAI/MARC-Zweig liefert die Namen sauber, der
+# SRU/DC-Zweig nicht; ohne diesen Schnitt saehe dasselbe Werkzeug je nach
+# Zugang anders aus.
+#
+# Geschnitten wird nur, was als Apparat erkennbar ist: eine Klammer-ID der
+# Form `(DE-…)` samt allem danach, und andernfalls ein abschliessender
+# Relator-Code aus der geschlossenen MARC-Liste. Ein Name wird dadurch nie
+# gekuerzt. Wer die Normnummern braucht, holt ueber `mms_id` den vollen
+# MARC-Satz mit `heritage_get_publication`.
+_NORMDATEN_SCHWANZ: Final = re.compile(r"\s*\(DE-\d+\).*$")
+_RELATOR_CODES: Final[frozenset[str]] = frozenset(
+    {
+        "aut", "pbl", "edt", "ctb", "ill", "trl", "cmp", "prf", "nrt", "art",
+        "aui", "cre", "dir", "hnr", "own", "sng", "spk", "ive", "ivr", "rcp",
+    }
+)  # fmt: skip
+
+
+def _ohne_normdaten(wert: str) -> str:
+    """Entfernt GND-Nummer und Relator-Code aus einem Namensfeld."""
+    wert = _NORMDATEN_SCHWANZ.sub("", wert).strip()
+    teile = wert.split()
+    while len(teile) > 1 and teile[-1].lower() in _RELATOR_CODES:
+        teile.pop()
+    return " ".join(teile)
+
+
+def _add_feld(rec: dict, key: str, val: str) -> None:
+    """Haengt einen Wert an — str beim ersten, Liste ab dem zweiten.
+
+    Diese Form erwarten beide Renderer (`heritage_search_helveticat`,
+    `heritage_get_publication`): sie pruefen ``isinstance(val, list)``. Sie ist
+    hier in eine Funktion gezogen, weil jetzt drei Parser sie erzeugen —
+    Dublin Core, MARCXML und SRU — und drei Kopien derselben sechs Zeilen
+    genau dann auseinanderlaufen, wenn es niemand bemerkt.
+    """
+    val = val.strip()
+    if not val:
+        return
+    if key not in rec:
+        rec[key] = val
+        return
+    vorhanden = rec[key]
+    if isinstance(vorhanden, list):
+        vorhanden.append(val)
+    else:
+        rec[key] = [vorhanden, val]
+
+
+# MARC21 → dieselben Schluessel, die der Dublin-Core-Zweig erzeugt. Je Eintrag:
+# (MARC-Tag, Unterfelder, Zielschluessel). Die Unterfelder EINES Datenfelds
+# werden mit Leerzeichen verbunden (245 $a + $b sind ein Titel); jedes weitere
+# Vorkommen desselben Tags ist ein eigener Wert.
+#
+# Die Abbildung ist an zwei MARCXML-Records im Volltext und neun DC-Records in
+# den Feldnamen beurteilt (20.09.2026) — genug fuer die Feldauswahl, keine
+# Zusicherung ueber alle Materialarten des Hauses.
+_MARC_MAP: Final[tuple[tuple[str, tuple[str, ...], str], ...]] = (
+    ("245", ("a", "b"), "title"),
+    ("100", ("a", "d"), "creator"),
+    ("110", ("a",), "creator"),
+    ("111", ("a",), "creator"),
+    ("700", ("a", "d"), "contributor"),
+    ("710", ("a",), "contributor"),
+    ("711", ("a",), "contributor"),
+    ("260", ("a", "b"), "publisher"),
+    ("264", ("a", "b"), "publisher"),
+    ("260", ("c",), "date"),
+    ("264", ("c",), "date"),
+    ("336", ("a",), "type"),
+    ("655", ("a",), "type"),
+    ("300", ("a", "c"), "format"),
+    ("041", ("a",), "language"),
+    ("600", ("a", "d"), "subject"),
+    ("610", ("a",), "subject"),
+    ("650", ("a",), "subject"),
+    ("651", ("a",), "subject"),
+    ("653", ("a",), "subject"),
+    ("500", ("a",), "description"),
+    ("520", ("a",), "description"),
+    ("506", ("a",), "rights"),
+    ("540", ("a",), "rights"),
+    ("490", ("a",), "relation"),
+    ("830", ("a",), "relation"),
+    ("024", ("a",), "identifier"),
+    ("020", ("a",), "identifier"),
+    ("022", ("a",), "identifier"),
+)
+
+
+def _marc_in_dict(marc_el, rec: dict) -> None:
+    """Traegt ein MARCXML-`<record>` in die Dublin-Core-Schluessel ein."""
+    for tag, unterfelder, ziel in _MARC_MAP:
+        for feld in marc_el.findall(f'marc:datafield[@tag="{tag}"]', MARC_NS):
+            teile = [
+                (sub.text or "").strip()
+                for code in unterfelder
+                for sub in feld.findall(f'marc:subfield[@code="{code}"]', MARC_NS)
+                if (sub.text or "").strip()
+            ]
+            if teile:
+                _add_feld(rec, ziel, " ".join(teile))
+
+
 def _parse_oai_records(xml_text: str) -> list[dict]:
-    """Parsed OAI-PMH ListRecords/GetRecord-Antwort in eine Liste von Dicts."""
+    """Parsed eine OAI-PMH-`ListRecords`/`GetRecord`-Antwort in Dicts.
+
+    Bewusst formatunabhaengig: Welches Metadatenformat im `<metadata>`-Element
+    steht, haengt bei dieser Quelle vom Set ab (siehe `NB_PREFIX_BY_SET`) —
+    `marc21` fuer 66 der 68 Sets, `oai_dc` fuer `RFN`, `oai_qdc` fuer `RFN2`.
+    Ein auf `oai_dc:dc` fest verdrahteter Zugriff fand in den ersten beiden
+    Faellen nichts und lieferte Records ohne ein einziges Feld — sichtbar erst
+    als «Ohne Titel» in der Ausgabe, nicht als Fehler.
+
+    Deshalb wird das Kindelement von `<metadata>` genommen, wie es kommt: liegt
+    es im MARCXML-Namensraum, liest `_marc_in_dict`; sonst gelten seine Kinder
+    als Dublin-Core-artig und ihr Tag ohne Namensraum als Feldname. Das traegt
+    `oai_dc` und `oai_qdc` mit demselben Code.
+    """
     _raise_if_oai_error(xml_text)
     root = ET.fromstring(xml_text)
     records = []
@@ -940,27 +1142,23 @@ def _parse_oai_records(xml_text: str) -> list[dict]:
             continue
         identifier_el = record.find("oai:header/oai:identifier", OAI_NS)
         datestamp_el = record.find("oai:header/oai:datestamp", OAI_NS)
-        metadata_el = record.find("oai:metadata/oai_dc:dc", OAI_NS)
+        metadata_el = record.find("oai:metadata", OAI_NS)
 
         rec: dict = {
             "oai_identifier": identifier_el.text if identifier_el is not None else "",
             "datestamp": datestamp_el.text if datestamp_el is not None else "",
         }
+        sets = [s.text for s in record.findall("oai:header/oai:setSpec", OAI_NS) if s.text]
+        if sets:
+            rec["sets"] = sets
 
-        if metadata_el is not None:
-            for child in metadata_el:
-                tag = child.tag.split("}")[-1]  # Namespace entfernen
-                val = (child.text or "").strip()
-                if not val:
-                    continue
-                if tag in rec:
-                    existing = rec[tag]
-                    if isinstance(existing, list):
-                        existing.append(val)
-                    else:
-                        rec[tag] = [existing, val]
-                else:
-                    rec[tag] = val
+        inhalt = next(iter(metadata_el), None) if metadata_el is not None else None
+        if inhalt is not None:
+            if inhalt.tag == f"{{{MARC_NS['marc']}}}record":
+                _marc_in_dict(inhalt, rec)
+            else:
+                for child in inhalt:
+                    _add_feld(rec, child.tag.split("}")[-1], child.text or "")
 
         records.append(rec)
     return records
@@ -973,6 +1171,114 @@ def _extract_resumption_token(xml_text: str) -> str | None:
     if token_el is not None and token_el.text and token_el.text.strip():
         return token_el.text.strip()
     return None
+
+
+# ─────────────────────────── SRU (Volltextsuche NB) ───────────────────────────
+# Die Indexe, die dieser Server in eine CQL-Abfrage einsetzen darf. Eine
+# Whitelist und keine Durchreiche, aus einem gemessenen Grund:
+#
+#     alma.title="Volksschule"    →      960 Treffer
+#     dc.title="Volksschule"      →  2'244'233 Treffer  (der ganze Katalog)
+#     alma.unknown_index="x"      →  2'244'233 Treffer
+#
+# Ein unbekannter Index ergibt HTTP 200, kein `diagnostic` und den gesamten
+# Bestand — eine stille Falschantwort in der Form eines sehr guten Ergebnisses.
+# `dc.` ist dabei der naheliegende Tippfehler, weil daneben `recordSchema=dc`
+# steht. Was hier nicht aufgefuehrt ist, geht deshalb nicht hinaus.
+# (Gemessen 20.09.2026; der Endpunkt fuehrt 327 Indexe, hier stehen die, die
+# die Werkzeuge brauchen.)
+_SRU_INDEXES: Final[frozenset[str]] = frozenset(
+    {"all_for_ui", "title", "creator", "subjects", "main_pub_date", "mms_id"}
+)
+
+# Serverseitiger Deckel, aus `operation=explain`:
+# `<setting type="maximumRecords">50</setting>`. Eine Anfrage mit 100 oder 200
+# liefert trotzdem 50 — ohne Warnung und ohne `diagnostic`. Der Deckel steht
+# hier, damit eine stille Kuerzung nicht als Trefferzahl gelesen wird.
+SRU_MAX_RECORDS: Final = 50
+
+
+def _cql_term(index: str, term: str, relation: str = "=") -> str:
+    """Baut einen CQL-Ausdruck aus geprueftem Index und maskiertem Begriff.
+
+    Der Index kommt aus `_SRU_INDEXES` und nie aus der Eingabe; der Begriff
+    wird maskiert, damit ein Anfuehrungszeichen darin die Abfrage nicht
+    verlaesst und zu einem zweiten Kriterium wird.
+    """
+    if index not in _SRU_INDEXES:
+        raise ValueError(f"Unbekannter SRU-Index: {index!r}")
+    sauber = term.replace("\\", "\\\\").replace('"', '\\"')
+    return f'alma.{index}{relation}"{sauber}"'
+
+
+def _parse_sru_records(xml_text: str) -> tuple[list[dict], int]:
+    """Parsed eine SRU-`searchRetrieve`-Antwort (`recordSchema=dc`).
+
+    Gibt (Records, Gesamtzahl) zurueck. Die Gesamtzahl stammt aus
+    `<numberOfRecords>` und ist die erste ehrliche Angabe, die dieser Server
+    zur Nationalbibliothek machen kann — OAI-PMH nennt keine.
+
+    Die Records tragen dieselben Schluessel wie der OAI-Zweig, und der
+    Identifier wird in die OAI-Form gebracht: SRU gibt `<recordIdentifier>`
+    (die Alma-MMS-ID) aus, `heritage_get_publication` erwartet
+    `oai:helveticat.nb.admin.ch:<mms_id>`. Geprueft am 20.09.2026 als
+    Roundtrip — die so gebaute ID beantwortet `GetRecord`.
+    """
+    root = ET.fromstring(xml_text)
+    diagnose = root.find(".//diag:diagnostic", SRW_NS)
+    if diagnose is not None:
+        code = (diagnose.findtext("diag:uri", "", SRW_NS) or "").strip()
+        text = (diagnose.findtext("diag:message", "", SRW_NS) or "").strip()
+        raise SruError(
+            f"Die SRU-Schnittstelle hat die Abfrage abgelehnt (uri={code or 'unbekannt'}): "
+            f"{text or 'ohne Begruendung'}. "
+            "Das ist KEIN leeres Ergebnis — es wurde nichts durchsucht."
+        )
+
+    total = int((root.findtext("srw:numberOfRecords", "0", SRW_NS) or "0").strip() or 0)
+    records: list[dict] = []
+    for record in root.findall(".//srw:record", SRW_NS):
+        rec: dict = {}
+        mms = (record.findtext("srw:recordIdentifier", "", SRW_NS) or "").strip()
+        if mms:
+            rec["oai_identifier"] = f"oai:helveticat.nb.admin.ch:{mms}"
+            rec["mms_id"] = mms
+        daten = record.find("srw:recordData", SRW_NS)
+        inhalt = next(iter(daten), None) if daten is not None else None
+        if inhalt is not None:
+            for child in inhalt:
+                feld = child.tag.split("}")[-1]
+                text = child.text or ""
+                if feld in ("creator", "contributor", "publisher"):
+                    text = _ohne_normdaten(text)
+                _add_feld(rec, feld, text)
+        # Alma fuellt `dc:creator` in dieser Ansicht nicht: MARC 100/110/700/710
+        # landen gemeinsam in `dc:contributor`. In allen neun am 20.09.2026
+        # geprueften Records war `dc:creator` leer. Ohne diesen Rueckgriff
+        # verschwiege die Markdown-Ansicht — sie liest `creator` — JEDE
+        # Autorenangabe, und zwar lautlos.
+        if "creator" not in rec and "contributor" in rec:
+            rec["creator"] = rec["contributor"]
+        records.append(rec)
+    return records, total
+
+
+async def _sru_suche(
+    term: str, limit: int, index: str = "all_for_ui", relation: str = "="
+) -> tuple[list[dict], int]:
+    """Serverseitige Volltextsuche in Helveticat ueber SRU."""
+    resp = await _http_get(
+        NB_SRU,
+        params={
+            "version": "1.2",
+            "operation": "searchRetrieve",
+            "recordSchema": "dc",
+            "query": _cql_term(index, term, relation),
+            "maximumRecords": str(min(limit, SRU_MAX_RECORDS)),
+        },
+    )
+    resp.raise_for_status()
+    return _parse_sru_records(resp.text)
 
 
 def _normalize_ckan_title(title) -> str:
@@ -1558,24 +1864,37 @@ class HelvticatSearchInput(BaseModel):
         default=None,
         max_length=300,
         description=(
-            "Suchbegriff für clientseitige Filterung (Titel, Autor, Schlagwort) — "
-            "z. B. 'Volksschule Zürich', 'Gottfried Keller', 'Bildungspolitik'. "
-            "Hinweis: OAI-PMH unterstützt keine serverseitige Volltextsuche."
+            "Suchbegriff (Titel, Autor·in, Schlagwort) — z. B. 'Volksschule Zürich', "
+            "'Gottfried Keller', 'Bildungspolitik'. Ohne `set_spec` läuft er als "
+            "serverseitige Volltextsuche über den ganzen Bestand; zusammen mit "
+            "`set_spec` filtert er nur innerhalb der abgerufenen Seite dieser Sammlung."
         ),
     )
     set_spec: str | None = Field(
         default=None,
         max_length=100,
-        description="OAI-Set-Bezeichner (aus heritage_list_nb_collections) — z. B. 'swissbook'",
+        description=(
+            "Sammlung durchblättern statt suchen — OAI-Set-Bezeichner aus "
+            "heritage_list_nb_collections (z. B. 'swissbook', 'xrara'). Schliesst die "
+            "serverseitige Volltextsuche aus: die Sammlungen sind dort nicht abbildbar."
+        ),
     )
     from_date: str | None = Field(
         default=None,
-        description="Publikationen ab diesem Datum (YYYY oder YYYY-MM-DD)",
+        description=(
+            "Nur Katalogsätze, die seit diesem Datum geändert wurden (YYYY-MM-DD). "
+            "ACHTUNG: Änderungsdatum des Katalogsatzes, NICHT Erscheinungsjahr — "
+            "ein Buch von 1890 kann letzte Woche bearbeitet worden sein. "
+            "Nur zusammen mit `set_spec`."
+        ),
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
     )
     until_date: str | None = Field(
         default=None,
-        description="Publikationen bis zu diesem Datum (YYYY oder YYYY-MM-DD)",
+        description=(
+            "Nur Katalogsätze, die bis zu diesem Datum geändert wurden (YYYY-MM-DD). "
+            "Änderungsdatum, nicht Erscheinungsjahr. Nur zusammen mit `set_spec`."
+        ),
         pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$",
     )
     limit: int = Field(default=10, ge=1, le=50, description="Max. Ergebnisse (1–50, Standard: 10)")
@@ -1585,7 +1904,7 @@ class HelvticatSearchInput(BaseModel):
 @mcp.tool(
     name="heritage_search_helveticat",
     annotations={
-        "title": "Helveticat durchsuchen (Nationalbibliothek OAI-PMH)",
+        "title": "Helveticat durchsuchen (Nationalbibliothek)",
         "readOnlyHint": True,
         "destructiveHint": False,
         "idempotentHint": True,
@@ -1594,70 +1913,141 @@ class HelvticatSearchInput(BaseModel):
 )
 @mask_unexpected_errors
 async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnvelope | str:
-    """Durchsucht die Schweizerische Nationalbibliothek (Helveticat) via OAI-PMH.
+    """Durchsucht die Schweizerische Nationalbibliothek (Helveticat).
+
+    Zwei Zugänge derselben Quelle, und der Aufruf wählt sie:
+
+    * **`query` ohne `set_spec`** → SRU, eine echte serverseitige
+      Volltextsuche über den Gesamtbestand, mit Trefferzahl. Findet die
+      Anfrage nichts, wird einmal gelockert wiederholt (alle Wörter statt der
+      Wortfolge) und das Ergebnis als `match_type: fuzzy` markiert.
+    * **`set_spec`** (mit oder ohne Zeitfenster) → OAI-PMH, das eine Sammlung
+      seitenweise ausliefert. `query` filtert dann nur noch *innerhalb* der
+      abgerufenen Seite; die Ausgabe sagt das.
+
+    Die Trennung ist nicht Geschmack, sondern gemessen: SRU kennt die
+    OAI-Sets nicht (`alma.mms_memberOf="helveticat"` → 0 Treffer), und
+    OAI-PMH kennt keine Volltextsuche. Beide Identifier sind dieselben, also
+    frisst `heritage_get_publication` jedes Ergebnis von beiden Wegen.
 
     Args:
         params (HelvticatSearchInput):
-            - query (str | None):      Clientseitige Filterung (Titel, Autor)
-            - set_spec (str | None):   OAI-Set-ID (aus heritage_list_nb_collections)
-            - from_date (str | None):  Datum von (YYYY oder YYYY-MM-DD)
-            - until_date (str | None): Datum bis (YYYY oder YYYY-MM-DD)
-            - limit (int):                Max. Ergebnisse 1–50 (Standard: 10)
-            - response_format:            'markdown' oder 'json'
+            - query (str | None):      Suchbegriff (serverseitig ohne `set_spec`)
+            - set_spec (str | None):   Sammlung aus heritage_list_nb_collections
+            - from_date (str | None):  Änderungsdatum von (nur mit `set_spec`)
+            - until_date (str | None): Änderungsdatum bis (nur mit `set_spec`)
+            - limit (int):             Max. Ergebnisse 1–50 (Standard: 10)
+            - response_format:         'markdown' oder 'json'
 
     Returns:
         str: Liste von Publikationen mit Titel, Autor, Jahr, Schlagwörtern und Identifier.
     """
+    # Die Reihenfolge der beiden Waechter ist nicht beliebig: Eine Anfrage mit
+    # nur `from_date` hat weder Begriff noch Sammlung und liefe sonst in die
+    # allgemeine Meldung unten, die vom Zeitfenster gar nicht spricht. Die
+    # speziellere Auskunft zuerst — sonst ist sie unerreichbar.
+    if (params.from_date or params.until_date) and not params.set_spec:
+        return _no_match(
+            SOURCE_NB,
+            params.response_format,
+            "Ein Zeitfenster gibt es nur zusammen mit `set_spec`.\n\n"
+            "Die Sammlungen stehen in `heritage_list_nb_collections`. Hinweis: "
+            "`from_date`/`until_date` meinen das **Änderungsdatum des "
+            "Katalogsatzes**, nicht das Erscheinungsjahr — für Letzteres den "
+            "Jahrgang in `query` nennen.",
+        )
+    if not params.query and not params.set_spec:
+        return _no_match(
+            SOURCE_NB,
+            params.response_format,
+            "Diese Abfrage nennt weder einen Suchbegriff noch eine Sammlung.\n\n"
+            "**Entweder** `query` für eine Volltextsuche über den Gesamtbestand, "
+            "**oder** `set_spec` (aus `heritage_list_nb_collections`), um eine "
+            "Sammlung durchzublättern. Die Schnittstelle liefert ohne eines von "
+            "beidem nichts aus.",
+        )
+
     try:
-        oai_params: dict = {"verb": "ListRecords", "metadataPrefix": "oai_dc"}
-        if params.set_spec:
-            oai_params["set"] = params.set_spec
-        if params.from_date:
-            oai_params["from"] = params.from_date
-        if params.until_date:
-            oai_params["until"] = params.until_date
+        match_type: Literal["exact", "fuzzy", "none"] = "exact"
+        total: int | None = None
+        resumption: str | None = None
+        ueber_sru = bool(params.query) and not params.set_spec
 
-        resp = await _http_get(NB_OAI_PMH, params=oai_params)
-        resp.raise_for_status()
+        if ueber_sru:
+            # `=` sucht die Wortfolge, `all` alle Wörter irgendwo im Satz. Am
+            # 20.09.2026 gemessen: «Volksschule Zürich» → 4 bzw. 346 Treffer.
+            # Erst eng, dann gelockert — dasselbe ARCH-003-Muster wie bei
+            # `heritage_search_artists`.
+            records, total = await _sru_suche(params.query, params.limit)
+            if not records:
+                records, total = await _sru_suche(params.query, params.limit, relation=" all ")
+                if records:
+                    match_type = "fuzzy"
+        else:
+            oai_params: dict = {
+                "verb": "ListRecords",
+                "metadataPrefix": _nb_prefix(params.set_spec),
+                "set": params.set_spec,
+            }
+            if params.from_date:
+                oai_params["from"] = params.from_date
+            if params.until_date:
+                oai_params["until"] = params.until_date
 
-        records = _parse_oai_records(resp.text)
-        resumption = _extract_resumption_token(resp.text)
+            resp = await _http_get(NB_OAI_PMH, params=oai_params)
+            resp.raise_for_status()
 
-        # Clientseitige Filterung nach query
-        if params.query:
-            q_lower = params.query.lower()
+            records = _parse_oai_records(resp.text)
+            resumption = _extract_resumption_token(resp.text)
 
-            def _matches(r: dict) -> bool:
-                blob = " ".join(
-                    [
-                        str(r.get("title", "")),
-                        str(r.get("creator", "")),
-                        str(r.get("subject", "")),
-                        str(r.get("description", "")),
-                    ]
-                ).lower()
-                return q_lower in blob
+            # Filterung innerhalb der abgerufenen Seite. Das ist KEINE Suche
+            # über die Sammlung, und die Ausgabe unten sagt das auch — sonst
+            # liest sich ein leeres Ergebnis wie «gibt es nicht» statt wie
+            # «war nicht auf dieser Seite».
+            if params.query:
+                q_lower = params.query.lower()
 
-            records = [r for r in records if _matches(r)]
+                def _matches(r: dict) -> bool:
+                    blob = " ".join(
+                        [
+                            str(r.get("title", "")),
+                            str(r.get("creator", "")),
+                            str(r.get("subject", "")),
+                            str(r.get("description", "")),
+                        ]
+                    ).lower()
+                    return q_lower in blob
+
+                records = [r for r in records if _matches(r)]
 
         records = records[: params.limit]
 
         if not records:
-            return _no_match(
-                SOURCE_NB,
-                params.response_format,
+            hinweis = (
                 "Keine Publikationen gefunden für die angegebenen Kriterien.\n\n"
-                "**Tipp:** OAI-PMH unterstützt keine serverseitige Volltextsuche, daher "
-                "gibt es hier keine unscharfe Suche (`match_type` ist immer `exact`). "
-                "Für komplexe Abfragen: [helveticat.ch](https://www.helveticat.ch)",
+                "Gesucht wurde serverseitig über den Gesamtbestand, eng und "
+                "gelockert. Für Feldsuchen und Facetten: "
+                "[helveticat.ch](https://www.helveticat.ch)"
+                if ueber_sru
+                else (
+                    f"In der abgerufenen Seite der Sammlung `{params.set_spec}` "
+                    "kommt der Suchbegriff nicht vor.\n\n"
+                    "**Das ist keine Aussage über die Sammlung:** OAI-PMH liefert "
+                    "sie seitenweise aus, und durchsucht wurde nur diese eine "
+                    "Seite. Für eine Suche über den Gesamtbestand `query` ohne "
+                    "`set_spec` verwenden."
+                )
             )
+            return _no_match(SOURCE_NB, params.response_format, hinweis)
 
         if params.response_format == ResponseFormat.JSON:
             return ResultEnvelope(
                 source=SOURCE_NB,
                 count=len(records),
-                has_more=bool(resumption),
+                total=total,
+                has_more=bool(resumption) or (total is not None and total > len(records)),
                 results=records,
+                match_type=match_type,
             )
 
         lines = ["# Nationalbibliothek — Helveticat\n"]
@@ -1665,11 +2055,21 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
             lines.append(f"**Suche:** *{params.query}*")
         if params.from_date or params.until_date:
             lines.append(
-                f"**Zeitraum:** {params.from_date or '—'} bis {params.until_date or 'heute'}"
+                f"**Geändert:** {params.from_date or '—'} bis {params.until_date or 'heute'}"
             )
         if params.set_spec:
             lines.append(f"**Sammlung:** `{params.set_spec}`")
-        lines.append(f"\nGefunden: {len(records)} Einträge\n")
+        if total is not None:
+            lines.append(f"\nGefunden: {len(records)} von {total} Treffern\n")
+        else:
+            lines.append(f"\nGefunden: {len(records)} Einträge\n")
+        if match_type == "fuzzy":
+            lines.append(_FUZZY_NOTE)
+        if params.query and params.set_spec:
+            lines.append(
+                "> ℹ️ *Gefiltert innerhalb der abgerufenen Seite dieser Sammlung — "
+                "keine Suche über den ganzen Bestand. Dafür `query` ohne `set_spec`.*\n"
+            )
         lines.append("---\n")
 
         for rec in records:
@@ -1679,15 +2079,16 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
             creator = rec.get("creator", "")
             if isinstance(creator, list):
                 creator = " / ".join(creator)
-            date = rec.get("date", "")
-            description = rec.get("description", "")
-            if isinstance(description, list):
-                description = description[0]
+            # `date` und `language` duerfen Listen sein — `oai_dc` liefert fuer
+            # dieselbe Publikation gern `['[2010]', '2010']`. Ohne diesen Griff
+            # stand die Python-Repraesentation der Liste in der Ausgabe.
+            date = _ein_wert(rec.get("date"))
+            description = _ein_wert(rec.get("description"))
             subject = rec.get("subject", "")
             if isinstance(subject, list):
                 subject = " | ".join(subject[:4])
-            identifier = rec.get("oai_identifier", "") or rec.get("identifier", "")
-            language = rec.get("language", "")
+            identifier = rec.get("oai_identifier", "") or _ein_wert(rec.get("identifier"))
+            language = _ein_wert(rec.get("language"))
 
             lines.append(f"## {title}")
             if creator:
@@ -1711,6 +2112,11 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
 
         if resumption:
             lines.append("*Weitere Ergebnisse verfügbar (OAI Resumption Token vorhanden).*")
+        elif total is not None and total > len(records):
+            lines.append(
+                f"*Weitere {total - len(records)} Treffer verfügbar — `limit` erhöhen "
+                f"(serverseitiges Maximum: {SRU_MAX_RECORDS}) oder die Suche verengen.*"
+            )
 
         return "\n".join(lines) + _attribution(SOURCE_NB)
 
@@ -1823,7 +2229,15 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
             params={
                 "verb": "GetRecord",
                 "identifier": params.identifier,
-                "metadataPrefix": "oai_dc",
+                # `marc21`, nicht `oai_dc`: Das Format haengt bei dieser Quelle
+                # am Publishing Profile (siehe `NB_PREFIX_BY_SET`). Mit
+                # `oai_dc` antwortete `GetRecord` auf JEDE gueltige ID mit
+                # `idDoesNotExist` — eine Meldung, die vom Identifier spricht
+                # und das Profil meint. Dieses Werkzeug hat dadurch nie einen
+                # Datensatz geliefert. `marc21` antwortete am 20.09.2026 auch
+                # fuer einen Record aus `RFN`, wo die Listen-Verben es nicht
+                # tun; ein Sonderfall je Set ist hier deshalb nicht noetig.
+                "metadataPrefix": NB_PREFIX_DEFAULT,
             },
         )
         resp.raise_for_status()
@@ -1995,22 +2409,26 @@ async def heritage_cross_search(
             }
 
     async def _nb() -> dict:
+        # Ueber SRU und nicht ueber OAI-PMH. Die Quersuche ist per Definition
+        # ein Suchbegriff ohne Sammlung — genau der Fall, fuer den SRU da ist.
+        #
+        # Vorher stand hier `ListRecords` ohne `set`, und die Quelle antwortete
+        # mit `badArgument: The request is missing required set argument`. Jede
+        # Quersuche mit dem Standard-`sources` trug damit einen NB-Fehlerblock.
+        # Selbst mit `set` waere es eine Filterung ueber die erste Seite eines
+        # Sets geblieben — 100 Records aus Millionen, in einer Reihenfolge, die
+        # niemand waehlt: ein stiller Negativbefund statt eines lauten Fehlers.
         try:
-            resp = await _http_get(
-                NB_OAI_PMH, params={"verb": "ListRecords", "metadataPrefix": "oai_dc"}
-            )
-            resp.raise_for_status()
-            records = _parse_oai_records(resp.text)
-            q_lower = q.lower()
-            filtered = [r for r in records if q_lower in json.dumps(r, ensure_ascii=False).lower()][
-                :n
-            ]
+            records, total = await _sru_suche(q, n)
+            if not records:
+                records, total = await _sru_suche(q, n, relation=" all ")
             return {
                 "source": "NB",
                 "label": "Publikationen",
                 "license": SOURCE_NB.license,
                 "url": SOURCE_NB.url,
-                "items": filtered,
+                "items": records[:n],
+                "total": total,
             }
         except ExpectedUpstreamError as e:
             return {
@@ -2876,14 +3294,29 @@ historischen und zeitgenössischen Kunstschaffenden.
 
 @mcp.resource("heritage://nb/collections")
 async def nb_collections_overview() -> str:
-    """Statische Übersicht der Nationalbibliothek-Sammlungen und OAI-PMH-Endpunkte."""
+    """Statische Übersicht der Nationalbibliothek-Sammlungen und ihrer zwei Zugänge."""
     return """# Schweizerische Nationalbibliothek (NB) — Sammlungsübersicht
 
-## OAI-PMH Endpunkt
-- URL:           https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request
-- Protokoll:     OAI-PMH 2.0
-- Metadaten:     Dublin Core (oai_dc)
-- Authentifizierung: Keine
+Die Quelle hat **zwei** Zugänge, und sie können Verschiedenes. Beide laufen
+auf Ex Libris Alma, beide ohne Authentifizierung, beide auf derselben Domain.
+
+## SRU — Suche
+- URL:        https://helveticat.nb.admin.ch/view/sru/41SNL_51_INST
+- Protokoll:  SRU 1.2 (CQL), `recordSchema=dc`
+- Kann:       serverseitige Volltextsuche über den Gesamtbestand, mit Trefferzahl
+- Kann nicht: nach OAI-Set filtern — die Sammlungen unten gibt es hier nicht
+- Grenze:     `maximumRecords` ist serverseitig bei 50 gedeckelt, lautlos
+
+## OAI-PMH — Sammlungen und Einzelabruf
+- URL:        https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request
+- Protokoll:  OAI-PMH 2.0
+- Kann:       eine Sammlung seitenweise ausliefern, Einzelabruf über `GetRecord`
+- Kann nicht: Volltextsuche — `ListRecords` verlangt ein `set`
+
+**Metadatenformat:** `marc21` für 66 der 68 Sets; `oai_dc` nur für `RFN`,
+`oai_qdc` nur für `RFN2`, `mods` und `etdms` für keines (gemessen 20.09.2026
+über alle 68 Sets). `ListMetadataFormats` nennt alle fünf — es beschreibt, was
+Alma kann, nicht was dieses Haus publiziert.
 
 ## Bekannte OAI-Sets
 | Set         | Inhalt                                           |

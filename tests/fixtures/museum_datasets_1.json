@@ -52,7 +52,7 @@
         "maintainer": null,
         "maintainer_email": null,
         "metadata_created": "2026-06-04T17:00:35.025801",
-        "metadata_modified": "2026-06-29T17:08:48.676671",
+        "metadata_modified": "2026-06-30T16:50:53.060948",
         "modified": "2025-03-18T00:00:00",
         "name": "reprasentative-auswahl-aus-der-sammlung-spezialsammlungen-des-schweizerischen-nationalmuseums",
         "num_resources": 1,
@@ -61,14 +61,14 @@
           "approval_status": "approved",
           "created": "2017-12-07T10:13:36.830636",
           "description": {
-            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
-            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
             "de": "Unter dem Dach des Schweizerischen Nationalmuseums sind die drei Museen – Landesmuseum Zürich, Château de Prangins und das Forum Schweizer Geschichte Schwyz – sowie das Sammlungszentrum in Affoltern am Albis vereint. Die Museen präsentieren Schweizer Geschichte von den Anfängen bis heute, und erschliessen – auch mit temporären Ausstellungen zu aktuellen Themen – die schweizerischen Identitäten und die Vielfalt der Geschichte und Kultur unseres Landes.",
+            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
+            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
             "it": "Il Museo nazionale svizzero (MNS) riunisce sotto lo stesso tetto il Museo nazionale Zurigo, il Castello di Prangins e il Forum della storia svizzera Svitto nonché il Centro delle collezioni di Affoltern am Albis. Con le loro mostre i musei presentano la storia della Svizzera dagli inizi ad oggi e valorizzano l’identità svizzera e la varietà storica e culturale del nostro Paese. Le mostre temporanee su temi attuali offrono ulteriori impressioni. Inoltre l’MNS cura la Casa della corporazione «Zur Meisen» Zurigo e il Museo doganale Cantine di Gandria."
           },
           "display_name": {
-            "de": "Schweizerisches Nationalmuseum SNM",
             "en": "Swiss National Museum SNM",
+            "de": "Schweizerisches Nationalmuseum SNM",
             "fr": "Musée national suisse MNS",
             "it": "Museo nazionale svizzero MNS"
           },
@@ -78,12 +78,12 @@
           "is_organization": true,
           "name": "schweizerisches-nationalmuseum-snm",
           "num_followers": 0,
-          "package_count": 9,
-          "political_level": "other",
+          "package_count": 10,
+          "political_level": "confederation",
           "state": "active",
           "title": {
-            "de": "Schweizerisches Nationalmuseum SNM",
             "en": "Swiss National Museum SNM",
+            "de": "Schweizerisches Nationalmuseum SNM",
             "fr": "Musée national suisse MNS",
             "it": "Museo nazionale svizzero MNS"
           },
@@ -131,7 +131,7 @@
           },
           {
             "key": "harvest_object_id",
-            "value": "5bf09fac-54ba-405f-bae3-5e7ea067cf39"
+            "value": "ae2d662a-149c-4801-bacf-4d533a52f51f"
           }
         ],
         "groups": [
@@ -296,7 +296,7 @@
         "maintainer": null,
         "maintainer_email": null,
         "metadata_created": "2026-06-04T17:00:53.073529",
-        "metadata_modified": "2026-06-18T14:08:52.864223",
+        "metadata_modified": "2026-06-30T16:50:59.901432",
         "modified": "2025-03-18T00:00:00",
         "name": "reprasentative-auswahl-aus-der-sammlung-archaologie-des-schweizerischen-nationalmuseums",
         "num_resources": 2,
@@ -305,14 +305,14 @@
           "approval_status": "approved",
           "created": "2017-12-07T10:13:36.830636",
           "description": {
-            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
-            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
             "de": "Unter dem Dach des Schweizerischen Nationalmuseums sind die drei Museen – Landesmuseum Zürich, Château de Prangins und das Forum Schweizer Geschichte Schwyz – sowie das Sammlungszentrum in Affoltern am Albis vereint. Die Museen präsentieren Schweizer Geschichte von den Anfängen bis heute, und erschliessen – auch mit temporären Ausstellungen zu aktuellen Themen – die schweizerischen Identitäten und die Vielfalt der Geschichte und Kultur unseres Landes.",
+            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
+            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
             "it": "Il Museo nazionale svizzero (MNS) riunisce sotto lo stesso tetto il Museo nazionale Zurigo, il Castello di Prangins e il Forum della storia svizzera Svitto nonché il Centro delle collezioni di Affoltern am Albis. Con le loro mostre i musei presentano la storia della Svizzera dagli inizi ad oggi e valorizzano l’identità svizzera e la varietà storica e culturale del nostro Paese. Le mostre temporanee su temi attuali offrono ulteriori impressioni. Inoltre l’MNS cura la Casa della corporazione «Zur Meisen» Zurigo e il Museo doganale Cantine di Gandria."
           },
           "display_name": {
-            "de": "Schweizerisches Nationalmuseum SNM",
             "en": "Swiss National Museum SNM",
+            "de": "Schweizerisches Nationalmuseum SNM",
             "fr": "Musée national suisse MNS",
             "it": "Museo nazionale svizzero MNS"
           },
@@ -323,11 +323,11 @@
           "name": "schweizerisches-nationalmuseum-snm",
           "num_followers": 0,
           "package_count": 10,
-          "political_level": "other",
+          "political_level": "confederation",
           "state": "active",
           "title": {
-            "de": "Schweizerisches Nationalmuseum SNM",
             "en": "Swiss National Museum SNM",
+            "de": "Schweizerisches Nationalmuseum SNM",
             "fr": "Musée national suisse MNS",
             "it": "Museo nazionale svizzero MNS"
           },
@@ -375,7 +375,7 @@
           },
           {
             "key": "harvest_object_id",
-            "value": "4f69cbfa-8389-4680-89a8-ef41d4935778"
+            "value": "0e581af7-6cbf-4a52-9cf7-d6e68231829b"
           }
         ],
         "groups": [
@@ -601,7 +601,7 @@
         "maintainer": null,
         "maintainer_email": null,
         "metadata_created": "2026-06-04T17:00:49.109557",
-        "metadata_modified": "2026-06-29T17:08:55.639943",
+        "metadata_modified": "2026-06-30T16:50:58.071410",
         "modified": "2025-03-18T00:00:00",
         "name": "reprasentative-auswahl-aus-der-sammlung-waffen-uniformen-des-schweizerischen-nationalmuseums",
         "num_resources": 2,
@@ -610,14 +610,14 @@
           "approval_status": "approved",
           "created": "2017-12-07T10:13:36.830636",
           "description": {
-            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
-            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
             "de": "Unter dem Dach des Schweizerischen Nationalmuseums sind die drei Museen – Landesmuseum Zürich, Château de Prangins und das Forum Schweizer Geschichte Schwyz – sowie das Sammlungszentrum in Affoltern am Albis vereint. Die Museen präsentieren Schweizer Geschichte von den Anfängen bis heute, und erschliessen – auch mit temporären Ausstellungen zu aktuellen Themen – die schweizerischen Identitäten und die Vielfalt der Geschichte und Kultur unseres Landes.",
+            "en": "Three museums – the National Museum Zurich, the Château de Prangins and the Forum of Swiss History Schwyz – as well as the collections centre in Affoltern am Albis – are united under the umbrella of the Swiss National Museum (SNM). The permanent exhibitions at the museums present Swiss history from its beginnings to the present, and give an insight into Swiss identities and the rich tapestry of our country’s history and culture. Temporary exhibitions on current topics add to the experience. The SNM is also responsible for curating the Guild House ‘Zur Meisen’ Zurich and the Museo doganale Cantine di Gandria.",
+            "fr": "Le Musée national suisse regroupe trois musées: le Musée national Zurich, le Château de Prangins et le Forum de l’histoire suisse à Schwyz, ainsi que le centre des collections d’Affoltern am Albis. Les musées consacrent leurs expositions à l’histoire de la Suisse, depuis les époques les plus reculées jusqu’à aujourd’hui ; ils fournissent ainsi leur contribution à l’étude des identités suisses et des contrastes et de la variété qui marquent notre histoire et notre culture. Des expositions temporaires sur des sujets plus en prise sur l’actualité complètent leur offre. Les commissaires du MNS organisent des expositions à la maison de la corporation Zur Meisen à Zurich et au Museo doganale Cantine di Gandria.",
             "it": "Il Museo nazionale svizzero (MNS) riunisce sotto lo stesso tetto il Museo nazionale Zurigo, il Castello di Prangins e il Forum della storia svizzera Svitto nonché il Centro delle collezioni di Affoltern am Albis. Con le loro mostre i musei presentano la storia della Svizzera dagli inizi ad oggi e valorizzano l’identità svizzera e la varietà storica e culturale del nostro Paese. Le mostre temporanee su temi attuali offrono ulteriori impressioni. Inoltre l’MNS cura la Casa della corporazione «Zur Meisen» Zurigo e il Museo doganale Cantine di Gandria."
           },
           "display_name": {
-            "de": "Schweizerisches Nationalmuseum SNM",
             "en": "Swiss National Museum SNM",
+            "de": "Schweizerisches Nationalmuseum SNM",
             "fr": "Musée national suisse MNS",
             "it": "Museo nazionale svizzero MNS"
           },
@@ -627,12 +627,12 @@
           "is_organization": true,
           "name": "schweizerisches-nationalmuseum-snm",
           "num_followers": 0,
-          "package_count": 9,
-          "political_level": "other",
+          "package_count": 10,
+          "political_level": "confederation",
           "state": "active",
           "title": {
-            "de": "Schweizerisches Nationalmuseum SNM",
             "en": "Swiss National Museum SNM",
+            "de": "Schweizerisches Nationalmuseum SNM",
             "fr": "Musée national suisse MNS",
             "it": "Museo nazionale svizzero MNS"
           },
@@ -680,7 +680,7 @@
           },
           {
             "key": "harvest_object_id",
-            "value": "f87aa53e-19ee-48ce-bd74-7029e3d03d41"
+            "value": "94e516d4-81d9-4957-8157-8a9228934de8"
           }
         ],
         "groups": [

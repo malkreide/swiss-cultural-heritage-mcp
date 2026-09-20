@@ -1,6 +1,6 @@
 # Herkunft der Fixtures
 
-Aufgezeichnet am **2026-08-15** mit `PYTHONPATH=src python scripts/record_fixtures.py`.
+Aufgezeichnet am **2026-09-20** mit `PYTHONPATH=src python scripts/record_fixtures.py`.
 
 Eine Antwort je **Abfrage**, nicht je Endpunkt: vier Quellen — SIKART/CKAN,
 Memobase, Dodis, Nationalbibliothek —, aber mehr Abfrageformen als Hosts.
@@ -50,21 +50,37 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 - **Groesse:** 4486 Bytes
 - **SHA-256:** `2eeec5b3e9be0987b8a0e4391dbf1a66bc74c49b88de4a9ab34c3b97c1c26367`
 
-## `cross_search_2.json`
+## `cross_search_2.xml`
+
+- **Werkzeuge:** `heritage_cross_search`
+- **Schluessel:** `https://helveticat.nb.admin.ch/view/sru/41SNL_51_INST?version=1.2&operation=searchRetrieve&recordSchema=dc&query=alma.all_for_ui%3D%22Sammlung%22&maximumRecords=3`
+- **Auswahl:** ungekuerzt
+- **Groesse:** 5224 Bytes
+- **SHA-256:** `6aa761bbc07726e48c606f6ac1a591b2007d20d58cab17bb5440796364009658`
+
+## `cross_search_3.json`
 
 - **Werkzeuge:** `heritage_cross_search`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/package_search?q=Sammlung+organization%3Aschweizerisches-nationalmuseum-snm&rows=3`
-- **Auswahl:** 62 von 104 Listeneintraegen (je Liste die ersten 3), aus 40967 Bytes Rohantwort
-- **Groesse:** 43596 Bytes
-- **SHA-256:** `8b70419ee6a5df7be7e9997ed1a405ec17b08a8dac562a212e1936a49c4d0d0d`
+- **Auswahl:** 62 von 104 Listeneintraegen (je Liste die ersten 3), aus 40993 Bytes Rohantwort
+- **Groesse:** 43622 Bytes
+- **SHA-256:** `984439c1beebbe2e2e41392b6fbf8e544d47085ebc09b8f03de89d4e28eec585`
 
 ## `dodis_1.json`
 
 - **Werkzeuge:** `search_heritage`
 - **Schluessel:** `https://beta.dodis.ch/api/solr/query`
-- **Auswahl:** 3 von 5 Listeneintraegen (je Liste die ersten 3), aus 1559 Bytes Rohantwort
+- **Auswahl:** 3 von 5 Listeneintraegen (je Liste die ersten 3), aus 1557 Bytes Rohantwort
 - **Groesse:** 1247 Bytes
-- **SHA-256:** `2909afd922012a9f95471f7a381a969f265380a41e14e2aa0dad429a794c65cb`
+- **SHA-256:** `329ed69c45558570e502694ce1621106850f3da049d32dfc55e36b6c2eee48ea`
+
+## `helveticat_1.xml`
+
+- **Werkzeuge:** `heritage_search_helveticat`
+- **Schluessel:** `https://helveticat.nb.admin.ch/view/sru/41SNL_51_INST?version=1.2&operation=searchRetrieve&recordSchema=dc&query=alma.all_for_ui%3D%22Volksschule+Z%C3%BCrich%22&maximumRecords=5`
+- **Auswahl:** ungekuerzt
+- **Groesse:** 7674 Bytes
+- **SHA-256:** `7d83c3da00cc86956afb4782a8dba752366fef621b6f84643d3a31d4a632a37a`
 
 ## `item_dodis_1.json`
 
@@ -88,15 +104,15 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 - **Schluessel:** `https://api.memobase.ch/?q=Z%C3%BCrich&size=5&offset=0`
 - **Auswahl:** 159 von 192 Listeneintraegen (je Liste die ersten 3), aus 48226 Bytes Rohantwort
 - **Groesse:** 40774 Bytes
-- **SHA-256:** `d244b53746a2f72f06ebaafcf7fcd9cba9da7169108f27d9f440f903279cfd2c`
+- **SHA-256:** `83dcbd777e87f09ae186b88e0d79f1997305ad6f32a13e5040e2b240c3940d97`
 
 ## `museum_datasets_1.json`
 
 - **Werkzeuge:** `heritage_search_museum_datasets`
 - **Schluessel:** `https://ckan.opendata.swiss/api/3/action/package_search?q=Museum+organization%3Aschweizerisches-nationalmuseum-snm&rows=5&start=0`
-- **Auswahl:** 64 von 116 Listeneintraegen (je Liste die ersten 3), aus 70311 Bytes Rohantwort
-- **Groesse:** 46549 Bytes
-- **SHA-256:** `349e8c5fa480488405df662ed8c33df4fa0c91490abd7071924032245d606e66`
+- **Auswahl:** 64 von 116 Listeneintraegen (je Liste die ersten 3), aus 70355 Bytes Rohantwort
+- **Groesse:** 46575 Bytes
+- **SHA-256:** `1acf02349182d3fd24446241e56fa6b9521e33662892c7e0f0f8afe88eac747a`
 
 ## `nb_collections_1.xml`
 
@@ -104,4 +120,12 @@ Sie lassen sich nicht auf Zuruf aufzeichnen und sind als Erfindung in Ordnung.
 - **Schluessel:** `https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request?verb=ListSets`
 - **Auswahl:** ungekuerzt — der Server liest diese Liste ganz, ein Schnitt behauptete einen kleineren Bestand
 - **Groesse:** 4855 Bytes
-- **SHA-256:** `db07bfe255027240f33074feb045775c9672291c3797c91b19ef7b20c596af6c`
+- **SHA-256:** `2dc8bfec02754b50da8fd9baa3c81bd3fe9e6a76facd8fcf422ded81630b8ecb`
+
+## `publication_1.xml`
+
+- **Werkzeuge:** `heritage_get_publication`
+- **Schluessel:** `https://helveticat.nb.admin.ch/view/oai/41SNL_51_INST/request?verb=GetRecord&identifier=oai%3Ahelveticat.nb.admin.ch%3A991016034239703976&metadataPrefix=marc21`
+- **Auswahl:** ungekuerzt
+- **Groesse:** 4588 Bytes
+- **SHA-256:** `5f7ce25cfb7ead2f7efaa79a04f47ea14130f795e2c3038337a99a1c1654e7f8`

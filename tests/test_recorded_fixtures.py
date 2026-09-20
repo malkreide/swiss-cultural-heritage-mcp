@@ -13,7 +13,10 @@ Genau daran ist es hier zweimal gescheitert:
   antwortet CKAN mit HTTP 200 und null Treffern, ohne Fehler und ohne Warnung.
 - `heritage_search_helveticat` fragte OAI-PMH mit einem Format, das die Quelle
   nicht publiziert, und ohne das verlangte `set`. Die Antwort war ein
-  `<error>`-Element mit HTTP 200 — gelesen als leere Trefferliste.
+  `<error>`-Element mit HTTP 200 — gelesen als leere Trefferliste. Seit dem
+  20.09.2026 laeuft die Suche ueber SRU und der Rest ueber `marc21`; die
+  Aufzeichnungen `helveticat_1.xml` und `publication_1.xml` sind der Beleg, den
+  es davor nicht geben konnte.
 
 Vier Quellen, aber mehr Abfrageformen als Hosts. Zugeordnet wird beim Abspielen
 nach der Anfrage und nicht nach der Reihenfolge: `heritage_cross_search` und
@@ -61,6 +64,11 @@ WERKZEUGE: dict[str, tuple[str, str, dict[str, Any]]] = {
         {"query": "Museum", "limit": 5},
     ),
     "nb_collections": ("heritage_list_nb_collections", "NbCollectionsInput", {}),
+    "helveticat": (
+        "heritage_search_helveticat",
+        "HelvticatSearchInput",
+        {"query": "Volksschule Zürich", "limit": 5},
+    ),
     "memobase": (
         "search_heritage",
         "HeritageSearchInput",
@@ -74,7 +82,7 @@ WERKZEUGE: dict[str, tuple[str, str, dict[str, Any]]] = {
     "cross_search": (
         "heritage_cross_search",
         "CrossSearchInput",
-        {"query": "Sammlung", "sources": ["sik_isea", "snm"], "limit_per_source": 3},
+        {"query": "Sammlung", "sources": ["sik_isea", "snm", "nb"], "limit_per_source": 3},
     ),
 }
 
@@ -83,6 +91,7 @@ WERKZEUGE: dict[str, tuple[str, str, dict[str, Any]]] = {
 # passen — und der naechstliegende Weg dahin waere, sie danach auszuwaehlen.
 DETAILS = {
     "artist_detail": ("heritage_get_artist", "ArtistDetailInput", "artist_id"),
+    "publication": ("heritage_get_publication", "PublicationDetailInput", "identifier"),
     "item_memobase": ("get_heritage_item", "HeritageItemInput", "item_id"),
     "item_dodis": ("get_heritage_item", "HeritageItemInput", "item_id"),
 }
@@ -93,6 +102,13 @@ def _detail_eingabe(name: str) -> dict[str, Any]:
     if name == "artist_detail":
         zeilen = fixture_json("artists_1.json")["result"]["records"]
         return {"artist_id": str(zeilen[0]["HAUPTNR"])}
+    if name == "publication":
+        # Aus der SRU-Aufzeichnung, ueber denselben Parser wie im Betrieb: SRU
+        # nennt eine MMS-ID, `GetRecord` will eine OAI-ID. Eine hier
+        # hingeschriebene ID belegte nur, dass zwei Stellen dieselbe Annahme
+        # teilen — nicht, dass die Umformung haelt.
+        treffer, _ = server._parse_sru_records(fixture_text("helveticat_1.xml"))
+        return {"identifier": str(treffer[0]["oai_identifier"])}
     if name == "item_memobase":
         treffer = fixture_json("memobase_1.json")["hydra:member"]
         return {"collection": "memobase", "item_id": str(treffer[0]["@id"])}
@@ -383,3 +399,58 @@ def test_die_pruefsumme_im_nachweis_stimmt(name):
     assert hashlib.sha256(roh).hexdigest() == treffer.group(1), (
         f"{name} weicht vom Nachweis ab — von Hand nachgebessert? Neu aufzeichnen."
     )
+
+
+# --------------------------------------------------------------------------
+# Fund 3: die Quelle war nie zu — der metadataPrefix war falsch
+# --------------------------------------------------------------------------
+async def test_die_helveticat_suche_liefert_publikationen(quelle):
+    """Die Zusicherung, die es vor dem 20.09.2026 nicht geben konnte.
+
+    Zwei der drei NB-Werkzeuge antworteten auf JEDE Eingabe mit einem Fehler.
+    Nicht, weil die Quelle zu war: `ListMetadataFormats` nennt fuenf Formate,
+    aber Records liefert sie je Set nur fuer das, zu dem ein Publishing Profile
+    existiert — `marc21` fuer 66 der 68 Sets, `oai_dc` fuer genau eines.
+    """
+    ergebnis = str(await _fahre("helveticat"))
+    assert "Gefunden:" in ergebnis, ergebnis[:300]
+    assert "Fehler" not in ergebnis[:200], ergebnis[:300]
+    assert "Keine Publikationen" not in ergebnis, ergebnis[:300]
+
+
+async def test_die_helveticat_suche_fragt_sru_mit_geprueftem_index(quelle):
+    """Die tatsaechlich gestellte Anfrage, nicht das Ergebnis.
+
+    Ein unbekannter Index antwortet mit HTTP 200 und dem ganzen Katalog —
+    2'244'233 statt 960 Treffer, ohne `diagnostic`. Im Ergebnis waere das
+    nicht als Fehler zu sehen, sondern als sehr gutes Resultat.
+    """
+    await _fahre("helveticat")
+    frage = quelle[-1].url
+    assert "/view/sru/" in str(frage), frage
+    assert frage.params.get("query", "").startswith("alma."), frage.params.get("query")
+    assert frage.params.get("recordSchema") == "dc", frage
+
+
+async def test_die_bruecke_von_der_suche_zum_abruf_haelt(quelle):
+    """SRU nennt eine MMS-ID, `GetRecord` will eine OAI-ID.
+
+    Die ID dieses Abrufs ist nicht hier hingeschrieben, sondern aus
+    `helveticat_1.xml` gelesen — und die Aufzeichnung daneben ist die Antwort,
+    die sie bekommen hat. Zwei hingeschriebene IDs koennten nur belegen, dass
+    zwei Stellen dieselbe Annahme teilen.
+    """
+    ergebnis = str(await _fahre("publication"))
+    frage = quelle[-1].url
+    assert frage.params.get("metadataPrefix") == "marc21", frage
+    assert frage.params.get("verb") == "GetRecord", frage
+    assert "Keine Publikation gefunden" not in ergebnis, ergebnis[:300]
+    assert "**OAI-Identifier:**" in ergebnis, ergebnis[:300]
+
+
+async def test_die_quersuche_bekommt_von_der_nb_wieder_etwas(quelle):
+    """Solange sie `ListRecords` ohne `set` schickte, trug jede Quersuche einen
+    NB-Fehlerblock — auch dann, wenn die beiden anderen Quellen lieferten."""
+    ergebnis = str(await _fahre("cross_search"))
+    assert "## NB" in ergebnis, ergebnis[:400]
+    assert "⚠️ Fehler" not in ergebnis, ergebnis[:400]

@@ -26,15 +26,25 @@ eine Behauptung ueber ihren Inhalt, die nicht stimmt.
 
 ## Was hier fehlt, und warum
 
-`heritage_search_helveticat` und `heritage_get_publication` haben keine
-Aufzeichnung. Sie fragen OAI-PMH mit `metadataPrefix=oai_dc`; die Schnittstelle
-publiziert dieses Format nicht (`ListMetadataFormats` nennt mods, oai_dc,
-oai_qdc, marc21, etdms — Records liefert nur `marc21`), und ohne `set` fehlt
-zudem ein Pflichtargument. Beide Werkzeuge haben nie einen Datensatz geliefert
-und meldeten das als «keine Publikationen gefunden». Seit `_raise_if_oai_error`
-sagen sie stattdessen, dass die Quelle die Anfrage abgelehnt hat. Eine
-Erfolgs-Aufzeichnung gibt es erst, wenn der Parser MARC21 lesen kann — das ist
-ein eigener Schritt und keine Zeile.
+Bis zum 20.09.2026 stand hier, `heritage_search_helveticat` und
+`heritage_get_publication` haetten keine Aufzeichnung: Sie fragten OAI-PMH mit
+`metadataPrefix=oai_dc`, das die Quelle nicht publiziert, und ohne das
+verlangte `set`. Beide hatten nie einen Datensatz geliefert. Der Satz endete
+mit «eine Erfolgs-Aufzeichnung gibt es erst, wenn der Parser MARC21 lesen
+kann» — das ist geschehen, und beide stehen jetzt im Plan.
+
+Was weiterhin fehlt, ist die **OAI-Seite einer Sammlung**
+(`heritage_search_helveticat` mit `set_spec`). Nicht, weil sie scheiterte:
+Sie ist 345 KB gross. OAI-PMH kennt keinen Parameter fuer die Seitengroesse —
+Alma liefert 100 Records, und wer weniger will, bekommt sie nicht. Eine
+Aufzeichnung dieser Groesse waere im Ordner nicht mehr lesbar, und ein
+Fixture, das niemand liest, belegt nichts.
+
+Die Form ist trotzdem belegt, und zwar von `publication_1.xml`: Das ist
+MARCXML aus derselben Quelle, ueber denselben Endpunkt, mit demselben
+`metadataPrefix`. Der Unterschied zur Sammlungsseite ist die Zahl der
+`<record>`-Elemente, nicht ihr Aufbau. Was diese Aufzeichnung NICHT hergibt,
+ist die Paginierung (`resumptionToken`) — die bleibt handgeschrieben.
 
 ## Aufruf
 
@@ -114,6 +124,17 @@ BASIS: list[Aufruf] = [
         "vollstaendig. Gekuerzt behauptete es einen kleineren Bestand.",
     ),
     Aufruf(
+        "helveticat",
+        "heritage_search_helveticat",
+        "HelvticatSearchInput",
+        # Ein Suchbegriff ohne `set_spec` — das ist der SRU-Weg, und damit die
+        # einzige Abfrageform dieses Werkzeugs, die serverseitig sucht.
+        {"query": "Volksschule Zürich", "limit": 5},
+        notiz="SRU statt OAI-PMH: die Volltextsuche der Nationalbibliothek. "
+        "Belegt zugleich, dass `dc:creator` leer bleibt und die Namen im "
+        "Normdaten-Apparat stecken.",
+    ),
+    Aufruf(
         "memobase",
         "search_heritage",
         "HeritageSearchInput",
@@ -130,10 +151,10 @@ BASIS: list[Aufruf] = [
         "heritage_cross_search",
         "CrossSearchInput",
         # «Sammlung» statt «Bern»: beide CKAN-Quellen liefern dazu etwas, und
-        # eine Aufzeichnung mit null Treffern belegt keine Form. Ohne die NB —
-        # sie lehnt die Anfrage ab (siehe oben), und ein Fehler gehoert nicht
-        # in den Fixture-Ordner, sondern zu den handgeschriebenen Stubs.
-        {"query": "Sammlung", "sources": ["sik_isea", "snm"], "limit_per_source": 3},
+        # eine Aufzeichnung mit null Treffern belegt keine Form. Die NB ist
+        # seit dem 20.09.2026 wieder dabei — sie lehnte die Anfrage ab, solange
+        # die Quersuche `ListRecords` ohne `set` schickte, und fragt jetzt SRU.
+        {"query": "Sammlung", "sources": ["sik_isea", "snm", "nb"], "limit_per_source": 3},
         notiz="Mehrere Quellen in einem Aufruf — der Grund, warum nach Anfrage "
         "und nicht nach Reihenfolge zugeordnet wird.",
     ),
@@ -155,6 +176,20 @@ def detail_aufrufe(ids: dict[str, str]) -> list[Aufruf]:
                 "ArtistDetailInput",
                 {"artist_id": ids["artist"]},
                 notiz="Andere Abfrageform als die Suche: `filters` statt `q`.",
+            )
+        )
+    if ids.get("publication"):
+        aufrufe.append(
+            Aufruf(
+                "publication",
+                "heritage_get_publication",
+                "PublicationDetailInput",
+                {"identifier": ids["publication"]},
+                notiz="MARCXML ueber OAI-PMH `GetRecord`. Die ID stammt aus "
+                "`helveticat_1.xml` — SRU nennt eine MMS-ID, `GetRecord` will eine "
+                "OAI-ID, und dass die Umformung dazwischen haelt, belegt erst dieses "
+                "Paar. Mit `metadataPrefix=oai_dc` antwortete derselbe Abruf auf "
+                "dieselbe ID mit `idDoesNotExist`.",
             )
         )
     for quelle in ("memobase", "dodis"):
@@ -296,6 +331,13 @@ def _ids_aus(nach_schluessel: dict[str, Antwort]) -> dict[str, str]:
             zeilen = json.loads(antwort.text).get("result", {}).get("records") or []
             if zeilen and zeilen[0].get("HAUPTNR"):
                 ids.setdefault("artist", str(zeilen[0]["HAUPTNR"]))
+        elif antwort.dateiname.startswith("helveticat_"):
+            # Aus der SRU-Antwort, ueber denselben Parser, den auch der Server
+            # nimmt: sonst belegte das Paar nur, dass zwei Stellen dieselbe
+            # Annahme teilen.
+            treffer, _ = server._parse_sru_records(antwort.text)
+            if treffer and treffer[0].get("oai_identifier"):
+                ids.setdefault("publication", str(treffer[0]["oai_identifier"]))
         elif antwort.dateiname.startswith("memobase_"):
             ids.setdefault("memobase", _erste_id(json.loads(antwort.text)))
         elif antwort.dateiname.startswith("dodis_"):
