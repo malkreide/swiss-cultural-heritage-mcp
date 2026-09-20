@@ -183,7 +183,7 @@ Für Container-Deployments (Docker / Kubernetes / Cloud Run): Das Repository ent
 |------|-------------|
 | `heritage_search_helveticat` | Volltextsuche über den Gesamtbestand (SRU) oder eine Sammlung durchblättern (OAI-PMH) |
 | `heritage_list_nb_collections` | Die 68 verfügbaren OAI-PMH-Sets auflisten |
-| `heritage_get_publication` | Vollständige Dublin-Core-Metadaten einer Publikation |
+| `heritage_get_publication` | Ausgewählte MARC21-Felder einer Publikation, auf Dublin-Core-Schlüssel normalisiert (OAI-PMH `GetRecord`) — nicht der vollständige Katalogsatz |
 
 ### Quellenübergreifend
 
@@ -289,9 +289,9 @@ swiss-cultural-heritage-mcp/
 
 - **Nur-Lesen:** Alle Tools verwenden ausschliesslich HTTP-GET-Anfragen — es werden keine Daten geschrieben, verändert oder gelöscht.
 - **Keine Personendaten:** Die APIs liefern institutionelle Datensätze (Kunstwerke, Publikationen, Künstlerbiografien). Keine personenbezogenen Daten werden durch diesen Server verarbeitet oder gespeichert.
-- **Rate Limits:** Weder opendata.swiss noch die Endpunkte der Nationalbibliothek dokumentieren ein Limit, und in rund 400 Probe-Abfragen am 20.09.2026 kam keine Drosselung — was nicht heisst, dass es keine gibt. `limit`-Parameter konservativ einsetzen. Der Server erzwingt ein 30-Sekunden-Timeout pro Anfrage.
+- **Rate Limits:** In rund 380 Probe-Abfragen am 20.09.2026 kam keine Drosselung. Über die veröffentlichten Bedingungen sagt das nichts: Die Nutzungsbedingungen von SRU und OAI-PMH der Nationalbibliothek sind von diesem Projekt **nicht** geprüft (siehe `PROBE_REPORT_helveticat.md`). `limit`-Parameter konservativ einsetzen. Der Server erzwingt ein 30-Sekunden-Timeout pro Anfrage.
 - **Datenaktualität:** Datensätze spiegeln den Upstream-Stand zum Abfragezeitpunkt wider. Dieser Server nimmt kein Caching vor.
-- **Nutzungsbedingungen:** Die Daten unterliegen den Nutzungsbedingungen der jeweiligen Quelle — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/de/terms-of-use), [Nationalbibliothek](https://www.nb.admin.ch/). Alle Daten sind unter offenen Lizenzen veröffentlicht (CC0 / CC BY).
+- **Nutzungsbedingungen:** Die Daten unterliegen den Nutzungsbedingungen der jeweiligen Quelle — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/de/terms-of-use), [Nationalbibliothek](https://www.nb.admin.ch/). Die Datensätze auf opendata.swiss tragen offene Lizenzen (CC0 / CC BY). Für die Nationalbibliothek hat dieses Projekt die Bedingungen **keines** der beiden Endpunkte geprüft; massgeblich ist die Rechteangabe je Datensatz, und der Attributionsfooter jeder Antwort nennt sie. Vor einer Weiterverbreitung prüfen.
 - **Keine Gewähr:** Dieses Projekt ist eine Community-Initiative ohne Verbindung zu SIK-ISEA, SNM oder NB. Verfügbarkeit hängt von den vorgelagerten APIs ab.
 
 ---
