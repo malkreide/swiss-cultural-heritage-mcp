@@ -312,10 +312,13 @@ SRW_NS = {
 #     mods       0/68
 #     etdms      0/68
 #
-# Bis dahin stand hier `oai_dc` — fuer 67 von 68 Sets das einzige Format, das
-# nicht geht. Die Quelle antwortete mit `noRecordsMatch: No Publishing profile
-# exists for given set and metadataPrefix`, und das las sich wie eine Absage
-# der Quelle. Sie war die Antwort auf eine Anfrage, die es so nicht gibt.
+# Bis dahin stand hier `oai_dc`: ein Format, das dieses Haus fuer genau EIN
+# Set publiziert, als Voreinstellung fuer alle 68. (Nicht: das einzige mit
+# Ausfaellen — `mods` und `etdms` antworten fuer gar keines. Der Defekt ist die
+# Wahl der Voreinstellung, nicht die Luecke im Format.) Die Quelle antwortete
+# mit `noRecordsMatch: No Publishing profile exists for given set and
+# metadataPrefix`, und das las sich wie eine Absage der Quelle. Sie war die
+# Antwort auf eine Anfrage, die es so nicht gibt.
 #
 # Diese Tabelle steht hier und nicht bloss im Report, damit der naechste Griff
 # nach `oai_dc` — `ListMetadataFormats` fuehrt es ja auf — an ihr vorbeimuss.

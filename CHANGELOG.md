@@ -10,11 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Helveticat: nicht die Quelle war zu, der `metadataPrefix` war falsch**
-  (PR #95 Probe, PR #96 Umbau). `heritage_search_helveticat` und
-  `heritage_list_nb_collections` fragten mit `oai_dc` an und bekamen
-  `noRecordsMatch: No Publishing profile exists for given set and
-  metadataPrefix`. Das las sich wie eine Absage der Quelle; es war die Antwort
-  auf eine Anfrage, die es so nicht gibt.
+  (PR #95 Probe, PR #96 Umbau). `heritage_search_helveticat` fragte mit
+  `oai_dc` an und bekam `noRecordsMatch: No Publishing profile exists for
+  given set and metadataPrefix`. Das las sich wie eine Absage der Quelle; es
+  war die Antwort auf eine Anfrage, die es so nicht gibt.
+
+  `heritage_get_publication` war vom selben Prefix betroffen, scheiterte aber
+  anders und schlimmer: `GetRecord` mit `oai_dc` meldete `idDoesNotExist` fuer
+  einen Datensatz, den es sehr wohl gibt. Ein «kennen wir nicht» auf eine
+  gueltige Kennung ist keine Formatfrage mehr, sondern eine falsche Auskunft
+  ueber den Bestand.
+
+  `heritage_list_nb_collections` war als einziges der drei NB-Werkzeuge NICHT
+  betroffen: Es sendet nur `verb=ListSets`, und `ListSets` braucht kein
+  Publishing Profile. Der Bericht haelt das ausdruecklich fest («OK — 68
+  Sets»).
 
   Der Endpunkt laeuft auf Ex Libris Alma. Dort ist ein `metadataPrefix` KEINE
   Eigenschaft des Repositoriums, sondern eines *Publishing Profile* je Set —
@@ -31,7 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `mods` | 0 von 68 |
   | `etdms` | 0 von 68 |
 
-  `oai_dc` war damit fuer 67 der 68 Sets das einzige Format, das *nicht* geht.
+  `oai_dc` antwortet damit fuer genau ein Set und faellt fuer 67 aus — und
+  war ausgerechnet die Voreinstellung. Nicht gemeint ist, es sei das einzige
+  Format mit Ausfaellen: `mods` und `etdms` antworten fuer gar kein Set, und
+  `oai_qdc` ebenfalls nur fuer eines. Der Defekt liegt nicht darin, dass
+  `oai_dc` Luecken hat, sondern darin, dass der Server voreingestellt nach
+  einem Format fragte, das dieses Haus fuer ein einziges Set publiziert.
+
   Die Tabelle steht als `NB_PREFIX_BY_SET` im Code und nicht bloss im Bericht,
   damit der naechste Griff nach `oai_dc` an ihr vorbeimuss.
 
