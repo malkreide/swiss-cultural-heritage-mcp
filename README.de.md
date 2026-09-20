@@ -371,12 +371,17 @@ angesehen hat — ob ein gemeldeter Befund behoben wurde, prüft er nicht.
 
 | Feld | Wert | Quelle |
 |---|---|---|
-| `name` | `swiss_cultural_heritage_mcp` | Bezeichner, maschinenlesbar |
+| `name` | `swiss-cultural-heritage-mcp` | `__dist__` — der PyPI-Name, ebenso in `server.json` |
 | `title` | Schweizer Kulturerbe | `server.SERVER_TITLE` |
 | `version` | die ausgelieferte Paketversion | `pyproject.toml` über `importlib.metadata` |
 | `description` | der PyPI-Einzeiler | `pyproject.toml` → `[project].description` |
 | `websiteUrl` | die Projekt-Homepage | `pyproject.toml` → `[project.urls].Homepage` |
 | `instructions` | wofür dieser Server da ist | `server.INSTRUCTIONS` |
+
+Der Bezeichner trägt Bindestriche, wie das Repository, das PyPI-Paket und das
+Konsolen-Skript. Das Python-**Modul** behält die Unterstriche — `python -m
+swiss_cultural_heritage_mcp.server` weiter oben ist kein Widerspruch, sondern
+die einzige Schreibweise, die Python für einen Paketnamen zulässt.
 
 Die Ära `2026-07-28` kennt keinen Handshake. Statt `serverInfo` einmal pro
 Verbindung zu senden, stempelt das SDK die Identität in `_meta` **jeder**

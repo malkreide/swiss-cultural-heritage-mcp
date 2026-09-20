@@ -369,12 +369,17 @@ reported finding was addressed is not something it checks.
 
 | Field | Value | Source |
 |---|---|---|
-| `name` | `swiss_cultural_heritage_mcp` | identifier, machine-readable |
+| `name` | `swiss-cultural-heritage-mcp` | `__dist__` — the PyPI name, also in `server.json` |
 | `title` | Schweizer Kulturerbe | `server.SERVER_TITLE` |
 | `version` | the shipped package version | `pyproject.toml` via `importlib.metadata` |
 | `description` | the PyPI one-liner | `pyproject.toml` → `[project].description` |
 | `websiteUrl` | the project homepage | `pyproject.toml` → `[project.urls].Homepage` |
 | `instructions` | what this server is for | `server.INSTRUCTIONS` |
+
+The identifier is hyphenated, like the repository, the PyPI package and the
+console script. The Python **module** keeps underscores — `python -m
+swiss_cultural_heritage_mcp.server` above is not an inconsistency, it is the
+only spelling Python allows for a package name.
 
 The `2026-07-28` era has no handshake. Instead of sending `serverInfo` once per
 connection, the SDK stamps the identity into the `_meta` of **every** response,

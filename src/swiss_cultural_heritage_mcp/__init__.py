@@ -4,6 +4,25 @@ from importlib.metadata import PackageNotFoundError, metadata, version
 
 _DIST = "swiss-cultural-heritage-mcp"
 
+#: Der Bezeichner dieses Servers, in der Schreibweise des Portfolios: klein,
+#: mit Bindestrichen, auf `-mcp` endend. Derselbe String ist der PyPI-Name, der
+#: Repo-Name, das Konsolen-Skript in `pyproject.toml` und die letzte Stufe des
+#: Verzeichniseintrags (`io.github.malkreide/swiss-cultural-heritage-mcp` in
+#: `server.json`).
+#:
+#: Er steht hier und wird nicht je Verwendungsstelle hingeschrieben. Bis zum
+#: 20.09.2026 meldete `serverInfo.name` `swiss_cultural_heritage_mcp` — die
+#: Schreibweise des Python-MODULS, die es als Server-Bezeichner sonst nirgends
+#: gibt. Das ist dieselbe Klasse wie die ruff-Version, die einmal in einer
+#: Ueberschrift «an einer Stelle» stand und doch eine Kopie war: Zwei
+#: Schreibweisen desselben Namens laufen auseinander, sobald eine davon
+#: gepflegt wird.
+#:
+#: Der Modulpfad bleibt `swiss_cultural_heritage_mcp` — Python erlaubt keine
+#: Bindestriche in Paketnamen. `python -m swiss_cultural_heritage_mcp.server`
+#: ist deshalb KEIN Fehlstand und wird nicht mitgezogen.
+__dist__ = _DIST
+
 try:
     __version__ = version(_DIST)
 except PackageNotFoundError:  # not installed (running from source tree)
