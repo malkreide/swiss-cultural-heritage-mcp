@@ -23,7 +23,7 @@
 |--------|------|-----|
 | **SIK-ISEA (SIKART)** | ~17,000 Swiss artists — SIKART biographical data | opendata.swiss CKAN |
 | **Nationalmuseum (SNM)** | Museum collections (numismatics, seals, special collections) | opendata.swiss CKAN |
-| **Nationalbibliothek (NB)** | Swiss national bibliography (Helveticat) | OAI-PMH |
+| **Nationalbibliothek (NB)** | Swiss national bibliography (Helveticat) | SRU (search) + OAI-PMH (collections) |
 | **Memoriav / Memobase** | Audiovisual heritage (photo, audio, video) | Linked Open Data (JSON-LD / Hydra) |
 | **Dodis** | Diplomatic Documents of Switzerland (documents, persons, organisations) | JSON-REST (Solr) + permalinks |
 
@@ -180,9 +180,9 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 
 | Tool | Description |
 |------|-------------|
-| `heritage_search_helveticat` | Search Swiss national bibliography via OAI-PMH |
-| `heritage_list_nb_collections` | List available OAI-PMH sets |
-| `heritage_get_publication` | Full Dublin Core metadata for a publication |
+| `heritage_search_helveticat` | Full-text search over the whole holdings (SRU), or browse one collection (OAI-PMH) |
+| `heritage_list_nb_collections` | List the 68 available OAI-PMH sets |
+| `heritage_get_publication` | Full metadata for one publication (MARC21 via OAI-PMH `GetRecord`) |
 
 ### Cross-Source
 
@@ -222,7 +222,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
                         │  2 Prompts                   │◀────│  opendata.swiss / CKAN   │
                         │  Stdio | SSE                 │     ├──────────────────────────┤
                         │                              │────▶│  Nationalbibliothek (NB) │
-                        │  No authentication required  │◀────│  OAI-PMH (Helveticat)    │
+                        │  No authentication required  │◀────│  Helveticat: SRU, OAI-PMH│
                         │                              │     ├──────────────────────────┤
                         │  search_heritage facade      │────▶│  Memobase (JSON-LD/Hydra)│
                         │                              │◀────│  Dodis (JSON-REST/Solr)  │
@@ -235,7 +235,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 |--------|----------|----------|------|
 | SIK-ISEA (SIKART) | CKAN DataStore | ~17,000 Swiss artists | None |
 | Nationalmuseum | CKAN DataStore | Museum collections | None |
-| Nationalbibliothek | OAI-PMH | Swiss national bibliography | None |
+| Nationalbibliothek | SRU 1.2 (CQL) + OAI-PMH 2.0 | Swiss national bibliography | None |
 | Memoriav / Memobase | Linked Open Data (JSON-LD / Hydra, RiC-O) | Audiovisual heritage (~460k records) | None |
 | Dodis | JSON-REST (Solr) + stable permalinks | Diplomatic documents, persons, organisations | None |
 
@@ -288,9 +288,9 @@ swiss-cultural-heritage-mcp/
 
 - **Read-only:** All tools perform HTTP GET requests only — no data is written, modified, or deleted.
 - **No personal data:** The APIs return institutional records (artworks, publications, artists). No personally identifiable information (PII) is processed or stored by this server.
-- **Rate limits:** The opendata.swiss and OAI-PMH endpoints are not rate-limit-documented; use `limit` parameters conservatively. The server enforces a 30s timeout per request.
+- **Rate limits:** Neither opendata.swiss nor the National Library endpoints document a rate limit, and none was observed in roughly 400 probe requests on 2026-09-20 — which is not the same as there being none. Use `limit` parameters conservatively. The server enforces a 30s timeout per request.
 - **Data freshness:** Records reflect the upstream source at query time. No caching is performed by this server.
-- **Terms of service:** Data is subject to the ToS of each source — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/terms-of-use), [Nationalbibliothek OAI-PMH](https://www.nb.admin.ch/). All data is published under open licenses (CC0 / CC BY).
+- **Terms of service:** Data is subject to the ToS of each source — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/terms-of-use), [Nationalbibliothek](https://www.nb.admin.ch/). All data is published under open licenses (CC0 / CC BY).
 - **No guarantees:** This server is a community project, not affiliated with SIK-ISEA, SNM, or NB. Availability depends on upstream APIs.
 
 ---
@@ -299,7 +299,7 @@ swiss-cultural-heritage-mcp/
 
 - **SIK-ISEA:** Artist data is updated periodically; very recent acquisitions may not yet be reflected
 - **Nationalmuseum:** Only datasets published on opendata.swiss are accessible; not all SNM collections are available
-- **Nationalbibliothek:** OAI-PMH harvesting is rate-limited; large result sets require pagination
+- **Nationalbibliothek:** `maximumRecords` is capped at 50 server-side, silently — a request for more returns 50 without a warning. SRU cannot filter by OAI set, so `query` and `set_spec` use different endpoints and cannot be combined into one server-side search. `from_date`/`until_date` are the catalogue record's *modification* dates, not publication years. Measured 2026-09-20; see `PROBE_REPORT_helveticat.md`.
 - **Cross-search:** Response time depends on the slowest of the three sources
 
 ---
