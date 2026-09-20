@@ -79,6 +79,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Markdown-Ansicht schrieb `['[2010]', '2010']` — die Python-Repräsentation der
   Liste — als Erscheinungsjahr in die Antwort.
 
+- **Ein Kommentar in `server.py` behauptete etwas, das die Tabelle direkt
+  darüber widerlegt.** Dort stand, `oai_dc` sei «für 67 von 68 Sets das einzige
+  Format, das nicht geht» — `mods` und `etdms` antworten für *gar kein* Set,
+  `oai_qdc` nur für eines. Der Satz verdeckte zudem den eigentlichen Defekt: Er
+  liegt nicht in einer Lücke des Formats, sondern darin, dass der Server
+  voreingestellt nach einem Format fragte, das dieses Haus für ein einziges Set
+  publiziert.
+
+  Gefunden hat das ein Codex-Review — an einer Abschrift dieses Satzes, nicht
+  am Original. Deshalb hier an der Quelle korrigiert: sonst schreibt ihn der
+  nächste Eintrag wieder ab. Ein `#`-Kommentar ausserhalb jeder Docstring, der
+  SEC-022-Pin-Test belegt die unveränderte Tool-Oberfläche.
+
 ### Changed
 
 - **⚠️ Neu-Abnahme nötig (SEC-022): Zwei Tool-Beschreibungen haben sich
@@ -171,6 +184,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   neutralisiert, jede fällt mit den zugehörigen Tests. Sie hat dabei einen
   wertlosen Test widerlegt: Der Deckel-Test lief über das Werkzeug, dessen
   `limit` selbst auf 50 begrenzt ist, und blieb ohne den Deckel grün.
+
+- **`tests/test_helveticat_doku.py`** — hält die READMEs gegen den Code, nicht
+  gegen eine Liste im Test: Ist ein SRU-Endpunkt konfiguriert, muss das Wort in
+  beiden Sprachfassungen stehen; der voreingestellte `metadataPrefix` muss
+  genannt sein, wie er heisst. Anlass war, dass genau diese Doku nach der
+  Umstellung zwei Tage lang den Zustand davor beschrieb, ohne dass ein Gate
+  etwas sagte — die CI prüft Code, nicht Prosa.
+
+  Gegenprobe: READMEs auf den Stand vor der Nachführung → alle vier Fälle rot;
+  nur `SRU` entfernt → nur die zwei SRU-Fälle; nur `marc21` entfernt → nur die
+  zwei Prefix-Fälle.
+
+  Sein Docstring sagt auch, was er **nicht** kann: Er zählt Namen, keine
+  Aussagen. Ob der Text die Zugänge richtig *beschreibt*, hält er nicht — genau
+  daran ist der `INSTRUCTIONS`-Text im September vorbeigelaufen, der alle fünf
+  Quellen nannte und trotzdem das falsche Tool als quellenübergreifenden
+  Einstieg auswies.
 
 ## [0.6.0] - 2026-09-19
 
