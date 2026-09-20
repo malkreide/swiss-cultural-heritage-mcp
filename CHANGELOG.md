@@ -9,117 +9,195 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Helveticat: nicht die Quelle war zu, der `metadataPrefix` war falsch**
-  (PR #95 Probe, PR #96 Umbau). `heritage_search_helveticat` fragte mit
-  `oai_dc` an und bekam `noRecordsMatch: No Publishing profile exists for
-  given set and metadataPrefix`. Das las sich wie eine Absage der Quelle; es
-  war die Antwort auf eine Anfrage, die es so nicht gibt.
+- **Die Nationalbibliothek lieferte nichts — und die Quelle war nie zu.** Zwei
+  der drei NB-Werkzeuge antworteten auf **jede** Eingabe mit einem Fehler,
+  `heritage_get_publication` für jede gültige ID mit `idDoesNotExist`, und jede
+  Quersuche mit dem Standard-`sources` trug einen `badArgument`-Block. Der
+  Grund war ein einziger Parameter: der verdrahtete `metadataPrefix=oai_dc`.
 
-  `heritage_get_publication` war vom selben Prefix betroffen, scheiterte aber
-  anders und schlimmer: `GetRecord` mit `oai_dc` meldete `idDoesNotExist` fuer
-  einen Datensatz, den es sehr wohl gibt. Ein «kennen wir nicht» auf eine
-  gueltige Kennung ist keine Formatfrage mehr, sondern eine falsche Auskunft
-  ueber den Bestand.
+  Der Endpunkt läuft auf Ex Libris Alma, und dort hängt ein `metadataPrefix`
+  nicht am Repositorium, sondern an einem **Publishing Profile je Set**.
+  `ListMetadataFormats` beschreibt deshalb, was die Software kann, nicht was
+  dieses Haus publiziert. Gemessen am 20.09.2026 über alle 68 Sets × alle 5
+  Prefixe (340 Abfragen `ListIdentifiers`):
 
-  `heritage_list_nb_collections` war als einziges der drei NB-Werkzeuge NICHT
-  betroffen: Es sendet nur `verb=ListSets`, und `ListSets` braucht kein
-  Publishing Profile. Der Bericht haelt das ausdruecklich fest («OK — 68
-  Sets»).
+  | `metadataPrefix` | Sets mit Profil | welche |
+  |---|---:|---|
+  | `marc21` | 66 / 68 | alle ausser `RFN`, `RFN2` |
+  | `oai_dc` | 1 / 68 | nur `RFN` |
+  | `oai_qdc` | 1 / 68 | nur `RFN2` |
+  | `mods` | 0 / 68 | — |
+  | `etdms` | 0 / 68 | — |
 
-  Der Endpunkt laeuft auf Ex Libris Alma. Dort ist ein `metadataPrefix` KEINE
-  Eigenschaft des Repositoriums, sondern eines *Publishing Profile* je Set —
-  `ListMetadataFormats` beschreibt also, was die Software kann, und nicht, was
-  dieses Haus publiziert. Gemessen am 20.09.2026 ueber alle 68 Sets x alle 5
-  angebotenen Prefixe, 340 `ListIdentifiers`-Abfragen (Bericht:
-  `PROBE_REPORT_helveticat.md`):
+  Verdrahtet war also für 67 von 68 Sets das einzige Format, das nicht geht.
+  Die Quelle antwortete mit `noRecordsMatch: No Publishing profile exists for
+  given set and metadataPrefix`, und das las sich wie eine Absage. Es war die
+  Antwort auf eine Anfrage, die es so nicht gibt — derselbe Fehlschluss, den
+  `CLAUDE.md` unter «Ein 4xx ist kein Nein» am `lotId`-Fall festhält. Die
+  **Positivkontrolle** stand dabei im eigenen Haus: `set_spec="RFN"` lief die
+  ganze Zeit durch, mit demselben Code und derselben Allow-List.
 
-  | Prefix | antwortet fuer |
-  |---|---|
-  | `marc21` | 66 von 68 Sets (alle ausser `RFN`, `RFN2`) |
-  | `oai_dc` | 1 von 68 (nur `RFN`) |
-  | `oai_qdc` | 1 von 68 (nur `RFN2`) |
-  | `mods` | 0 von 68 |
-  | `etdms` | 0 von 68 |
+  `_parse_oai_records` ist jetzt formatunabhängig — es nimmt das Kindelement
+  von `<metadata>`, wie es kommt. MARCXML liest ein Mapping in dieselben
+  Schlüssel, die der Dublin-Core-Zweig erzeugt; `oai_dc` und `oai_qdc` tragen
+  denselben Code. Ein auf MARC umgestellter Parser hätte die zwei Sonderfälle
+  lautlos geleert: Records ohne ein einziges Feld, sichtbar nur als «Ohne
+  Titel».
 
-  `oai_dc` antwortet damit fuer genau ein Set und faellt fuer 67 aus — und
-  war ausgerechnet die Voreinstellung. Nicht gemeint ist, es sei das einzige
-  Format mit Ausfaellen: `mods` und `etdms` antworten fuer gar kein Set, und
-  `oai_qdc` ebenfalls nur fuer eines. Der Defekt liegt nicht darin, dass
-  `oai_dc` Luecken hat, sondern darin, dass der Server voreingestellt nach
-  einem Format fragte, das dieses Haus fuer ein einziges Set publiziert.
-
-  Die Tabelle steht als `NB_PREFIX_BY_SET` im Code und nicht bloss im Bericht,
-  damit der naechste Griff nach `oai_dc` an ihr vorbeimuss.
-
-  Zweiter, stiller Teil desselben Defekts: Der Parser griff fest auf
-  `oai_dc:dc` zu. Fuer ein MARCXML-Record fand er kein einziges Feld und gab
-  einen Datensatz ohne Titel zurueck — sichtbar als «Ohne Titel» in der
-  Ausgabe, nicht als Fehler. Er nimmt jetzt das Kindelement von `<metadata>`,
-  wie es kommt: MARCXML ueber eine Feldkarte, alles andere Dublin-Core-artig.
-  Das traegt `oai_dc` und `oai_qdc` mit demselben Code.
-
-### Added
-
-- **SRU als zweiter Zugang zur Nationalbibliothek** (PR #96). `query` ohne
-  `set_spec` geht neu ueber SRU
-  (`helveticat.nb.admin.ch/view/sru/41SNL_51_INST`): eine echte serverseitige
-  Volltextsuche ueber den Gesamtbestand, mit Trefferzahl, und bei null Treffern
-  einmal gelockert wiederholt (`match_type: fuzzy`). `set_spec` geht weiter
-  ueber OAI-PMH, wo `query` nur noch innerhalb der abgerufenen Seite filtert —
-  die Ausgabe sagt das jetzt.
-
-  Die Trennung ist gemessen, nicht gewaehlt: SRU kennt die OAI-Sets nicht
+- **`heritage_search_helveticat` sucht jetzt serverseitig.** Dieselbe Domain
+  trägt einen SRU-Endpunkt (`/view/sru/41SNL_51_INST`, SRU 1.2 über CQL,
+  `recordSchema=dc`, 327 Indexe) mit echter Volltextsuche über den
+  Gesamtbestand. Ein `query` ohne `set_spec` läuft dorthin; `set_spec` und
+  Zeitfenster weiter über OAI-PMH. Die Trennung ist gemessen und nicht
+  Geschmack: SRU kennt die OAI-Sets nicht
   (`alma.mms_memberOf="helveticat"` → 0 Treffer), OAI-PMH kennt keine
-  Volltextsuche. Die Identifier sind auf beiden Wegen dieselben, also nimmt
-  `heritage_get_publication` jedes Ergebnis von beiden entgegen.
+  Volltextsuche.
 
-  Damit faellt die Einschraenkung, die seit dem ersten Release in beiden
-  READMEs stand: Die Volltextsuche ist nicht mehr clientseitige Filterung auf
-  der ersten Seite. Kein neuer Host in der Egress-Allow-List — SRU liegt auf
-  `helveticat.nb.admin.ch`, das schon drin ist.
+  Vorher filterte `query` clientseitig über die ersten 100 Records eines Sets —
+  100 aus Millionen, in einer Reihenfolge, die niemand wählt. «Volksschule
+  Zürich» fand dort praktisch nie etwas. Über SRU: 4 Treffer eng, 346
+  gelockert; `alma.title="Volksschule"` ergibt 960.
+
+  Keine neuen Werkzeuge (weiter 11 von 15), keine geänderten Tool-Signaturen,
+  keine neue Domain (die Egress-Allow-List bleibt unverändert). Die
+  Identifier-Brücke ist als Roundtrip geprüft: SRU nennt eine MMS-ID,
+  `heritage_get_publication` bekommt daraus `oai:helveticat.nb.admin.ch:<id>`
+  und antwortet.
+
+- **Drei stille Falschantworten, gegen die jetzt etwas steht.** Ein unbekannter
+  SRU-Index ergibt HTTP 200, kein `diagnostic` und den **ganzen Katalog**:
+  `dc.title="Volksschule"` liefert 2'244'233 statt 960 Treffern — und `dc.` ist
+  der naheliegende Tippfehler, weil daneben `recordSchema=dc` steht. Deshalb
+  eine Index-Whitelist statt einer Durchreiche, plus CQL-Maskierung.
+  `maximumRecords` ist serverseitig bei 50 gedeckelt, lautlos. Und Alma füllt
+  `dc:creator` in der SRU-Ansicht nie: alle Urheber stehen in
+  `dc:contributor`, mit GND-Nummer und Relator-Code daran — ohne Rückgriff und
+  Schnitt verschwiege die Markdown-Ansicht **jede** Autorenangabe.
+
+- **Ein vorbestehender Anzeigefehler.** `date` und `language` dürfen in Dublin
+  Core mehrfach vorkommen, und die Nationalbibliothek nutzt das. Die
+  Markdown-Ansicht schrieb `['[2010]', '2010']` — die Python-Repräsentation der
+  Liste — als Erscheinungsjahr in die Antwort.
+
+- **Die deutsche Fassung des README beschrieb `heritage_get_publication` noch
+  als «Vollständige Dublin-Core-Metadaten».** Seit der Umstellung liefert
+  `GetRecord` MARC21; die englische Fassung wurde korrigiert, die deutsche
+  nicht. Gefunden hat das der neue Doku-Test unten, beim ersten Lauf gegen
+  `main` — nicht beim Lesen.
+
+- **Ein Kommentar in `server.py` behauptete etwas, das die Tabelle direkt
+  darüber widerlegt.** Dort stand, `oai_dc` sei «für 67 von 68 Sets das einzige
+  Format, das nicht geht» — `mods` und `etdms` antworten für *gar kein* Set,
+  `oai_qdc` nur für eines. Der Satz verdeckte zudem den eigentlichen Defekt: Er
+  liegt nicht in einer Lücke des Formats, sondern darin, dass der Server
+  voreingestellt nach einem Format fragte, das dieses Haus für ein einziges Set
+  publiziert.
+
+  Gefunden hat das ein Codex-Review — an einer Abschrift dieses Satzes, nicht
+  am Original. Deshalb hier an der Quelle korrigiert: sonst schreibt ihn der
+  nächste Eintrag wieder ab. Ein `#`-Kommentar ausserhalb jeder Docstring, der
+  SEC-022-Pin-Test belegt die unveränderte Tool-Oberfläche.
 
 ### Changed
 
-- **`serverInfo.name` traegt den Bezeichner des Portfolios** (PR #97):
-  `swiss-cultural-heritage-mcp` statt `swiss_cultural_heritage_mcp`. Die alte
-  Form war die Schreibweise des Python-MODULS; als Server-Bezeichner gibt es
-  sie sonst nirgends — `server.json` fuehrt
-  `io.github.malkreide/swiss-cultural-heritage-mcp`, so heissen PyPI-Paket,
-  Repo und Konsolen-Skript, und der User-Agent meldete es schon immer mit
-  Bindestrichen. Der Name steht jetzt als `__dist__` an einer Stelle und wird
-  von dort bezogen, statt je Verwendungsstelle hingeschrieben zu werden.
+- **⚠️ Neu-Abnahme nötig (SEC-022): Die Beschreibung von
+  `heritage_search_helveticat` hat sich geändert.** Der Tool-Pin
+  (`audits/tool-pins/current.json`) ist neu erzeugt. Inhaltlich beschreiben
+  `query`, `set_spec`, `from_date` und `until_date` jetzt, was sie wirklich
+  tun; insbesondere ist die alte Angabe **falsch gewesen**: `from_date` und
+  `until_date` meinen das **Änderungsdatum des Katalogsatzes**, nicht das
+  Erscheinungsjahr. Ein Buch von 1890 kann letzte Woche bearbeitet worden sein.
+  Wer die Tool-Beschreibungen abgenommen hat, sollte diese eine erneut ansehen.
+  Die übrigen zehn Tool-Definitionen sind unverändert.
 
-  **Fuer Clients, die auf `serverInfo.name` abgleichen, ist das eine
-  Aenderung** — und seit der Aera `2026-07-28` sichtbar in `_meta` JEDER
-  Antwort statt einmal je Verbindung. Der Modulpfad bleibt
-  `swiss_cultural_heritage_mcp`; Python erlaubt keine Bindestriche in
-  Paketnamen, `python -m swiss_cultural_heritage_mcp.server` ist deshalb kein
-  Fehlstand.
+- **`serverInfo.name` heisst jetzt `swiss-cultural-heritage-mcp`.** Vorher
+  `swiss_cultural_heritage_mcp` — die Schreibweise des Python-**Moduls**, die
+  es als Server-Bezeichner sonst nirgends gibt: `server.json` führt
+  `io.github.malkreide/swiss-cultural-heritage-mcp` und als PyPI-Namen
+  `swiss-cultural-heritage-mcp`, das Konsolen-Skript heisst so, das Repo auch,
+  und der User-Agent meldete es schon immer mit Bindestrichen.
 
-- **Doku nachgezogen** (dieser PR): Beide READMEs beschrieben Helveticat
-  weiterhin als reinen OAI-PMH-Zugang mit Dublin Core. Neu nennen sie beide
-  Zugaenge, wann welcher greift, und die Prefix-Messung. Die Aenderung aus
-  PR #97 hatte ihre Doku selbst mitgebracht; die aus #95/#96 nicht.
+  Für Clients sichtbar: Seit der Ära `2026-07-28` steht die Identität in
+  `_meta` **jeder** Antwort. Gemessen landet der Name auf allen sechs
+  Antwortwegen — `tools/list`, `resources/list`, `resources/templates/list`,
+  `prompts/list`, `server/discover` und `initialize`. Der Modulpfad bleibt:
+  `python -m swiss_cultural_heritage_mcp.server` ist kein Fehlstand, sondern
+  die einzige Schreibweise, die Python für Paketnamen zulässt.
 
-### Wiederfreigabe der Tool-Oberflaeche (SEC-022)
+  Der Wert kommt aus `__dist__` und ist kein Literal mehr — vorher standen zwei
+  Schreibweisen desselben Namens an drei Stellen.
 
-Die Beschreibung von `heritage_search_helveticat` hat sich mit PR #96
-geaendert — sie nennt jetzt beide Zugaenge und was der Aufruf auswaehlt. Der
-Pin in `audits/tool-pins/current.json` wurde dort mit neu erzeugt
-(`manifest_sha256` `fc22092d…` → `5cc3f4da…`, Tool-Hash `1924d12d…` →
-`08429dcd…`); 11 Tools vorher wie nachher, kein weiterer Hash bewegt.
+- **Reichhaltigere Felder im JSON-Modus.** `total` trägt bei einer SRU-Suche
+  erstmals eine echte Gesamtzahl (`numberOfRecords`); OAI-PMH nennt keine, dort
+  bleibt das Feld leer. Records aus OAI-PMH führen neu ihre Setzugehörigkeit
+  (`sets`), Records aus SRU zusätzlich die Alma-`mms_id`. Ein Suchbegriff ohne
+  Treffer löst einen gelockerten zweiten Anlauf aus (alle Wörter statt der
+  Wortfolge) und wird dann als `match_type: fuzzy` markiert — dasselbe
+  ARCH-003-Muster wie bei `heritage_search_artists`.
 
-Diese Notiz ist der Teil, der gefehlt hat: `scripts/pin_tools.py` verlangt sie
-ausdruecklich («commit the updated `current.json` together with a CHANGELOG
-note (re-approval prompt) describing what changed and why»), und der Pin ohne
-sie ist eine neue Zahl ohne Begruendung.
+- **Die Quelle nennt sich ohne Protokoll.** `SOURCE_NB.name` lautet
+  «Schweizerische Nationalbibliothek (Helveticat)» statt «… (Helveticat
+  OAI-PMH)»: Die Quelle hat zwei Zugänge, und ein Lizenzhinweis, der einen
+  davon nennt, wäre für die Hälfte der Ergebnisse falsch.
 
-`generated_for_version` steht weiterhin auf `0.6.0` und ist damit korrekt: Das
-Feld nennt die in `pyproject.toml` deklarierte Version zum Zeitpunkt der
-Erzeugung, und die bleibt bis zum naechsten Bump stehen. Es bedeutet also
-NICHT, dass diese Oberflaeche als `0.6.0` ausgeliefert wurde — die
-veroeffentlichte `0.6.0` traegt die alte Beschreibung. Wer den Pin gegen ein
-Release halten will, liest ihn zusammen mit diesem Abschnitt.
+### Added
+
+- **`PROBE_REPORT_helveticat.md`** — der Messbericht, auf dem die Änderungen
+  oben beruhen: Befunde, funktionierende Kombinationen, drei Optionen mit
+  Aufwand, eine Empfehlung und eine ausformulierte Verwerfen-Option. Sein
+  letzter Abschnitt hält fest, was die Probe **nicht** hergibt: ein Zeitpunkt
+  statt einer Reihe, ungeprüfte Nutzungsbedingungen des SRU, keine Aussage
+  über die Herkunft der Profilkarte.
+
+- **Aufzeichnungen, die es vorher nicht geben konnte.** `helveticat_1.xml`
+  (SRU) und `publication_1.xml` (MARCXML) — der Recorder vermerkte bis jetzt,
+  eine Erfolgs-Aufzeichnung gebe es «erst, wenn der Parser MARC21 lesen kann».
+  Die ID des Einzelabrufs stammt aus der Suche daneben und nicht aus dem Code;
+  zwei hingeschriebene IDs könnten nur belegen, dass zwei Stellen dieselbe
+  Annahme teilen. Die OAI-Seite einer Sammlung fehlt weiterhin, jetzt aber aus
+  genanntem Grund: 345 KB, und OAI-PMH kennt keinen Parameter für die
+  Seitengrösse.
+
+- **Der nächtliche Live-Lauf wacht jetzt über die Profilkarte.** Bisher deckte
+  er von der Nationalbibliothek nur `ListSets` ab — das eine NB-Verb, das kein
+  Publishing Profile braucht und als einziges nie kaputt war. Der Lauf wäre
+  durch den ganzen Ausfall grün geblieben. Neu sind vier Fälle: Volltextsuche,
+  Sammlungsabruf, die zwei Sonderfälle `RFN`/`RFN2` und die Brücke von der
+  Suche zum Einzelabruf. Gegen die echte Quelle geprüft, dass sie den
+  ursprünglichen Defekt fangen.
+
+- **`serverInfo.name` wird gemessen.** `tests/test_server_identity.py` prüfte
+  jedes Identitätsfeld — ausser `name`. Genau das eine ungemessene Feld war das
+  eine, das abwich; der dortige Gegenprobe-Nachweis («6 Fälle rot») belegte das
+  nicht und konnte es nicht, weil er die Fälle der gemessenen Felder zählte.
+  Neu sind sechs Draht-Zusicherungen plus eine, die `__dist__` gegen
+  `server.json` bindet. Die zweite ist nicht Zierde: Ohne sie vergleichen die
+  sechs den Wert gegen sich selbst und bleiben grün, wenn man `__dist__`
+  verdreht.
+
+- **`tests/test_helveticat_zugaenge.py`** — 32 Fälle über die Profilkarte, den
+  MARC-Parser, den SRU-Index-Schutz, die Zugangswahl, die gelockerte Suche und
+  die Ausgabe. Gegenprobe über 16 Mutationen gefahren, jede Zusicherung einzeln
+  neutralisiert, jede fällt mit den zugehörigen Tests. Sie hat dabei einen
+  wertlosen Test widerlegt: Der Deckel-Test lief über das Werkzeug, dessen
+  `limit` selbst auf 50 begrenzt ist, und blieb ohne den Deckel grün.
+
+- **`tests/test_helveticat_doku.py`** — hält die READMEs gegen den Code, nicht
+  gegen eine Liste im Test: Ist ein SRU-Endpunkt konfiguriert, muss das Wort in
+  beiden Sprachfassungen stehen; der voreingestellte `metadataPrefix` muss
+  genannt sein, wie er heisst. Anlass war, dass genau diese Doku nach der
+  Umstellung zwei Tage lang den Zustand davor beschrieb, ohne dass ein Gate
+  etwas sagte — die CI prüft Code, nicht Prosa.
+
+  Gegenprobe: READMEs auf den Stand vor der Nachführung → alle vier Fälle rot;
+  nur `SRU` entfernt → nur die zwei SRU-Fälle; nur `marc21` entfernt → nur die
+  zwei Prefix-Fälle.
+
+  Sein Docstring sagt auch, was er **nicht** kann: Er zählt Namen, keine
+  Aussagen. Ob der Text die Zugänge richtig *beschreibt*, hält er nicht — genau
+  daran ist der `INSTRUCTIONS`-Text im September vorbeigelaufen, der alle fünf
+  Quellen nannte und trotzdem das falsche Tool als quellenübergreifenden
+  Einstieg auswies.
 
 ## [0.6.0] - 2026-09-19
 

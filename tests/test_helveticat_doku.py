@@ -47,8 +47,14 @@ def test_readme_nennt_den_sru_zugang(dateiname: str) -> None:
 
 @pytest.mark.parametrize("dateiname", READMES)
 def test_readme_nennt_den_voreingestellten_metadataprefix(dateiname: str) -> None:
-    """Der Prefix, mit dem 66 der 68 Sets tatsaechlich antworten."""
-    assert NB_PREFIX_DEFAULT in lies(dateiname), (
+    """Der Prefix, mit dem 66 der 68 Sets tatsaechlich antworten.
+
+    Ohne Ruecksicht auf Gross-/Kleinschreibung: Auf dem Draht heisst er
+    `marc21`, in Prosa schreibt man das Format `MARC21`. Ein Test, der die
+    Prosafassung fallen laesst, meldet eine Drift, die keine ist — und wird
+    beim naechsten Mal abgeschaltet statt gelesen.
+    """
+    assert NB_PREFIX_DEFAULT.lower() in lies(dateiname).lower(), (
         f"{dateiname} nennt den metadataPrefix {NB_PREFIX_DEFAULT!r} nicht. "
         "Steht dort nur noch oai_dc, beschreibt die Doku den Zustand vor "
         "PR #96 — und genau der lieferte fuer 67 von 68 Sets nichts."
