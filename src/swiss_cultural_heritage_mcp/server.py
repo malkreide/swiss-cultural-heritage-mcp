@@ -43,7 +43,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from . import __homepage__, __summary__, __version__
+from . import __dist__, __homepage__, __summary__, __version__
 
 # Wer fragt hier an? Ohne eigenen User-Agent geht der httpx-Default
 # hinaus und der Betreiber der Datenquelle sieht bloss eine Bibliothek.
@@ -53,7 +53,7 @@ from . import __homepage__, __summary__, __version__
 # installiert, Lauf aus dem Quellbaum), faellt der Verweis weg statt falsch zu
 # werden; `__version__` degradiert an derselben Stelle auf `0.0.0+local`.
 _UA_REFERRER = f" (+{__homepage__})" if __homepage__ else ""
-USER_AGENT = f"swiss-cultural-heritage-mcp/{__version__}{_UA_REFERRER}"
+USER_AGENT = f"{__dist__}/{__version__}{_UA_REFERRER}"
 
 
 # ─────────────────────────── Konfiguration (ARCH-004) ──────────────────────────
@@ -449,8 +449,19 @@ Felder braucht, nimmt `json`.\
 # `_meta` JEDER Antwort — gemessen am 18.09.2026 an `tools/list`,
 # `resources/list`, `prompts/list` und `server/discover`, alle vier mit
 # `"version": ""`.
+#
+# `name` kommt aus `__dist__` und ist kein Literal. Bis zum 20.09.2026 stand
+# hier `swiss_cultural_heritage_mcp` — die Schreibweise des Python-Moduls. Als
+# Server-Bezeichner gibt es sie sonst nirgends: `server.json` fuehrt
+# `io.github.malkreide/swiss-cultural-heritage-mcp` und als PyPI-Namen
+# `swiss-cultural-heritage-mcp`, das Konsolen-Skript heisst so, das Repo auch,
+# und der User-Agent meldete es schon immer mit Bindestrichen. Gemessen am
+# 20.09.2026 landete die abweichende Form auf allen sechs Antwortwegen
+# (`tools/list`, `resources/list`, `resources/templates/list`, `prompts/list`,
+# `server/discover`, `initialize`) — seit der Aera `2026-07-28` also in `_meta`
+# JEDER Antwort, nicht mehr einmal je Verbindung.
 mcp = MCPServer(
-    "swiss_cultural_heritage_mcp",
+    __dist__,
     title=SERVER_TITLE,
     description=__summary__,
     instructions=INSTRUCTIONS,

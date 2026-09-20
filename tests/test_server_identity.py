@@ -1,8 +1,9 @@
 """Was dieser Server ueber sich selbst sagt — gemessen auf beiden Spec-Aeren.
 
-`MCPServer` nimmt `version`, `title`, `description`, `website_url` und
-`instructions` entgegen und setzt fuer nichts davon etwas Eigenes ein. Das
-steht so im SDK (`mcp/server/lowlevel/server.py`, `Server.server_info`):
+`MCPServer` nimmt den Bezeichner als erstes Argument und dazu `version`,
+`title`, `description`, `website_url` und `instructions`; fuer nichts davon
+setzt es etwas Eigenes ein. Das steht so im SDK
+(`mcp/server/lowlevel/server.py`, `Server.server_info`):
 
     An unversioned server reports an empty `version`; the SDK never
     substitutes its own.
@@ -41,6 +42,25 @@ Sechs ist die erwartete Zahl und nicht irgendeine: fuenf auflistende Methoden
 der modernen Aera plus `initialize`. `instructions` steht nur auf zweien davon
 (`server/discover` und `initialize`) — deshalb dort zwei. Keine Zusicherung
 blieb bei entfernter Implementierung gruen.
+
+Die Aufzaehlung darueber hatte ein Loch, und es war das teure: `name` fehlte.
+Jedes Identitaetsfeld ausser diesem einen war gemessen — und genau dieses eine
+wich ab. Bis zum 20.09.2026 meldete der Server `swiss_cultural_heritage_mcp`,
+die Schreibweise des Python-Moduls, die es als Server-Bezeichner sonst
+nirgends gibt. «Sechs Faelle rot» belegte das nicht und konnte es nicht: Die
+Zahl zaehlte die Faelle der gemessenen Felder.
+
+Gegenprobe der Nachtraege (20.09.2026), am selben Stack:
+
+    __dist__ auf die Unterstrich-Form → 1 Fall rot
+    MCPServer wieder mit Literal      → 6 Faelle rot
+    User-Agent wieder mit Literal     → 1 Fall rot
+
+Dass die erste Mutation nur EINEN Fall faellt, ist kein Mangel, sondern der
+Grund fuer `test_der_bezeichner_traegt_die_schreibweise_des_portfolios`: Die
+sechs Draht-Zusicherungen vergleichen gegen `__dist__` und messen den Wert
+dann gegen sich selbst — sie blieben gruen. Gefangen wird der Fall allein
+dadurch, dass `__dist__` zusaetzlich an `server.json` gebunden ist.
 """
 
 from __future__ import annotations
@@ -55,7 +75,7 @@ import httpx
 import pytest
 from mcp_types import SERVER_INFO_META_KEY
 
-from swiss_cultural_heritage_mcp import __homepage__, __summary__, __version__
+from swiss_cultural_heritage_mcp import __dist__, __homepage__, __summary__, __version__
 from swiss_cultural_heritage_mcp import server as srv
 from swiss_cultural_heritage_mcp.server import build_http_app
 
@@ -183,6 +203,52 @@ async def test_jede_moderne_antwort_traegt_die_ausgelieferte_version(methode: st
 
 
 @pytest.mark.parametrize("methode", LISTENDE_METHODEN)
+async def test_jede_moderne_antwort_traegt_den_bezeichner_des_portfolios(methode: str) -> None:
+    """Das Feld, das hier am laengsten ungeprueft war — und deshalb abwich.
+
+    Bis zum 20.09.2026 meldete dieser Server `swiss_cultural_heritage_mcp`: die
+    Schreibweise des Python-Moduls. Als Server-Bezeichner gibt es sie sonst
+    nirgends; `server.json`, der PyPI-Name, das Konsolen-Skript, das Repo und
+    der User-Agent fuehren alle die Bindestrich-Form.
+
+    Die Datei hier pruefte `version`, `title`, `description`, `websiteUrl` und
+    `instructions` — jedes Identitaetsfeld ausser `name`. Genau das eine, das
+    niemand mass, war das eine, das abwich. Dass die Gegenprobe oben «sechs
+    Faelle rot» meldete, sagte darueber nichts: Sie zaehlte die Faelle der
+    gemessenen Felder.
+
+    Verglichen wird gegen `__dist__` und nicht gegen ein Literal, aus demselben
+    Grund wie bei der Version: Zwei Schreibweisen desselben Namens laufen
+    auseinander, sobald eine gepflegt wird.
+    """
+    stempel = (await _modern(methode)).get("_meta", {}).get(SERVER_INFO_META_KEY, {})
+    assert stempel.get("name") == __dist__, (
+        f"{methode} stempelt name={stempel.get('name')!r}, erwartet {__dist__!r}."
+    )
+
+
+def test_der_bezeichner_traegt_die_schreibweise_des_portfolios() -> None:
+    """Und `__dist__` selbst ist nicht frei waehlbar.
+
+    Ohne diese Zeile koennte jemand `__dist__` auf die Unterstrich-Form setzen
+    und der Test darueber bliebe gruen — gegen sich selbst gemessen. Gebunden
+    wird deshalb an die zwei Stellen ausserhalb des Pakets, die denselben
+    String fuehren: den PyPI-Namen in `server.json` und den Verzeichniseintrag.
+    """
+    manifest = json.loads((_ROOT / "server.json").read_text(encoding="utf-8"))
+    assert manifest["packages"][0]["identifier"] == __dist__, (
+        "der PyPI-Name in server.json weicht vom Server-Bezeichner ab"
+    )
+    assert manifest["name"].rsplit("/", 1)[-1] == __dist__, (
+        f"server.json fuehrt {manifest['name']!r}; die letzte Stufe muss der "
+        f"Server-Bezeichner {__dist__!r} sein"
+    )
+    assert "_" not in __dist__, (
+        "Unterstriche sind die Schreibweise des Python-Moduls, nicht die des Server-Bezeichners"
+    )
+
+
+@pytest.mark.parametrize("methode", LISTENDE_METHODEN)
 @pytest.mark.parametrize(
     ("feld", "erwartet"),
     [
@@ -239,6 +305,7 @@ async def test_initialize_meldet_dieselbe_identitaet() -> None:
     """
     ergebnis = await _initialize()
     info = ergebnis["serverInfo"]
+    assert info["name"] == __dist__
     assert info["version"] == _pyproject_version()
     assert info["title"] == srv.SERVER_TITLE
     assert info["description"] == __summary__
@@ -263,7 +330,7 @@ def test_die_identitaet_kommt_aus_den_paket_metadaten() -> None:
         "der User-Agent nennt die Projekt-URL nicht mehr — Betreiber der "
         "Datenquellen sehen dann keinen Verweis auf das Projekt."
     )
-    assert srv.USER_AGENT.startswith(f"swiss-cultural-heritage-mcp/{__version__}")
+    assert srv.USER_AGENT.startswith(f"{__dist__}/{__version__}")
 
 
 # ─────────────────── Die Tool-Namen IN den INSTRUCTIONS ────────────────────────
