@@ -2227,7 +2227,18 @@ class PublicationDetailInput(BaseModel):
 )
 @mask_unexpected_errors
 async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnvelope | str:
-    """Ruft vollständige Dublin-Core-Metadaten einer Publikation der NB ab.
+    """Ruft die Metadaten einer Publikation der NB ab — ausgewählte MARC21-Felder.
+
+    Die Quelle liefert MARCXML. Dieses Werkzeug bildet daraus eine **Auswahl**
+    von Feldern auf Dublin-Core-ähnliche Schlüssel ab: Titel, Urheber·innen,
+    Mitwirkende, Verlag, Erscheinungsjahr, Typ, Umfang, Sprache, Schlagwörter,
+    Beschreibung, Rechte, Reihe und Identifier.
+
+    Was NICHT enthalten ist: alles ausserhalb dieser Auswahl — Kontrollfelder,
+    die Ausgabebezeichnung (MARC 250), Erscheinungsverlauf, lokale Felder.
+    «Vollständige Metadaten» wäre also falsch, und die Antwort darf nicht als
+    der ganze Katalogsatz gelesen werden. Wer den braucht, nimmt den Permalink
+    aus `identifier` und geht an die Quelle.
 
     Args:
         params (PublicationDetailInput):
@@ -2235,7 +2246,8 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
             - response_format: 'markdown' oder 'json'
 
     Returns:
-        str: Vollständige DC-Metadaten (Titel, Autor, Verlag, Sprache, Rechte, etc.).
+        str: Ausgewählte, auf DC-Schlüssel normalisierte Felder — nicht der
+            vollständige Katalogsatz.
     """
     try:
         resp = await _http_get(

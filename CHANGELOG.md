@@ -79,12 +79,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Markdown-Ansicht schrieb `['[2010]', '2010']` — die Python-Repräsentation der
   Liste — als Erscheinungsjahr in die Antwort.
 
-- **Die deutsche Fassung des README beschrieb `heritage_get_publication` noch
-  als «Vollständige Dublin-Core-Metadaten».** Seit der Umstellung liefert
-  `GetRecord` MARC21; die englische Fassung wurde korrigiert, die deutsche
-  nicht. Gefunden hat das der neue Doku-Test unten, beim ersten Lauf gegen
-  `main` — nicht beim Lesen.
-
 - **Ein Kommentar in `server.py` behauptete etwas, das die Tabelle direkt
   darüber widerlegt.** Dort stand, `oai_dc` sei «für 67 von 68 Sets das einzige
   Format, das nicht geht» — `mods` und `etdms` antworten für *gar kein* Set,
@@ -100,15 +94,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **⚠️ Neu-Abnahme nötig (SEC-022): Die Beschreibung von
-  `heritage_search_helveticat` hat sich geändert.** Der Tool-Pin
-  (`audits/tool-pins/current.json`) ist neu erzeugt. Inhaltlich beschreiben
-  `query`, `set_spec`, `from_date` und `until_date` jetzt, was sie wirklich
-  tun; insbesondere ist die alte Angabe **falsch gewesen**: `from_date` und
-  `until_date` meinen das **Änderungsdatum des Katalogsatzes**, nicht das
-  Erscheinungsjahr. Ein Buch von 1890 kann letzte Woche bearbeitet worden sein.
-  Wer die Tool-Beschreibungen abgenommen hat, sollte diese eine erneut ansehen.
-  Die übrigen zehn Tool-Definitionen sind unverändert.
+- **⚠️ Neu-Abnahme nötig (SEC-022): Zwei Tool-Beschreibungen haben sich
+  geändert.** Der Tool-Pin (`audits/tool-pins/current.json`) ist neu erzeugt.
+  Die übrigen neun Tool-Definitionen sind unverändert; beide Änderungen
+  korrigieren eine Beschreibung, die **falsch** war, nicht bloss knapp.
+
+  `heritage_search_helveticat` — `query`, `set_spec`, `from_date` und
+  `until_date` beschreiben jetzt, was sie wirklich tun. Insbesondere meinen
+  `from_date`/`until_date` das **Änderungsdatum des Katalogsatzes**, nicht das
+  Erscheinungsjahr; ein Buch von 1890 kann letzte Woche bearbeitet worden sein.
+
+  `heritage_get_publication` — die Beschreibung versprach «vollständige
+  Dublin-Core-Metadaten». Beides stimmte nicht: Die Quelle liefert MARCXML, und
+  das Werkzeug bildet daraus eine **Auswahl** von Feldern ab. Was ausserhalb
+  der Abbildung liegt — Kontrollfelder, die Ausgabebezeichnung (MARC 250),
+  Erscheinungsverlauf, lokale Felder — fällt weg. Ein Modell, das «vollständig»
+  liest, behandelt einen unvollständigen Satz als massgeblich. Die Beschreibung
+  nennt jetzt die enthaltenen Felder, sagt ausdrücklich, was fehlt, und
+  verweist für den ganzen Katalogsatz auf den Permalink.
 
 - **`serverInfo.name` heisst jetzt `swiss-cultural-heritage-mcp`.** Vorher
   `swiss_cultural_heritage_mcp` — die Schreibweise des Python-**Moduls**, die

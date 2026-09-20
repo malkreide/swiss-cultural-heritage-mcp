@@ -182,7 +182,7 @@ For container deployments (Docker / Kubernetes / Cloud Run): the repository ship
 |------|-------------|
 | `heritage_search_helveticat` | Full-text search over the whole holdings (SRU), or browse one collection (OAI-PMH) |
 | `heritage_list_nb_collections` | List the 68 available OAI-PMH sets |
-| `heritage_get_publication` | Full metadata for one publication (MARC21 via OAI-PMH `GetRecord`) |
+| `heritage_get_publication` | Selected MARC21 fields for one publication, normalised to Dublin-Core-style keys (OAI-PMH `GetRecord`) — not the complete catalogue record |
 
 ### Cross-Source
 
@@ -288,9 +288,9 @@ swiss-cultural-heritage-mcp/
 
 - **Read-only:** All tools perform HTTP GET requests only — no data is written, modified, or deleted.
 - **No personal data:** The APIs return institutional records (artworks, publications, artists). No personally identifiable information (PII) is processed or stored by this server.
-- **Rate limits:** Neither opendata.swiss nor the National Library endpoints document a rate limit, and none was observed in roughly 400 probe requests on 2026-09-20 — which is not the same as there being none. Use `limit` parameters conservatively. The server enforces a 30s timeout per request.
+- **Rate limits:** No throttling was observed in roughly 380 probe requests on 2026-09-20. That says nothing about the published terms: the National Library's SRU and OAI-PMH terms of use have **not** been checked by this project (see `PROBE_REPORT_helveticat.md`). Use `limit` parameters conservatively. The server enforces a 30s timeout per request.
 - **Data freshness:** Records reflect the upstream source at query time. No caching is performed by this server.
-- **Terms of service:** Data is subject to the ToS of each source — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/terms-of-use), [Nationalbibliothek](https://www.nb.admin.ch/). All data is published under open licenses (CC0 / CC BY).
+- **Terms of service:** Data is subject to the ToS of each source — [SIK-ISEA](https://www.sik-isea.ch), [opendata.swiss](https://opendata.swiss/terms-of-use), [Nationalbibliothek](https://www.nb.admin.ch/). The opendata.swiss datasets carry open licences (CC0 / CC BY). For the National Library this project has **not** verified the terms of either endpoint; each record's own rights statement governs, and the attribution footer of every response names it. Check before redistributing.
 - **No guarantees:** This server is a community project, not affiliated with SIK-ISEA, SNM, or NB. Availability depends on upstream APIs.
 
 ---
