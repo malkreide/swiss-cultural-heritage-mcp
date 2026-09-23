@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Das Codex-Gate ist entfernt.** Weg sind `.github/workflows/codex-gate.yml`,
+  `scripts/classify_codex_review.py` und `tests/test_classify_codex_review.py`;
+  dazu die Codex-Zeile samt Erlaeuterung im PR-Template, der Abschnitt
+  «Codex review gate» in beiden READMEs und die Gate-Abschnitte in `CLAUDE.md`.
+
+  **Die Branch-Protection-Regel muss von Hand weg,** falls hier eine
+  eingetragen ist: Diese Einstellung sperrt der Agent-Proxy mit HTTP 403 und
+  ist von hier aus weder les- noch aenderbar. Bleibt sie stehen, waehrend der
+  Workflow weg ist, verlangt der Default-Branch einen Check, den nichts mehr
+  meldet.
+
+  Stehen bleiben die Herkunftsangaben zu Befunden in `tests/`, die
+  Branch-Namen der Zwei-Agenten-Anekdote und die bisherigen Eintraege hier.
+  In `PROBE_REPORT_helveticat.md` ist der Verweis auf den entfernten
+  `CLAUDE.md`-Abschnitt umformuliert statt geloescht — die Lehre («den Text
+  lesen, nicht den Code») traegt ohne ihn.
+
 ### Fixed
 
 - **Die Nationalbibliothek lieferte nichts — und die Quelle war nie zu.** Zwei

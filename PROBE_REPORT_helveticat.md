@@ -124,9 +124,9 @@ Drei Dinge daran sind wichtig:
 
 **Der `noRecordsMatch`-Code trägt zwei gegensätzliche Bedeutungen.** Einmal
 «dein Fenster ist leer» — eine echte Auskunft. Einmal «diese Kombination
-gibt es nicht» — eine Absage. Nur der Text trennt sie. Das ist exakt die
-Konstellation, vor der `CLAUDE.md` beim Codex-Kommentarzähler warnt: *den
-Text lesen, nicht den Code*.
+gibt es nicht» — eine Absage. Nur der Text trennt sie. Die Lehre ist
+dieselbe wie bei jedem mehrdeutigen Statuscode: *den Text lesen, nicht
+den Code*.
 
 **`GetRecord` mit `oai_dc` lügt.** Es meldet `idDoesNotExist` für einen
 Datensatz, den dasselbe Repositorium eine Sekunde vorher mit `marc21`

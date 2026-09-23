@@ -340,31 +340,6 @@ against the installed SDK — including the handshake ceiling, measured against 
 live `initialize` through the assembled ASGI stack. A Dependabot bump of `mcp`
 can no longer move either number without this table going stale unnoticed.
 
-### Codex review gate
-
-The `codex-gate` check surfaces Codex's verdict on a commit as a real check
-run. The reason: auto-merge waits on *required status checks*, and Codex
-produces none — a finding is a review object, a clean run an issue comment.
-Without this job, auto-merge merges as soon as CI is green and outruns the
-review.
-
-| Result | Meaning | Check |
-|---|---|---|
-| `reviewed` | Review object for the head commit; findings exist | green |
-| `clear` | Status table reports `Completed` with no review object, or the "no findings" message | green |
-| `quota` | Codex quota exhausted — **nothing** was reviewed | red |
-| `environment` | No Codex environment for this repo (created per repo) | red |
-| `unknown` | A Codex message matching none of the four cases — quoted verbatim | red |
-| `pending` | No verdict yet; red after the timeout | red |
-
-The classification lives in
-[`scripts/classify_codex_review.py`](scripts/classify_codex_review.py) next to
-its test, not in a `run:` block.
-
-**The job only blocks once it is a required check on `main`** (name:
-`codex-gate`). And it proves only that Codex looked at this commit — whether a
-reported finding was addressed is not something it checks.
-
 ### Server identity
 
 | Field | Value | Source |
