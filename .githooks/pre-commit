@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# pre-commit-Hook: faehrt `scripts/check_version_sync.py` gegen den Stand, der
+# committet werden wird -- nicht gegen den Arbeitsbaum.
+#
+# GRUND
+# -----
+# Die Version steht in `pyproject.toml` und wird an vier Stellen wiederholt,
+# darunter `generated_for_version` im Tool-Pin. Beim Bump auf 0.5.0 blieb der
+# Pin auf 0.4.0 stehen; rot wurde es erst in der CI, auf Python 3.11, in einem
+# Test, dessen Name den Zusammenhang nicht nennt. Der Handgriff daneben
+# (`PYTHONPATH=src python scripts/pin_tools.py`) kostet eine Sekunde -- man
+# muss nur dran denken. Genau das uebernimmt dieser Hook.
+#
+# Er dupliziert dafuer keine Pruefung: Er ruft das vorhandene CI-Gate auf.
+# Damit koennen Hook und CI nicht auseinanderlaufen.
+#
+# WARUM DER INDEX UND NICHT DER ARBEITSBAUM
+# -----------------------------------------
+# Ein Hook, der die Dateien im Arbeitsbaum liest, prueft etwas anderes als das,
+# was gleich entsteht. Nachgemessen am 28.10.2026 in einem Wegwerf-Repo: steht
+# `A` im Index und `B` im Arbeitsbaum, laeuft ein Arbeitsbaum-Check gegen `B`,
+# und `git commit` legt `A` ab. Der gefaehrliche Fall ist genau der hier
+# gemeinte -- den Pin regeneriert, aber nicht gestaged: Arbeitsbaum gruen,
+# Commit kaputt, CI rot. Dieselbe Klasse wie der Test, der gruen bleibt, wenn
+# man die Implementierung entfernt.
+#
+# Quelle ist darum `git write-tree`: der Index als Baum. Auch bei
+# `git commit -a` ist der Index bereits aktualisiert, wenn dieser Hook laeuft
+# (ebenfalls nachgemessen) -- es gibt also keinen Fall, in dem der Index die
+# falsche Quelle waere.
+#
+# WAS ER NICHT TUT
+# ----------------
+# Kein ruff, kein pytest. Beide brauchen die Dev-Installation und Sekunden
+# statt Millisekunden; ein Hook, der bei jedem Commit wartet oder ohne
+# `pip install -e ".[dev]"` meckert, wird abgeschaltet und schuetzt danach gar
+# nichts. `check_version_sync.py` kommt mit der Standardbibliothek aus.
+#
+# Er blockiert nur bei einem ECHTEN Befund. Kann er nicht messen -- kein
+# python, nicht aufloesbarer Index, Gate nicht im Baum --, laesst er den Commit
+# durch und sagt in einer Zeile, dass er nichts geprueft hat. Die CI haelt die
+# Linie ohnehin; ein Hook, der aus eigener Fehlfunktion blockiert, kostet mehr
+# als er bringt.
+#
+# UMGEHEN:   git commit --no-verify     (oder SKIP_VERSION_SYNC_HOOK=1)
+# INSTALL:   git config core.hooksPath .githooks
+
+readonly GATE="scripts/check_version_sync.py"
+readonly HINWEIS="Hinweis: dieser Hook laesst sich mit \`git commit --no-verify\` umgehen."
+
+# Wird in `pruefe` gesetzt und vom trap geraeumt. Ohne das Raeumen bleibt bei
+# jedem Commit ein Verzeichnis mit einem entpackten Repo-Stand liegen.
+arbeitsdir=""
+aufraeumen() {
+    [ -n "$arbeitsdir" ] && rm -rf -- "$arbeitsdir"
+}
+trap aufraeumen EXIT
+
+# Ohne Pruefung durch, mit einer Zeile Begruendung auf stderr. Ein stilles
+# Ueberspringen waere die schlechtere Haelfte beider Welten: nicht geprueft,
+# und niemand weiss es.
+uebersprungen() {
+    printf 'Versions-Sync nicht geprueft: %s\n' "$1" >&2
+    return 0
+}
+
+python_befehl() {
+    local kandidat
+    for kandidat in python3 python; do
+        if command -v "$kandidat" > /dev/null 2>&1; then
+            printf '%s\n' "$kandidat"
+            return 0
+        fi
+    done
+    return 1
+}
+
+pruefe() {
+    [ "${SKIP_VERSION_SYNC_HOOK:-}" = "1" ] && return 0
+
+    command -v git > /dev/null 2>&1 || return 0
+    git rev-parse --git-dir > /dev/null 2>&1 || return 0
+
+    local py
+    py="$(python_befehl)" || {
+        uebersprungen "kein python3/python im PATH"
+        return 0
+    }
+
+    # Der Index als Baum. Scheitert bei einem noch nicht aufgeloesten Merge --
+    # dort gibt es keinen eindeutigen Stand zu pruefen.
+    local baum
+    baum="$(git write-tree 2> /dev/null)" || {
+        uebersprungen "Index nicht als Baum aufloesbar (unaufgeloester Merge?)"
+        return 0
+    }
+
+    arbeitsdir="$(mktemp -d 2> /dev/null)" || {
+        uebersprungen "kein temporaeres Verzeichnis verfuegbar"
+        return 0
+    }
+    mkdir -p "$arbeitsdir/baum" || return 0
+
+    # Zwei Schritte statt `git archive | tar -x`: In einer Pipe ohne
+    # `pipefail` ist $? der Status von tar, und ein gescheitertes
+    # `git archive` ginge als Erfolg durch -- der Check liefe dann gegen ein
+    # leeres Verzeichnis und meldete nichts.
+    git archive --format=tar -o "$arbeitsdir/baum.tar" "$baum" 2> /dev/null || {
+        uebersprungen "Index liess sich nicht ausschreiben"
+        return 0
+    }
+    tar -xf "$arbeitsdir/baum.tar" -C "$arbeitsdir/baum" 2> /dev/null || {
+        uebersprungen "Index liess sich nicht entpacken"
+        return 0
+    }
+
+    # Das Gate kann im gestagten Stand fehlen -- etwa im Commit, der es
+    # loescht. Dann gibt es nichts zu fahren, und das ist kein Befund.
+    [ -f "$arbeitsdir/baum/$GATE" ] || {
+        uebersprungen "$GATE ist im gestagten Stand nicht vorhanden"
+        return 0
+    }
+
+    local ausgabe status
+    ausgabe="$("$py" "$arbeitsdir/baum/$GATE" 2>&1)"
+    status=$?
+    if [ "$status" -ne 0 ]; then
+        # Erst jetzt reden. Eine Bestaetigung bei jedem Commit wird nach der
+        # dritten Woche nicht mehr gelesen -- dieselbe Begruendung wie beim
+        # Schweigen des SessionStart-Hooks bei 0 fehlenden Commits.
+        printf '%s\n\n%s\n' "$ausgabe" "$HINWEIS" >&2
+    fi
+    return "$status"
+}
+
+pruefe

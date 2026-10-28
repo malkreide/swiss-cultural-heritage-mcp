@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **pre-commit-Hook gegen den unvollstaendigen Versions-Bump**
+  (`.githooks/pre-commit`). Einmal pro Klon aktivieren:
+  `git config core.hooksPath .githooks`.
+
+  Anlass war der Bump auf 0.5.0: Die Version war gehoben, der Tool-Pin stand
+  noch auf 0.4.0, und rot wurde das erst in der CI auf Python 3.11 — in
+  `TestToolPins::test_pin_records_the_declared_version`, einem Namen, der den
+  Zusammenhang nicht nennt.
+
+  Der Hook bildet keine Pruefung nach, er ruft das vorhandene Gate
+  `scripts/check_version_sync.py` auf; Hook und CI koennen damit nicht
+  auseinanderlaufen. Er braucht keine Dev-Installation, laeuft in rund 140 ms,
+  schweigt bei Erfolg und laesst sich mit `git commit --no-verify` oder
+  `SKIP_VERSION_SYNC_HOOK=1` umgehen.
+
+  Geprueft wird der **Index**, nicht der Arbeitsbaum. Nachgemessen: Steht `A`
+  im Index und `B` im Arbeitsbaum, legt `git commit` `A` ab — ein
+  Arbeitsbaum-Check ginge genau beim regenerierten, aber nicht gestagten Pin
+  gruen durch. Bei `git commit -a` ist der Index bereits aktualisiert, wenn der
+  Hook laeuft, also gibt es keinen Fall, in dem der Index die falsche Quelle
+  waere.
+
+  Aus eigener Fehlfunktion blockiert er nicht: kein python, unaufgeloester
+  Merge oder Gate nicht im gestagten Stand → Commit durch, plus eine Zeile auf
+  stderr, dass nichts geprueft wurde.
+
+- **`scripts/check_version_sync.py` haelt jetzt auch `generated_for_version`**
+  im Tool-Pin (`audits/tool-pins/current.json`). Vorher hielt das Feld nur
+  `tests/test_server.py::TestToolPins::test_pin_records_the_declared_version`
+  — dort gehoert es auch hin, weil derselbe Test die *lebenden*
+  Tool-Definitionen gegen die Hashes stellt und dafuer die
+  Projekt-Installation braucht. Genau deshalb konnte es aber nicht ueberall
+  greifen: Der Hook faehrt ohne installiertes Paket.
+
+  Die Meldung ist absichtlich eine eigene und nicht eine Zeile in der
+  Drift-Liste: Den Pin traegt man **nicht** von Hand nach. Die Hashes daneben
+  beschreiben die freigegebene Tool-Oberflaeche; ein nachgeschriebenes Feld
+  behauptete eine Freigabe fuer eine Version, gegen die nie geprueft wurde.
+  Das pauschale «Alle Stellen im selben Commit bumpen» fuehrte also genau in
+  diesen Fehler.
+
+  Die Erfolgsausgabe nennt jede geprüfte Stelle. Ohne das sieht ein gruener
+  Lauf genauso aus, wenn eine Pruefung stillschweigend herausfaellt.
+
 ### Removed
 
 - **Das Codex-Gate ist entfernt.** Weg sind `.github/workflows/codex-gate.yml`,

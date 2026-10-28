@@ -332,6 +332,29 @@ aber nichts: Nach `pip install -e ".[dev]"` importiert
 Wer einen Importfehler über den Env-Eintrag erklärt, sucht an der falschen
 Stelle; es fehlt dann der Install.
 
+**Das letzte Gate läuft auch als pre-commit-Hook.** Einmal pro Klon
+`git config core.hooksPath .githooks`; dann lehnt `.githooks/pre-commit` einen
+Commit ab, in dem die Version und eine Stelle, die sie wiederholt,
+auseinanderstehen. Er ruft dasselbe `scripts/check_version_sync.py` auf, statt
+dessen Logik nachzubilden — Hook und CI können nicht auseinanderlaufen.
+Details: `.githooks/README.md`.
+
+Zwei Eigenschaften, die man beim Ändern nicht umkehren darf. Er prüft den
+**Index**, nicht den Arbeitsbaum: Steht `A` im Index und `B` im Arbeitsbaum,
+legt `git commit` `A` ab (nachgemessen am 28.10.2026) — ein Arbeitsbaum-Check
+ginge genau beim regenerierten, aber nicht gestagten Pin grün durch. Und er
+blockiert **nur bei einem echten Befund**: kein python, unaufgelöster Merge,
+Gate nicht im gestagten Stand → Commit durch, plus eine Zeile auf stderr, dass
+nichts geprüft wurde. Die CI hält die Linie ohnehin.
+
+`generated_for_version` im Tool-Pin ist seit dem 28.10.2026 Teil dieses
+Gates — vorher hielt es nur `tests/test_server.py::TestToolPins`, das die
+Projekt-Installation braucht. Den Pin **nicht** von Hand nachtragen: Die
+Hashes daneben beschreiben die freigegebene Tool-Oberfläche, ein
+nachgeschriebenes Feld behauptete eine Freigabe, die es nie gab. Im selben
+Commit wie den Bump neu erzeugen mit
+`PYTHONPATH=src python scripts/pin_tools.py`.
+
 **Live-Tests laufen geplant.** `.github/workflows/nightly-live.yml` fährt
 `PYTHONPATH=src pytest tests/ -m live` täglich um 04:17 UTC (cron
 `17 4 * * *`) und öffnet bei Upstream-Fehlern ein Issue mit Label

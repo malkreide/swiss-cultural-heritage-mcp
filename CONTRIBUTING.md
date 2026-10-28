@@ -20,10 +20,41 @@ Please include:
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Install the dev dependencies: `pip install -e ".[dev]"` — this is also what pins ruff to the version CI uses (see [Code Style](#code-style))
-4. Make your changes and add tests
-5. Ensure all tests pass: `PYTHONPATH=src pytest tests/ -m "not live"`
-6. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `feat: add new tool`
-7. Push and open a Pull Request against `main`
+4. Enable the versioned git hooks: `git config core.hooksPath .githooks` (see [Git hooks](#git-hooks))
+5. Make your changes and add tests
+6. Ensure all tests pass: `PYTHONPATH=src pytest tests/ -m "not live"`
+7. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `feat: add new tool`
+8. Push and open a Pull Request against `main`
+
+---
+
+## Git hooks
+
+```bash
+git config core.hooksPath .githooks
+```
+
+One command per clone — `.git/hooks/` is not versioned, so git does not find
+these on its own.
+
+`pre-commit` runs `scripts/check_version_sync.py` against the **staged** tree
+and rejects the commit when the version in `pyproject.toml` and a place that
+repeats it drift apart: `server.json`, the README version badges, or
+`generated_for_version` in `audits/tool-pins/current.json`.
+
+The tool pin is the one you cannot fix by hand. The hashes next to that field
+describe the approved tool surface, so regenerate it in the same commit as the
+version bump:
+
+```bash
+PYTHONPATH=src python scripts/pin_tools.py
+```
+
+The hook is silent on success, takes about 140 ms, needs no dev install, and
+can be bypassed with `git commit --no-verify`. It runs the existing CI gate
+rather than reimplementing it, so hook and CI cannot drift.
+[`.githooks/README.md`](.githooks/README.md) has the details — including why it
+reads the index and not the working tree.
 
 ---
 
