@@ -8,11 +8,28 @@ Stellen, die dieselbe Nummer wiederholen:
   - `server.json` (MCP-Registry-Manifest): `version` und jedes
     `packages[*].version`
   - die Versions-Badges der READMEs
+  - `generated_for_version` im Tool-Pin (`audits/tool-pins/current.json`)
 
 Hintergrund: `publish.yml` synchronisiert `server.json` beim Veröffentlichen
 aus dem Tag-Namen — die *committete* Version wirkt also nie auf das
 publizierte Artefakt und fällt deshalb nicht auf, wenn sie veraltet. Die
 README-Badges erzwingt überhaupt nichts.
+
+Der Tool-Pin kam am 28.10.2026 dazu, und er bekommt eine eigene Meldung statt
+einer Zeile in der Liste oben. Gehalten wurde er bis dahin nur von
+`tests/test_server.py::TestToolPins::test_pin_records_the_declared_version` —
+das braucht die Projekt-Installation, weil es daneben die *lebenden*
+Tool-Definitionen gegen die Hashes stellt. Dieser Check braucht sie nicht und
+greift damit auch dort, wo das Paket nicht installiert ist: im pre-commit-Hook
+(`.githooks/pre-commit`). Am 0.5.0-Bump war genau das der Fall — die Version
+war gehoben, der Pin stand noch auf 0.4.0, und rot wurde es erst in der CI.
+
+Die eigene Meldung ist kein Stil, sondern der Unterschied in der Abhilfe:
+`server.json` und die Badges schreibt man von Hand nach, den Pin **nicht**.
+Die Hashes neben dem Feld beschreiben die freigegebene Tool-Oberfläche; ein
+von Hand nachgetragenes `generated_for_version` behauptete eine Freigabe für
+eine Version, gegen die nie geprüft wurde. Ein pauschales «alle Stellen im
+selben Commit bumpen» führte also genau in diesen Fehler.
 
 Zweiter Teil: in `src/` darf keine Versionsnummer stehen. Der Laufzeit-Wert
 kommt aus den Paket-Metadaten (`importlib.metadata.version()`); ein wieder
@@ -43,6 +60,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = ROOT / "pyproject.toml"
 SERVER_JSON = ROOT / "server.json"
 SRC = ROOT / "src"
+TOOL_PIN = ROOT / "audits" / "tool-pins" / "current.json"
 
 # Shields.io-Badge: ![Version](https://img.shields.io/badge/version-X.Y.Z-blue)
 _BADGE = re.compile(r"img\.shields\.io/badge/[Vv]ersion-([^-\s)]+)-")
@@ -145,6 +163,36 @@ def collect_declared(expected: str) -> list[tuple[str, str]]:
     return found
 
 
+def tool_pin_drift(expected: str) -> str | None:
+    """Beschreibt, wie der Tool-Pin von `expected` abweicht — oder None.
+
+    Drei Befunde fallen zusammen, weil sie dieselbe Folge haben: Der Pin sagt
+    nicht, zu welchem Release die freigegebene Tool-Oberfläche gehört.
+
+    Eine **fehlende** Datei ist bewusst keiner davon, gleiche Regel wie bei
+    `server.json` weiter oben: Dieser Check misst Übereinstimmung, nicht
+    Vollständigkeit. Dass es den Pin überhaupt gibt, hält
+    `tests/test_server.py::TestToolPins` — und das muss es auch, denn dort
+    liegt die Zusicherung über die Hashes selbst.
+    """
+    if not TOOL_PIN.exists():
+        return None
+    try:
+        recorded = json.loads(TOOL_PIN.read_text(encoding="utf-8")).get("generated_for_version")
+    except (OSError, ValueError) as fehler:
+        # `json.JSONDecodeError` ist eine `ValueError`-Unterklasse; der weitere
+        # Fang nimmt auch einen Pin mit, der kein Objekt ist (dann hat er kein
+        # `.get` -> AttributeError). Den braucht es hier mit:
+        return f"ist nicht als Pin lesbar ({fehler})"
+    except AttributeError:
+        return "enthält kein JSON-Objekt"
+    if recorded is None:
+        return "führt kein Feld `generated_for_version`"
+    if recorded != expected:
+        return f"ist für {recorded!r} erzeugt"
+    return None
+
+
 def read_project() -> dict:
     """`[project]`-Tabelle aus pyproject.toml.
 
@@ -195,6 +243,24 @@ def main() -> None:
         )
         sys.exit(1)
 
+    drift = tool_pin_drift(version)
+    if drift is not None:
+        stelle = TOOL_PIN.relative_to(ROOT)
+        print(
+            f"TOOL-PIN: {stelle} {drift}, pyproject.toml steht auf {version!r}.",
+            file=sys.stderr,
+        )
+        print(
+            "\nDas Feld NICHT von Hand nachtragen: Die Hashes daneben "
+            "beschreiben die freigegebene Tool-Oberfläche, und ein "
+            "nachgeschriebenes `generated_for_version` behauptete eine "
+            "Freigabe für eine Version, gegen die nie geprüft wurde. Im "
+            "selben Commit wie den Bump neu erzeugen:\n"
+            "    PYTHONPATH=src python scripts/pin_tools.py",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     hardcoded = find_hardcoded(dist)
     if hardcoded:
         print("HARDCODED: Versionsnummer in src/ gefunden:", file=sys.stderr)
@@ -208,8 +274,14 @@ def main() -> None:
         )
         sys.exit(1)
 
-    checked = ", ".join(where for where, _ in found) or "keine weiteren Stellen"
-    print(f"Versions-Sync OK ({version}; geprüft: {checked}; keine hartkodierte Version in src/)")
+    # Die Ausgabe nennt jede geprüfte Stelle. Sonst sieht ein grüner Lauf
+    # genauso aus, wenn eine Stelle stillschweigend herausfällt — etwa weil
+    # eine Datei umbenannt wurde und der Check sie seither überspringt.
+    checked = [where for where, _ in found]
+    if TOOL_PIN.exists():
+        checked.append(f"{TOOL_PIN.relative_to(ROOT)} → generated_for_version")
+    stellen = ", ".join(checked) or "keine weiteren Stellen"
+    print(f"Versions-Sync OK ({version}; geprüft: {stellen}; keine hartkodierte Version in src/)")
 
 
 if __name__ == "__main__":

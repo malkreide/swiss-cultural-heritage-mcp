@@ -22,10 +22,43 @@ Bitte geben Sie an:
 1. Forken Sie das Repository
 2. Erstellen Sie einen Feature-Branch: `git checkout -b feat/mein-feature`
 3. Installieren Sie die Dev-Abhängigkeiten: `pip install -e ".[dev]"` — damit kommt auch die ruff-Version, die die CI verwendet (siehe [Code-Stil](#code-stil))
-4. Nehmen Sie Ihre Änderungen vor und ergänzen Sie Tests
-5. Stellen Sie sicher, dass alle Tests bestehen: `PYTHONPATH=src pytest tests/ -m "not live"`
-6. Committen Sie mit [Conventional Commits](https://www.conventionalcommits.org/): `feat: neues Tool ergänzen`
-7. Pushen Sie und eröffnen Sie einen Pull Request gegen `main`
+4. Aktivieren Sie die versionierten git-Hooks: `git config core.hooksPath .githooks` (siehe [Git-Hooks](#git-hooks))
+5. Nehmen Sie Ihre Änderungen vor und ergänzen Sie Tests
+6. Stellen Sie sicher, dass alle Tests bestehen: `PYTHONPATH=src pytest tests/ -m "not live"`
+7. Committen Sie mit [Conventional Commits](https://www.conventionalcommits.org/): `feat: neues Tool ergänzen`
+8. Pushen Sie und eröffnen Sie einen Pull Request gegen `main`
+
+---
+
+## Git-Hooks
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Ein Befehl pro Klon — `.git/hooks/` ist nicht versioniert, git findet diese
+Hooks also nicht von selbst.
+
+`pre-commit` fährt `scripts/check_version_sync.py` gegen den **gestagten**
+Stand und lehnt den Commit ab, wenn die Version in `pyproject.toml` und eine
+Stelle, die sie wiederholt, auseinanderstehen: `server.json`, die
+Versions-Badges der READMEs oder `generated_for_version` in
+`audits/tool-pins/current.json`.
+
+Der Tool-Pin ist der, den man **nicht** von Hand nachträgt. Die Hashes neben
+dem Feld beschreiben die freigegebene Tool-Oberfläche; erzeugen Sie ihn im
+selben Commit wie den Versions-Bump neu:
+
+```bash
+PYTHONPATH=src python scripts/pin_tools.py
+```
+
+Der Hook schweigt bei Erfolg, braucht rund 140 ms, läuft ohne
+Dev-Installation und lässt sich mit `git commit --no-verify` umgehen. Er ruft
+das vorhandene CI-Gate auf, statt es nachzubilden — Hook und CI können damit
+nicht auseinanderlaufen. Einzelheiten in
+[`.githooks/README.md`](.githooks/README.md), darunter die Begründung, warum
+er den Index liest und nicht den Arbeitsbaum.
 
 ---
 
