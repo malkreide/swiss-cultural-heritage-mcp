@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
-# SessionStart-Hook: meldet, wie viele Commits der ausgecheckte Stand hinter
-# origin/<Standard-Branch> liegt. Bei 0 schweigt er.
+# SessionStart-Hook: meldet zwei Dinge, die stillschweigend schieflaufen.
+#
+#   1. Wie viele Commits der ausgecheckte Stand hinter origin/<Standard-Branch>
+#      liegt. Bei 0 schweigt er.
+#   2. Dass `core.hooksPath` nicht auf .githooks zeigt, die versionierten
+#      git-Hooks dieses Klons also nicht laufen. Zeigt es dorthin, schweigt er.
+#
+# Die zweite Pruefung braucht kein Netz und haengt nicht an einem Remote. Sie
+# steht darum in einer eigenen Funktion und laeuft auch dort, wo die erste
+# aussteigt -- ein Klon ohne `origin` hat denselben nicht installierten Hook.
 #
 # GRUND
 # -----
@@ -36,7 +44,12 @@
 # origin main` mit "couldn't find remote ref main" abbrach und das wie ein
 # Netzproblem aussah. Quelle ist darum `git ls-remote --symref origin HEAD`.
 #
-# ABSCHALTEN: CLAUDE_SKIP_FRESHNESS_CHECK=1 setzen.
+# ABSCHALTEN: CLAUDE_SKIP_FRESHNESS_CHECK=1 (Aktualitaet),
+#             CLAUDE_SKIP_HOOKS_CHECK=1 (hooksPath). Je eine Variable pro
+#             Pruefung, weil eine Sammelvariable namens ...FRESHNESS... ueber
+#             die hooksPath-Meldung gelogen haette. Wer FRESHNESS=1 gesetzt
+#             hatte, um Ruhe zu haben, sieht die neue Zeile also -- und kann
+#             sie mit der zweiten Variablen ebenso abstellen.
 # ZEITLIMIT:  CLAUDE_FRESHNESS_TIMEOUT=<Sekunden> setzen.
 
 readonly ZEITLIMIT="${CLAUDE_FRESHNESS_TIMEOUT:-5}"
@@ -135,7 +148,96 @@ Wer bewusst auf einem aelteren Stand arbeitet, ignoriert das hier.
 MELDUNG
 }
 
+# Gibt es in $1 etwas, das git ueberhaupt ausfuehren koennte?
+#
+# Gefragt wird nach einer ausfuehrbaren regulaeren Datei, nicht nach
+# `pre-commit`: Ein fester Name deckte einen spaeter dazukommenden `pre-push`
+# nicht, und `-d .githooks` allein wuerde auch ueber einem Verzeichnis mit
+# bloss einer README meckern. Das Ausfuehrungsrecht ist genau die Bedingung,
+# unter der git einen Hook startet -- und `README.md` ist nicht ausfuehrbar,
+# es braucht also keine handgeschriebene Ausnahmeliste.
+#
+# Preis dieser Wahl: Verliert ein Hook sein +x, schweigt diese Meldung, obwohl
+# dann gar nichts laeuft. Diesen Fall haelt
+# `tests/test_pre_commit_hook.py::test_ausfuehrungsrecht_steht_auch_im_index`
+# in der CI, nicht der Sessionstart.
+hooks_vorhanden() {
+    local eintrag
+    for eintrag in "$1"/*; do
+        [ -f "$eintrag" ] && [ -x "$eintrag" ] && return 0
+    done
+    return 1
+}
+
+pruefe_hooks_pfad() {
+    [ "${CLAUDE_SKIP_HOOKS_CHECK:-}" = "1" ] && return 0
+
+    cd "${CLAUDE_PROJECT_DIR:-.}" 2> /dev/null || return 0
+    command -v git > /dev/null 2>&1 || return 0
+
+    # Die Wurzel, nicht das aktuelle Verzeichnis: `.githooks` liegt oben, und
+    # git loest ein relatives `core.hooksPath` ebenfalls von dort auf. In einem
+    # bare-Repo scheitert der Aufruf -- dort gibt es nichts zu melden.
+    local wurzel
+    wurzel="$(git rev-parse --show-toplevel 2> /dev/null)" || return 0
+    [ -n "$wurzel" ] || return 0
+
+    # Kein .githooks mit ausfuehrbarem Inhalt: Dieses Repo liefert keine
+    # versionierten Hooks aus, also ist auch nichts zu installieren. Das haelt
+    # die Meldung von jedem anderen Repo des Portfolios fern, in das dieser
+    # Hook kopiert wird.
+    hooks_vorhanden "$wurzel/.githooks" || return 0
+
+    # `--path` expandiert `~` so, wie git es beim Ausfuehren tut; der rohe Wert
+    # liesse `~/repo/.githooks` als fremden Pfad erscheinen.
+    local gesetzt
+    gesetzt="$(git config --path --get core.hooksPath 2> /dev/null)"
+
+    # Verglichen werden Verzeichnisse, nicht Zeichenketten. Nachgemessen am
+    # 28.10.2026 mit git 2.43: git fuehrt den Hook bei `.githooks`,
+    # `./.githooks`, `.githooks/` und dem absoluten Pfad gleichermassen aus,
+    # und loest relativ gegen die Wurzel auf. Ein Stringvergleich kannte davon
+    # zwei und meldete bei den anderen -- bei jedem Sessionstart einen
+    # Fehlalarm, also genau das, was eine Meldung abschaltbar macht. Das
+    # `cd` aus der Wurzel bildet die Aufloesung von git nach, `pwd -P` loest
+    # dazu Symlinks auf.
+    #
+    # Laesst sich `gesetzt` nicht aufloesen, ist `ist` leer und ungleich
+    # `soll` -- das wird gemeldet, nicht verschluckt: Ein Pfad, auf den kein
+    # `cd` geht, fuehrt git auch nicht aus. `soll` selbst ist hier nie leer,
+    # das hat `hooks_vorhanden` oben schon sichergestellt.
+    if [ -n "$gesetzt" ]; then
+        local ist soll
+        ist="$(cd "$wurzel" 2> /dev/null && cd "$gesetzt" 2> /dev/null && pwd -P)"
+        soll="$(cd "$wurzel/.githooks" 2> /dev/null && pwd -P)"
+        [ "$ist" = "$soll" ] && return 0
+    fi
+
+    local lage
+    if [ -z "$gesetzt" ]; then
+        lage="\`core.hooksPath\` ist in diesem Klon nicht gesetzt"
+    else
+        lage="\`core.hooksPath\` zeigt auf ${gesetzt}, nicht auf .githooks"
+    fi
+
+    cat << MELDUNG
+Git-Hooks nicht aktiv: ${lage}.
+Die versionierten Hooks in .githooks/ laufen damit nicht. Einmal pro Klon:
+
+    git config core.hooksPath .githooks
+
+Danach lehnt der pre-commit-Hook einen Commit ab, in dem die Version und eine
+Stelle, die sie wiederholt, auseinanderstehen -- etwa ein Bump ohne
+regenerierten Tool-Pin. Begruendung: .githooks/README.md.
+
+Diese Zeile steht hier, weil \`core.hooksPath\` pro Klon gilt und nicht
+versionierbar ist: Ein Hook, den niemand installiert, schuetzt nichts. Nicht
+gewollt? CLAUDE_SKIP_HOOKS_CHECK=1 setzen.
+MELDUNG
+}
+
 pruefe
-# Bedingungslos: der Rueckgabewert von `pruefe` darf den Sessionstart nicht
+pruefe_hooks_pfad
+# Bedingungslos: der Rueckgabewert der Pruefungen darf den Sessionstart nicht
 # erreichen. Diese Zeile ist die eigentliche Zusicherung des Hooks.
 exit 0

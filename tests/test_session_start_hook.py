@@ -1,8 +1,14 @@
 """Der SessionStart-Hook `.claude/hooks/session-start.sh` gegen echte Repos.
 
-Der Hook meldet beim Sessionstart den Rueckstand auf origin/<Standard-Branch>.
-Seine wichtigste Zusicherung ist nicht die Zahl, sondern dass er die Session
+Der Hook meldet beim Sessionstart den Rueckstand auf origin/<Standard-Branch>
+und, seit dem 28.10.2026, ein nicht gesetztes `core.hooksPath`. Seine
+wichtigste Zusicherung ist nicht der Inhalt, sondern dass er die Session
 **nie** blockiert: Exit 0 in jedem Stoerfall, Zeitlimit auf jeden Netzaufruf.
+
+Die hooksPath-Tests legen `.githooks/` selbst an. Alle aelteren Tests laufen in
+Repos ohne dieses Verzeichnis und pruefen weiter auf leere Ausgabe -- sie sind
+damit zugleich die Wache, dass die neue Zeile nicht in Repos auftaucht, die
+gar keine Hooks ausliefern.
 
 Getestet wird darum gegen echte Wegwerf-Repos mit lokalen ``file://``-Remotes,
 nicht gegen ein Mock von ``git``. Ein Mock koennte genau die Annahme
@@ -325,6 +331,229 @@ def test_kaputtes_remote_gibt_nichts_auf_stderr_aus(werkstatt, tmp_path: Path):
     ergebnis = hook_laufen_lassen(klon, env)
 
     assert ergebnis.stderr == ""
+
+
+# --------------------------------------------------------------------------
+# core.hooksPath: die versionierten git-Hooks laufen nur, wenn er gesetzt ist
+# --------------------------------------------------------------------------
+
+_HOOKS_ZEILE = "Git-Hooks nicht aktiv"
+_HOOKS_BEFEHL = "git config core.hooksPath .githooks"
+
+
+def _hooks_einrichten(repo: Path, *, ausfuehrbar: bool = True) -> None:
+    """Legt `.githooks/pre-commit` an -- wie dieses Repo es ausliefert.
+
+    Bewusst nicht committet: Die Pruefung liest das Dateisystem, nicht den
+    Index, und ein zusaetzlicher Commit im Klon verschoebe die Rueckstands-
+    zaehlung der Tests, die beide Meldungen zusammen pruefen.
+    """
+    hooks = repo / ".githooks"
+    hooks.mkdir()
+    hook = hooks / "pre-commit"
+    hook.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    if ausfuehrbar:
+        hook.chmod(0o755)
+
+
+def test_fehlender_hooks_pfad_wird_mit_befehl_gemeldet(werkstatt):
+    """Der Fall, um den es geht: Hooks ausgeliefert, aber nicht installiert."""
+    bauen, env = werkstatt
+    klon, _ = bauen("main")
+    _hooks_einrichten(klon)
+
+    ergebnis = hook_laufen_lassen(klon, env)
+
+    assert ergebnis.returncode == 0
+    assert _HOOKS_ZEILE in ergebnis.stdout
+    assert "nicht gesetzt" in ergebnis.stdout
+    assert _HOOKS_BEFEHL in ergebnis.stdout, "Die Meldung muss den Handgriff nennen"
+
+
+@pytest.mark.parametrize(
+    "schreibweise",
+    [
+        ".githooks",
+        "./.githooks",
+        ".githooks/",
+        "{klon}/.githooks/",
+        "~/klon-main/.githooks",
+        "{verknuepfung}/.githooks",
+    ],
+)
+def test_jede_schreibweise_die_git_ausfuehrt_schweigt(werkstatt, tmp_path: Path, schreibweise):
+    """Was git als `.githooks` ausfuehrt, darf hier keine Meldung ausloesen.
+
+    Nachgemessen am 28.10.2026 mit git 2.43: Die ersten vier Formen fuehren den
+    Hook aus. `~` expandiert git selbst (`--path`), und ein Pfad ueber einen
+    Symlink zeigt auf dasselbe Verzeichnis. Eine Pruefung, die einen davon
+    meldet, meldet ihn bei **jedem** Sessionstart -- und wird abgeschaltet.
+
+    Gegenproben am 28.10.2026, je einzeln gefahren: Ein Stringvergleich gegen
+    `.githooks` und den absoluten Pfad liess `./.githooks` und den Symlink
+    fallen; `git config --get` statt `--path` den `~`-Fall; `pwd` statt
+    `pwd -P` den Symlink. `~` haelt also `--path`, nicht der Vergleich.
+    `_git_env` setzt `HOME` auf `tmp_path`, darum loest `~/klon-main` auf den
+    Klon der Fixture auf.
+    """
+    bauen, env = werkstatt
+    klon, _ = bauen("main")
+    _hooks_einrichten(klon)
+    verknuepfung = tmp_path / "verknuepfung"
+    verknuepfung.symlink_to(klon)
+    wert = schreibweise.format(klon=klon, verknuepfung=verknuepfung)
+    _git("config", "core.hooksPath", wert, cwd=klon, env=env)
+
+    ergebnis = hook_laufen_lassen(klon, env)
+
+    assert ergebnis.returncode == 0
+    assert ergebnis.stdout == "", f"Fehlalarm fuer {wert!r}"
+
+
+def test_nicht_existierender_hooks_pfad_wird_gemeldet(werkstatt, tmp_path: Path):
+    """Ein Pfad, auf den kein `cd` geht, wird gemeldet -- nicht verschluckt.
+
+    Die naheliegende Gegenfassung ist "nicht aufloesbar, also lieber
+    schweigen", im Geist eines Hooks, der nie stoeren soll. Sie laege: git
+    fuehrt aus einem solchen Pfad auch nichts aus, der pre-commit-Hook laeuft
+    also nicht. Gegenprobe am 28.10.2026: Mit `|| return 0` hinter dem
+    Aufloesen fiel genau dieser Test.
+    """
+    bauen, env = werkstatt
+    klon, _ = bauen("main")
+    _hooks_einrichten(klon)
+    _git("config", "core.hooksPath", str(tmp_path / "gibt-es-nicht"), cwd=klon, env=env)
+
+    ergebnis = hook_laufen_lassen(klon, env)
+
+    assert _HOOKS_ZEILE in ergebnis.stdout
+    assert "gibt-es-nicht" in ergebnis.stdout
+
+
+def test_fremder_hooks_pfad_wird_mit_wert_gemeldet(werkstatt, tmp_path: Path):
+    """Zeigt hooksPath anderswohin, laufen die Hooks dieses Repos ebenso nicht.
+
+    Der Wert gehoert in die Meldung: "nicht gesetzt" waere hier falsch, und
+    wer einen eigenen Hook-Ordner hat, muss sehen, welcher es ist.
+    """
+    bauen, env = werkstatt
+    klon, _ = bauen("main")
+    _hooks_einrichten(klon)
+    # Der Ordner existiert -- der realistische Fall eines eigenen
+    # Hook-Ordners. Den nicht existierenden Pfad prueft der Test darunter;
+    # haengen beide am selben Fall, misst keiner von beiden ihn allein.
+    fremd = tmp_path / "andere-hooks"
+    fremd.mkdir()
+    _git("config", "core.hooksPath", str(fremd), cwd=klon, env=env)
+
+    ergebnis = hook_laufen_lassen(klon, env)
+
+    assert ergebnis.returncode == 0
+    assert _HOOKS_ZEILE in ergebnis.stdout
+    assert str(fremd) in ergebnis.stdout
+    assert "nicht gesetzt" not in ergebnis.stdout
+
+
+def test_ohne_ausfuehrbaren_hook_schweigt_die_hooks_meldung(werkstatt):
+    """Ein `.githooks/` ohne Ausfuehrbares hat nichts, was git starten koennte.
+
+    Steht dort nur eine README (oder ein Hook ohne +x), gibt es nichts zu
+    installieren. Haelt zugleich fest, dass die Pruefung kein `-d .githooks`
+    ist: das meldete hier.
+    """
+    bauen, env = werkstatt
+    klon, _ = bauen("main")
+    _hooks_einrichten(klon, ausfuehrbar=False)
+    (klon / ".githooks" / "README.md").write_text("# Hooks\n", encoding="utf-8")
+
+    ergebnis = hook_laufen_lassen(klon, env)
+
+    assert ergebnis.stdout == ""
+
+
+def test_hooks_meldung_kommt_auch_ohne_remote(tmp_path: Path):
+    """Die Pruefung haengt nicht am Remote -- die Aktualitaetspruefung schon.
+
+    Gegenprobe zu einem Einbau in `pruefe`: Dort steigt der Ablauf bei fehlendem
+    `origin` aus, bevor er die hooksPath-Zeile erreichte. Ein Klon ohne Remote
+    hat aber denselben nicht installierten Hook.
+    """
+    env = _git_env(tmp_path)
+    repo = tmp_path / "ohne-remote"
+    repo.mkdir()
+    _git("init", "-b", "main", ".", cwd=repo, env=env)
+    _commit(repo, env, "einziger Commit")
+    _hooks_einrichten(repo)
+
+    ergebnis = hook_laufen_lassen(repo, env)
+
+    assert ergebnis.returncode == 0
+    assert _HOOKS_ZEILE in ergebnis.stdout
+
+
+def test_hooks_pruefung_findet_die_wurzel_aus_einem_unterverzeichnis(werkstatt):
+    """`.githooks` liegt an der Wurzel, nicht dort, wo die Session startet.
+
+    Gegenprobe zu einer Pruefung relativ zum aktuellen Verzeichnis: Die saehe
+    in `src/` kein `.githooks` und schwiege.
+    """
+    bauen, env = werkstatt
+    klon, _ = bauen("main")
+    _hooks_einrichten(klon)
+    unten = klon / "src" / "paket"
+    unten.mkdir(parents=True)
+
+    ergebnis = hook_laufen_lassen(unten, env)
+
+    assert _HOOKS_ZEILE in ergebnis.stdout
+
+
+def test_hooks_abschalter_macht_nur_diese_meldung_stumm(werkstatt):
+    """`CLAUDE_SKIP_HOOKS_CHECK=1` schaltet die hooksPath-Zeile ab -- nur sie."""
+    bauen, env = werkstatt
+    klon, voraus = bauen("main")
+    voraus(2)
+    _hooks_einrichten(klon)
+
+    ergebnis = hook_laufen_lassen(klon, env, CLAUDE_SKIP_HOOKS_CHECK="1")
+
+    assert ergebnis.returncode == 0
+    assert _HOOKS_ZEILE not in ergebnis.stdout
+    assert "2 Commits" in ergebnis.stdout, "Die Aktualitaetsmeldung muss bleiben"
+
+
+def test_freshness_abschalter_laesst_die_hooks_meldung_stehen(werkstatt):
+    """Je eine Variable pro Pruefung, mit Absicht.
+
+    Eine Variable namens `...FRESHNESS...`, die auch die hooksPath-Zeile
+    abschaltet, loege ueber das, was sie tut. Dieser Test haelt die Trennung
+    fest, damit sie nicht beim naechsten Aufraeumen zusammenfaellt.
+    """
+    bauen, env = werkstatt
+    klon, voraus = bauen("main")
+    voraus(2)
+    _hooks_einrichten(klon)
+
+    ergebnis = hook_laufen_lassen(klon, env, CLAUDE_SKIP_FRESHNESS_CHECK="1")
+
+    assert ergebnis.returncode == 0
+    assert "2 Commits" not in ergebnis.stdout
+    assert _HOOKS_ZEILE in ergebnis.stdout
+
+
+def test_beide_meldungen_zusammen_aktualitaet_zuerst(werkstatt):
+    """Der veraltete Klon ist das dringendere Risiko, die Einrichtung einmalig."""
+    bauen, env = werkstatt
+    klon, voraus = bauen("main")
+    voraus(3)
+    _hooks_einrichten(klon)
+
+    ergebnis = hook_laufen_lassen(klon, env)
+
+    assert ergebnis.returncode == 0
+    assert "3 Commits" in ergebnis.stdout
+    assert _HOOKS_ZEILE in ergebnis.stdout
+    assert ergebnis.stdout.index("3 Commits") < ergebnis.stdout.index(_HOOKS_ZEILE)
 
 
 # --------------------------------------------------------------------------

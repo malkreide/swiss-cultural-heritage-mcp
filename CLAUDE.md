@@ -339,6 +339,14 @@ auseinanderstehen. Er ruft dasselbe `scripts/check_version_sync.py` auf, statt
 dessen Logik nachzubilden — Hook und CI können nicht auseinanderlaufen.
 Details: `.githooks/README.md`.
 
+Ist `core.hooksPath` nicht gesetzt, sagt das der SessionStart-Hook bei jedem
+Sessionstart, mit dem Befehl in der Meldung; danach schweigt er. Er **meldet**,
+er setzt nicht — der Hook bleibt streng lesend. Wer die Zeile in einer Session
+liest: den Befehl ausführen, bevor committet wird, sonst läuft der
+pre-commit-Hook in dieser Session nicht. Abschalten mit
+`CLAUDE_SKIP_HOOKS_CHECK=1`; `CLAUDE_SKIP_FRESHNESS_CHECK` schaltet weiter nur
+die Aktualitätsprüfung ab.
+
 Zwei Eigenschaften, die man beim Ändern nicht umkehren darf. Er prüft den
 **Index**, nicht den Arbeitsbaum: Steht `A` im Index und `B` im Arbeitsbaum,
 legt `git commit` `A` ab (nachgemessen am 28.10.2026) — ein Arbeitsbaum-Check
