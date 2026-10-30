@@ -1,8 +1,15 @@
-# SessionStart-Hook: Klon-Aktualität
+# SessionStart-Hook: Klon-Aktualität und Git-Hooks
 
-`session-start.sh` meldet beim Sessionstart, wie viele Commits der
-ausgecheckte Stand hinter `origin/<Standard-Branch>` liegt. Liegt er nicht
-zurück, sagt er nichts.
+`session-start.sh` meldet beim Sessionstart zwei Dinge, die sonst
+stillschweigend schieflaufen:
+
+1. wie viele Commits der ausgecheckte Stand hinter `origin/<Standard-Branch>`
+   liegt;
+2. dass `core.hooksPath` nicht auf `.githooks` zeigt, die versionierten
+   git-Hooks dieses Klons also nicht laufen (seit dem 28.10.2026, siehe
+   [unten](#zweite-meldung-corehookspath)).
+
+Stimmt beides, sagt er nichts.
 
 Registriert ist er in [`../settings.json`](../settings.json) unter
 `hooks.SessionStart`. Dort steht zusätzlich ein `timeout` von 20 Sekunden als
@@ -72,12 +79,72 @@ Normalfall «Klon aktuell» kostet genau einen `ls-remote`. Erst wenn die Spitze
 lokal fehlt, folgt ein `git fetch --no-tags origin <branch>`. Gezählt wird
 dann `git rev-list --count HEAD..<spitze>`.
 
+## Zweite Meldung: `core.hooksPath`
+
+`.githooks/pre-commit` lehnt einen Commit ab, in dem die Version und eine
+Stelle, die sie wiederholt, auseinanderstehen (siehe
+[`../../.githooks/README.md`](../../.githooks/README.md)). Er läuft aber nur,
+wenn git weiss, wo er liegt — und `core.hooksPath` gilt pro Klon und ist nicht
+versionierbar. Ein Hook, den niemand installiert, schützt nichts. Diese Zeile
+erinnert daran, bis der Befehl einmal gelaufen ist; danach schweigt sie.
+
+**Er meldet, er setzt nicht.** Der Hook bleibt streng lesend. Eine Session,
+die `core.hooksPath` stillschweigend umbiegt, überschriebe eine Einstellung,
+die jemand bewusst anders haben kann — etwa einen eigenen Hook-Ordner.
+
+Was gemeldet wird und was nicht:
+
+| Lage | Ausgabe |
+| --- | --- |
+| zeigt auf `.githooks` — in jeder Schreibweise, die git ausführt | nichts |
+| nicht gesetzt | «nicht gesetzt» plus Befehl |
+| zeigt anderswohin, auch auf einen nicht existierenden Pfad | der gesetzte Wert plus Befehl |
+| `.githooks/` fehlt oder enthält nichts Ausführbares | nichts |
+
+Fünf Entscheidungen, jede mit eigenem Test:
+
+- **Verglichen werden Verzeichnisse, nicht Zeichenketten.** Nachgemessen am
+  28.10.2026 mit git 2.43: git führt den Hook bei `.githooks`, `./.githooks`,
+  `.githooks/` und dem absoluten Pfad gleichermassen aus und löst relativ gegen
+  die Wurzel auf. Die erste Fassung verglich Zeichenketten, kannte davon zwei
+  und hätte bei den anderen gemeldet — bei **jedem** Sessionstart, also genau
+  die Meldung, die man abschaltet. Jetzt bildet ein `cd` aus der Wurzel die
+  Auflösung von git nach, `pwd -P` löst Symlinks auf, und `git config --path`
+  expandiert `~` so, wie git es tut. Ein Pfad, auf den kein `cd` geht, wird
+  gemeldet, nicht verschluckt: Aus ihm führt git auch nichts aus.
+
+- **Bedingung ist eine ausführbare Datei in `.githooks/`, nicht der Name
+  `pre-commit`.** Ein fester Name deckte einen später dazukommenden `pre-push`
+  nicht, und `-d .githooks` meckerte auch über einen Ordner mit bloss einer
+  README. Ausführbar ist genau die Bedingung, unter der git einen Hook
+  startet — eine Ausnahmeliste für `README.md` braucht es so nicht. Das hält
+  die Zeile auch aus jedem Repo des Portfolios fern, in das dieser Hook
+  kopiert wird und das keine Hooks ausliefert. Preis: Verliert ein Hook sein
+  `+x`, schweigt die Zeile, obwohl nichts läuft; diesen Fall hält
+  `tests/test_pre_commit_hook.py::test_ausfuehrungsrecht_steht_auch_im_index`
+  in der CI.
+- **Gesucht wird an der Wurzel** (`git rev-parse --show-toplevel`), nicht im
+  aktuellen Verzeichnis — dort, wo git auch ein relatives `core.hooksPath`
+  auflöst. Eine Session in `src/` sähe sonst kein `.githooks`.
+- **Sie hängt nicht am Remote.** Darum eine eigene Funktion statt eines
+  Abschnitts in `pruefe`: Die Aktualitätsprüfung steigt ohne `origin` aus,
+  ein Klon ohne Remote hat aber denselben nicht installierten Hook.
+- **Eigener Abschalter.** `CLAUDE_SKIP_FRESHNESS_CHECK` schaltet weiter nur die
+  Aktualität ab. Eine Variable mit diesem Namen, die auch die hooksPath-Zeile
+  schluckte, löge über das, was sie tut. Wer sie gesetzt hatte, um Ruhe zu
+  haben, sieht also die neue Zeile — und stellt sie mit
+  `CLAUDE_SKIP_HOOKS_CHECK=1` ebenso ab.
+
+Kommen beide Meldungen, steht die Aktualität zuerst: Der veraltete Klon ist
+das Risiko für die Arbeit, die gerade beginnt; die Einrichtung ist einmalig.
+
 ## Konfiguration
 
 | Variable | Default | Wirkung |
 | --- | --- | --- |
-| `CLAUDE_SKIP_FRESHNESS_CHECK` | — | Auf `1` gesetzt: Hook tut nichts. |
-| `CLAUDE_FRESHNESS_TIMEOUT` | `5` | Zeitlimit **pro Netzaufruf**, in Sekunden. |
+| `CLAUDE_SKIP_FRESHNESS_CHECK` | — | Auf `1` gesetzt: keine Aktualitätsprüfung. Die hooksPath-Zeile bleibt. |
+| `CLAUDE_SKIP_HOOKS_CHECK` | — | Auf `1` gesetzt: keine hooksPath-Zeile. Die Aktualitätsprüfung bleibt. |
+| `CLAUDE_FRESHNESS_TIMEOUT` | `5` | Zeitlimit **pro Netzaufruf**, in Sekunden. Die hooksPath-Prüfung macht keinen. |
 
 Das Zeitlimit gilt pro Aufruf, nicht als Gesamtbudget. Im Normalfall gibt es
 nur einen Aufruf (5 s Obergrenze); liegt der Klon zurück, kommt der `fetch`
@@ -92,9 +159,10 @@ dieser Hook nicht verursachen darf.
 ## Reichweite
 
 Der Hook läuft in **jeder** Session, nicht nur in Claude Code on the web
-(kein `CLAUDE_CODE_REMOTE`-Filter). Er installiert nichts und ist
-umgebungsunabhängig; ein veralteter Klon führt lokal zur selben rätselhaften
-roten CI wie remote.
+(kein `CLAUDE_CODE_REMOTE`-Filter). Er installiert nichts, ändert keine
+Konfiguration und ist umgebungsunabhängig; ein veralteter Klon führt lokal zur
+selben rätselhaften roten CI wie remote, und ein nicht installierter Hook
+schützt lokal genauso wenig.
 
 ## Tests
 
@@ -103,3 +171,19 @@ Wegwerf-Repos (lokale `file://`-Remotes): Rückstand wird gemeldet, 0
 schweigt, `master` wird erkannt, und die Störfälle (kein Remote,
 unerreichbares Remote, detached HEAD, kein Repo, leeres Repo) enden alle mit
 Exit 0 und leerer Ausgabe.
+
+Die hooksPath-Tests legen `.githooks/` im Wegwerf-Repo selbst an und decken
+die Tabelle oben ab — sechs Schreibweisen von `.githooks` als ein
+parametrisierter Test, darunter `~` und ein Pfad über einen Symlink —, dazu: Meldung auch ohne Remote, Wurzel aus einem
+Unterverzeichnis gefunden, beide Abschalter getrennt, Reihenfolge bei zwei
+Meldungen. Die älteren Tests laufen in Repos ohne `.githooks/` und prüfen
+weiter auf leere Ausgabe — damit sind sie zugleich die Wache, dass die neue
+Zeile nicht in Repos auftaucht, die keine Hooks ausliefern.
+
+Gegenprobe am 28.10.2026, jede Zusicherung einzeln rückgängig gemacht: Es
+fiel jeweils genau der zugehörige Test. Ausnahme mit Grund: Ohne den Wert in
+der Meldung fallen beide Tests, die ihn zusichern (fremder und nicht
+existierender Pfad). Eine Gegenprobe blieb grün und hat Code gekostet statt
+einen Test: Ein Schutz gegen leeres `soll` liess sich nicht auslösen, weil
+`hooks_vorhanden` das schon ausschliesst. Er ist entfernt — ein Schutz, den
+nichts prüfen kann, behauptet nur, etwas zu schützen.

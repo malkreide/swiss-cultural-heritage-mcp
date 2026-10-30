@@ -101,10 +101,17 @@ niemand installiert, schützt nichts. Deshalb steht der Befehl auch in
 [`../CONTRIBUTING.de.md`](../CONTRIBUTING.de.md)) unter den Einrichtungs-
 schritten.
 
-Absichtlich **nicht** automatisch gesetzt: Der SessionStart-Hook dieses Repos
-ist streng lesend und ändert keine git-Konfiguration. Eine Session, die
+Dazu **meldet** der SessionStart-Hook
+([`../.claude/hooks/session-start.sh`](../.claude/hooks/session-start.sh)) bei
+jedem Sessionstart, solange `core.hooksPath` nicht auf `.githooks` zeigt — mit
+dem Befehl in der Meldung. Ist er einmal gesetzt, schweigt die Zeile.
+
+**Gesetzt** wird er absichtlich nicht automatisch: Der SessionStart-Hook ist
+streng lesend und ändert keine git-Konfiguration. Eine Session, die
 stillschweigend `core.hooksPath` umbiegt, überschriebe eine Einstellung, die
-jemand bewusst anders haben kann.
+jemand bewusst anders haben kann — etwa einen eigenen Hook-Ordner. Wer die
+Meldung nicht will: `CLAUDE_SKIP_HOOKS_CHECK=1`. Einzelheiten in
+[`../.claude/hooks/README.md`](../.claude/hooks/README.md).
 
 ## Tests
 

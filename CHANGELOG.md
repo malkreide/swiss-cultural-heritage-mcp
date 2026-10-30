@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Der SessionStart-Hook meldet ein nicht gesetztes `core.hooksPath`.**
+  `core.hooksPath` gilt pro Klon und ist nicht versionierbar; ein
+  pre-commit-Hook, den niemand installiert, schuetzt nichts. Solange es nicht
+  auf `.githooks` zeigt, nennt `.claude/hooks/session-start.sh` das beim
+  Sessionstart, mit dem Befehl. Zeigt es auf `.githooks`, schweigt er — in
+  jeder Schreibweise, die git ausfuehrt. Verglichen werden dafuer
+  Verzeichnisse, nicht Zeichenketten: git fuehrt den Hook bei `.githooks`,
+  `./.githooks`, `.githooks/` und dem absoluten Pfad gleichermassen aus
+  (nachgemessen mit git 2.43), und ein Stringvergleich haette bei zwei davon
+  bei jedem Sessionstart einen Fehlalarm gegeben. `~` und Symlinks werden
+  aufgeloest.
+
+  Er **meldet**, er setzt nicht: Der Hook bleibt streng lesend und ueberschreibt
+  keine Einstellung, die jemand bewusst anders haben kann. Zeigt
+  `core.hooksPath` anderswohin, nennt die Meldung den Wert.
+
+  Bedingung ist eine ausfuehrbare Datei in `.githooks/`, nicht der Name
+  `pre-commit` — so bleibt die Zeile aus Repos ohne ausgelieferte Hooks fern,
+  ohne Ausnahmeliste fuer die README. Sie haengt nicht am Remote und laeuft
+  darum auch in einem Klon ohne `origin`.
+
+  Eigener Abschalter `CLAUDE_SKIP_HOOKS_CHECK=1`. `CLAUDE_SKIP_FRESHNESS_CHECK`
+  schaltet weiter **nur** die Aktualitaetspruefung ab: Eine Variable mit diesem
+  Namen, die auch die neue Zeile schluckte, loege ueber das, was sie tut. Wer
+  sie gesetzt hatte, um Ruhe zu haben, sieht die neue Zeile also einmal.
+
 - **pre-commit-Hook gegen den unvollstaendigen Versions-Bump**
   (`.githooks/pre-commit`). Einmal pro Klon aktivieren:
   `git config core.hooksPath .githooks`.
