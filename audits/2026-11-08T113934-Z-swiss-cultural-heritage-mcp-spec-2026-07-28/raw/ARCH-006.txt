@@ -1,0 +1,17 @@
+{
+  "id": "ARCH-006",
+  "status": "pass",
+  "category": "ARCH",
+  "severity": "high",
+  "evidence": [
+    "Laufzeit `mcp.list_tools()` -> 11 Tools (Band 9-15, <= 12 'ideal'); `@mcp.tool(` in src/swiss_cultural_heritage_mcp/server.py:1364,1500,1604,1761,1918,2149,2218,2354,2797,3090,3213",
+    "Cluster nach Use-Case statt Endpunkt: SIKART 2 (search/get), SNM 2 (Datensatzsuche/Objekte), NB 3 (Suche über SRU und OAI-PMH in EINEM Tool, src/swiss_cultural_heritage_mcp/server.py:1932-1945; Sets; Einzelsatz), föderiert 1 (heritage_cross_search über 3 Quellen), Gedächtnisinstitutionen 3 (search_heritage über 2 Quellen, get_heritage_item, list_heritage_collections)",
+    "Anchor-Demo-Query README.md:104/205 ('Who is Ferdinand Hodler?') live am 2026-11-08: `heritage_cross_search(query='Ferdinand Hodler')` -> 0.66 s, SIK-ISEA 5 / SNM 1 / NB 5 Treffer, keine Fehler; `search_heritage`, gleiche Anfrage -> 0.44 s, 40 Treffer. Beantwortbar mit 1 Call (Detailprofil: 2 Calls)",
+    "README.md:242 (HEAD), Abschnitt 'Architecture decision — memory-institution facade' — begründet 'three federated tools instead of four tool-families'"
+  ],
+  "gaps": [
+    "low: zwei föderierte Einstiege, die einander nicht abdecken (cross_search: SIKART/SNM/NB; search_heritage: Memobase/Dodis); 'alles zu X über alle fünf Quellen' braucht 2 Calls und Wissen aus INSTRUCTIONS",
+    "low: search/get-Paare je Quelle (heritage_search_artists/heritage_get_artist, search_heritage/get_heritage_item) liegen nah am Endpunkt-Mapping, sind aber durch den Detail- vs. Listen-Use-Case gedeckt"
+  ],
+  "evaluator_notes": "Alle fünf Kriterien erfüllt: 11 <= 12 Tools, keine 1:1-Endpunkt-Abbildung (ein Tool deckt teils zwei Protokolle bzw. mehrere Quellen), Anchor-Query in 1-2 Calls, gemessene Aggregations-Latenz < 1 s (eine Stichprobe), Begründung im README. Zwei lesende Live-Proben mit je einem Aufruf."
+}

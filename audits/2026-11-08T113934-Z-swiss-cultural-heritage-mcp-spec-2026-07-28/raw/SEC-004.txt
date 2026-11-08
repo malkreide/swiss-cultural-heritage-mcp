@@ -1,0 +1,22 @@
+{
+  "id": "SEC-004",
+  "status": "partial",
+  "category": "SEC",
+  "severity": "critical",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:726-730 — _assert_allowed: httpx.URL(url).scheme != 'https' -> ValueError; parsed.host not in ALLOWED_HOSTS -> ValueError (string allow-list, no IP resolution)",
+    "src/swiss_cultural_heritage_mcp/server.py:746,756,771 — guard runs before the first GET, on every manual redirect hop, and before the Dodis POST; src/swiss_cultural_heritage_mcp/server.py:349 client has follow_redirects=False",
+    "grep -nE '_http_get\\(|_http_post\\(|client\\.(get|post)' src/swiss_cultural_heritage_mcp/server.py — all 13 outbound call sites go through _http_get/_http_post; only 3 raw client.get/post calls, all inside those two helpers (lines 748,758,773); no requests/urllib/aiohttp/socket import in src/",
+    "venv python -I _assert_allowed probe — https://[::1]/, https://[fe80::1]/, https://0x7f.0x0.0x0.0x1/, https://localtest.me/, https://127.0.0.1/, https://169.254.169.254/latest, https://ckan.opendata.swiss@evil.com/ -> all 'Host nicht in Allow-List'; http://ckan.opendata.swiss/x and file:///etc/passwd -> 'Nur HTTPS erlaubt'; https://ckan.opendata.swiss/ok -> ALLOWED (positive control)",
+    "venv python -I path-interpolation probe — item_id '../../solr/admin', '1?q=*:*', '@evil.example.com/x' in f'{DODIS_API}/solr/full/{item_id}' (src/swiss_cultural_heritage_mcp/server.py:3135-3137) keep host beta.dodis.ch; no tool argument can change the request host",
+    "grep -rnE 'getaddrinfo|gethostbyname|ipaddress|smokescreen|sni_hostname|HTTPS_PROXY|proxy=' src/ -> no match (rc=1); control: same pattern matches 'socket.getaddrinfo(h)' (count 1)",
+    "MCP_ALLOWED_HOSTS='[\"169.254.169.254\"]' venv python -I -c '...s._assert_allowed(\"https://169.254.169.254/latest/meta-data/\")' -> accepted: the only barrier in front of the metadata IP is an env-overridable host string list",
+    "docs/security.md:45 — resolved-IP blocklist explicitly 'Deferred'"
+  ],
+  "gaps": [
+    "No resolved-IP blocklist (private, loopback, link-local, 169.254.169.254, ::1, fe80::/10) after DNS resolution. Blocking happens only by hostname string match (severity: high)",
+    "The allow-list that stands in for the blocklist can be replaced through the MCP_ALLOWED_HOSTS environment variable (pydantic-settings field, server.py:129). That removes the only SSRF barrier without a code change (severity: high, same root cause as SEC-021)",
+    "No egress proxy as defense in depth. Render cannot provide one, as docs/network-egress.md:77 itself says (severity: medium)"
+  ],
+  "evaluator_notes": "Criterion 1 (HTTPS before every request, including redirect hops) is met and verified at runtime. Criteria 3 and 4 hold in behaviour: metadata IP, loopback and link-local are rejected, but only because they are not on the four-host allow-list, not because of an explicit IP check. Criterion 2 (resolved-IP check) and criterion 5 (egress proxy) are not met. Threat model: no tool takes a URL or host. Only query strings and path segments are LLM-controlled, and the host is fixed (measured). So the direct SSRF class is not reachable as long as the allow-list stays at its default. That makes 'partial' and not 'fail'; the missing IP layer keeps it from 'pass'. Whether the env override counts as an operator risk is a judgment call; the check counts it as config-mutable."
+}

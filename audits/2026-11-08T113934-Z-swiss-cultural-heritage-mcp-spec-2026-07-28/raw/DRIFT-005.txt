@@ -1,0 +1,18 @@
+{
+ "id": "DRIFT-005",
+ "status": "pass",
+ "category": "DRIFT",
+ "severity": "medium",
+ "evidence": [
+  ".github/workflows/nightly-live.yml:10-13 — schedule cron '17 4 * * *' (täglich) plus workflow_dispatch; :36-41 'PYTHONPATH=src pytest tests/ -m live --junitxml=… | tee', Exit-Code über ${PIPESTATUS[0]}",
+  ".github/workflows/nightly-live.yml:54-105 — scripts/classify_live_run.py ordnet ein; bei state=='finding' öffnet oder kommentiert github-script ein Issue mit Label nightly-live-failure; :116-124 färbt den Job bei state!='clear' rot (exit 1)",
+  "gh run list --workflow nightly-live.yml — 40 geplante Läufe 2026-09-30..2026-11-08; Lauf 39233988544 (2026-10-19) conclusion failure, '1 failed, 10 passed', state=finding, Issue #106 (createdAt 2026-10-19T09:59:08Z, OPEN); Lauf 42475229230 (2026-11-08) '11 passed, 415 deselected', state=clear",
+  ".github/workflows/ci.yml:28-29 — der PR- und Push-Lauf bleibt bei -m \"not live\"",
+  "CONTRIBUTING.md:101-110 und CONTRIBUTING.de.md:107-116 — Kadenz (täglich 04:17 UTC plus manuell) und Sichtbarkeit (Issue mit Label, Schliessen von Hand nach der Behebung) dokumentiert"
+ ],
+ "gaps": [
+  "Issue #106 ist seit 2026-10-19 offen, obwohl seit 2026-10-20 jeder Lauf grün war; ausgelöst hat es ein transienter Timeout, das Signal ist also veraltet (low)",
+  "Geplant ist 04:17 UTC, tatsächlich gestartet wurde zwischen 08:36 und 12:31 UTC (GitHub-Verzögerung); die Kadenz bleibt täglich (low)"
+ ],
+ "evaluator_notes": "Alle Pass-Kriterien erfüllt. Die Annahme im Brief, der Workflow bleibe grün, stimmt für HEAD nicht mehr: der Schritt 'Ergebnis durchreichen' färbt finding und unknown rot, belegt am Lauf vom 19.10. Massgeblich bleibt die pytest-Zeile, gelesen für 2026-11-08. Issue #106 vor dem Release schliessen (laut CONTRIBUTING schliesst ein grüner Lauf es nicht automatisch)."
+}

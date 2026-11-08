@@ -1,0 +1,19 @@
+{
+ "id": "ARCH-015",
+ "status": "pass",
+ "category": "ARCH",
+ "severity": "high",
+ "evidence": [
+  "grep -rnE 'initialize|notifications/initialized|InitializeResult|InitializationOptions' src/ -> nur Kommentare server.py:450,464; kein Handler. Negative Kontrolle: dasselbe Muster trifft 11 Dateien unter venv/.../mcp/server.",
+  "grep -rniE 'mcp[-_]session[-_]id|session_manager|SessionManager|sessionId' src/ -> nur server.py:3553,3579,3580 (CORS allow/expose von Mcp-Session-Id fuer die Legacy-Aera); kein Lesen, Setzen oder Routing. Negative Kontrolle: 6 Treffer-Dateien im SDK.",
+  "Laufzeit 2026-07-28 HTTP (scratchpad/probe_modern.out): server/discover, tools/list, prompts/list, resources/list, resources/templates/list -> jeweils session_hdr null (kein Mcp-Session-Id); zum Vergleich Legacy initialize -> Mcp-Session-Id gesetzt.",
+  "Laufzeit stdio (scratchpad/probe_stdio2.py): auf einer Verbindung '2099-01-01' -> -32022, danach '2026-07-28' -> Erfolg; ein initialize auf der modernen Verbindung -> -32022 'connection is serving the 2026-07-28 protocol; the initialize handshake is not accepted'. Version pro Request aus _meta, kein gespeichertes Verhandlungsergebnis (SDK runner.py:764-790).",
+  "Zustandsinventar (rg '^_?[A-Za-z_]...\\s*=\\s*(\\{|\\[|set\\(|defaultdict|dict\\()' src/): OAI_NS, MARC_NS, SRW_NS, NB_PREFIX_BY_SET, CACHE_HINTS, _HERITAGE_SOURCE, _HERITAGE_SEARCH_FN, _HERITAGE_COLLECTIONS, CORS_ROUTING_HEADERS — alles statische Konstanten; Mutations-grep (\\[..\\]=, .append/.update/...) -> exit 1, Negativkontrolle auf Beispielzeilen schlaegt an. 'global' nur fuer _otel_span (server.py:201) und _http_client (Pool, server.py:354,363). Kein lru_cache.",
+  "List-Antworten ohne Verbindungsbezug: tools/list ueber HTTP (ASGI), stdio python -m und stdio Konsolen-Skript liefern dieselben 11 Namen in derselben Reihenfolge; ueber 4 frische Prozesse mit PYTHONHASHSEED=random/random/1/12345 identischer SHA-256-Praefix cc65e045d4cf1603."
+ ],
+ "gaps": [
+  "Keine Gegenprobe im Repo: es gibt keinen Reihenfolge-/Unabhaengigkeitstest, der gegen eine absichtlich zustandsbehaftete Fassung gelaufen waere (Kriterium 7). Medium — der Code haelt nachweislich keinen Aufruferzustand.",
+  "build_http_app-Docstring (server.py:3553-3556) begruendet expose_headers Mcp-Session-Id noch mit Session-Kontinuitaet; gilt nur fuer die Legacy-Aera und gehoert so benannt."
+ ],
+ "evaluator_notes": "Nur fuer 2026-07-28 gemessen. Kein eigener Handshake- oder Sitzungscode; die moderne Aera vergibt keine Session-ID und liest Version/Capabilities je Request (SDK). Kein prozesslokaler Aufruferzustand, am Code und nicht am Namen geprueft. Die fehlende Gegenprobe ist ein Test-Qualitaets-Gap unterhalb der Check-Severity."
+}

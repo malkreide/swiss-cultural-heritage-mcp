@@ -1,0 +1,17 @@
+{
+ "id": "OPS-007",
+ "status": "partial",
+ "category": "OPS",
+ "severity": "medium",
+ "evidence": [
+  "git show HEAD:README.md:116, :143-144 und README.de.md:117, :144-145 — Plattformzusage macOS und Windows (Claude-Desktop-Konfigurationspfade); CI nur ubuntu-latest (.github/workflows/*.yml); pyproject.toml:24-32 classifiers ohne 'Operating System'. Die Plattformen stehen an keiner Stelle gesammelt",
+  "git show HEAD:README.md:311, README.de.md:312, CONTRIBUTING.md:25, :50, CONTRIBUTING.de.md:27, :53 — dokumentierte Befehle mit POSIX-Präfix 'PYTHONPATH=src pytest …' bzw. 'PYTHONPATH=src python scripts/pin_tools.py', ohne Plattformzuordnung (der Muster-Grep schlägt an 'pip install x && y' an: 1)",
+  "pwsh 7.6.9: 'PYTHONPATH=src python -c \"print(1)\"' -> 'Der Begriff „PYTHONPATH=src“ wird nicht als Name eines Cmdlets … erkannt', Exit 1",
+  "git show HEAD:README.md:71-104 — Installations- und Quickstart-Befehle (git clone, pip install -e ., uvx …, python -m …) sind shellneutral, ohne &&, export oder $()"
+ ],
+ "gaps": [
+  "Test- und Beitragsbefehle in README und CONTRIBUTING (EN/DE) laufen in PowerShell nicht, sind aber für Windows nicht als POSIX-only gekennzeichnet (medium)",
+  "Die unterstützten Plattformen sind nicht an einer Stelle benannt (low)"
+ ],
+ "evaluator_notes": "Endnutzerpfad (Installation, Start, Claude-Desktop-JSON) ist plattformneutral, der Entwicklerpfad nicht. Laut CLAUDE.md ist PYTHONPATH=src nach pip install -e überflüssig; die einfachste Behebung ist, das Präfix wegzulassen. Advisory."
+}

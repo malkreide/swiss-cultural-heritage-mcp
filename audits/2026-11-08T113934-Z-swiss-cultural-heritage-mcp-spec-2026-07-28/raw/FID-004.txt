@@ -1,0 +1,16 @@
+{
+  "id": "FID-004",
+  "status": "pass",
+  "category": "FID",
+  "severity": "medium",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:1400-1406, :1525-1529, :1648-1651, :1788-1794, :1284-1292, :2001-2009, :2174, :2253-2267, :2684-2690, :2723-2729, :3120-3139 — vollstaendige Aufzaehlung der gesendeten Upstream-Parameter: resource_id/limit/offset/q/filters, q/rows/start, version/operation/recordSchema/query/maximumRecords, verb/metadataPrefix/set/from/until/identifier, q/size/offset, query/start/rows. Es gibt keine Gruppe boolescher Feld-Flags, Facetten oder Sichtbarkeits-Schalter mit gemeinsamem Praefix, und kein Argument wird in eine Teilmenge einer Upstream-Gruppe uebersetzt.",
+    "rg -n 'for .* in fields|for .* in selected|if .* in requested' src/ -> 0 Treffer; Kontrolle: das Muster trifft die Fail-Pattern-Zeile 'for field in fields:' in FID-004.md.",
+    "Wirkungsnachweis der einschraenkenden Argumente, live 2026-11-08: heritage_search_museum_datasets collection: Organisation allein 10 Pakete, +numismatik 1, +spezialsammlungen 1, +zzqxjv 0; heritage_search_artists region: q=Hodler 25, 'Hodler Genf' 12, 'Hodler Zürich' 2. Beide verengen messbar.",
+    "src/swiss_cultural_heritage_mcp/server.py:2335-2338 — heritage_cross_search.sources nennt das Default-Set ausdruecklich ('Standard: alle drei'), und nur die gewaehlten Quellen werden abgefragt (src/swiss_cultural_heritage_mcp/server.py:2469); die clientseitigen Filter von search_heritage sind als solche deklariert (src/swiss_cultural_heritage_mcp/server.py:2823-2826, meta.clientside_filters)."
+  ],
+  "gaps": [
+    "Kein Live-Test im Repo haelt die Verengung durch collection/region fest; sie ist nur in diesem Audit gemessen (Severity low)."
+  ],
+  "evaluator_notes": "Die Fehlerklasse (eine Teilmenge einer Flag-Gruppe erbt Server-Defaults) hat in diesem Server keine Angriffsflaeche: Keine der fuenf Quellen wird mit einer Parameter-Gruppe angesprochen. Pass auf Grund der vollstaendigen Parameter-Aufzaehlung plus gemessener Verengung."
+}

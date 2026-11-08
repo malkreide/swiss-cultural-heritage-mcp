@@ -1,0 +1,17 @@
+{
+  "id": "SEC-016",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "critical",
+  "evidence": [
+    "git grep -nE '0\\.0\\.0\\.0' HEAD -- src/ -> only comments/docstrings (server.py:140, :3502, :3595); no 0.0.0.0 default in code. Control: the pattern host\\s*=\\s*[\"']0\\.0\\.0\\.0 matches 'mcp.run(host=\"0.0.0.0\")' (1)",
+    "src/swiss_cultural_heritage_mcp/server.py:140 — Settings.host = '127.0.0.1', overridable through MCP_HOST; src/swiss_cultural_heritage_mcp/server.py:3599-3603 — settings.host goes to build_http_app (app/transport security) AND to uvicorn.run(host=...)",
+    "Runtime default: 'venv python -I -m swiss_cultural_heritage_mcp.server --http' -> 'INFO: Uvicorn running on http://127.0.0.1:8000'",
+    "Runtime with a set value: 'MCP_HOST=127.0.0.2 MCP_PORT=8765 ... --http' -> 'Uvicorn running on http://127.0.0.2:8765' plus 'WARNING DNS-Rebinding-Schutz ist AUS: Bind ... server.py:3567': the value reaches the listener, and the non-loopback bind without an allow-list is not silent",
+    "Dockerfile:35-38 — 0.0.0.0 appears explicitly only in the deployment config (ENV MCP_HOST=0.0.0.0)"
+  ],
+  "gaps": [
+    "README.md/README.de.md do not explain the local/container distinction (no mention of MCP_HOST/127.0.0.1); it is only in docs/security.md:33,112. The Render instructions (README.md:150-155, native start command without MCP_HOST) would bind loopback on Render (severity: medium)"
+  ],
+  "evaluator_notes": "Mode 3 was run with both runs as the check requires. 127.0.0.2 stood in for 0.0.0.0 so the machine was not exposed to the LAN; it is not loopback-equal for the code (not in the tuple), so it fires the same warning path. Only one network path exists (build_http_app); mcp.run() on the console script is stdio."
+}

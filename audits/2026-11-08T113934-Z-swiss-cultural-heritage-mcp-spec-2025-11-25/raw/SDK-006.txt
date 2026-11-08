@@ -1,0 +1,17 @@
+{
+  "id": "SDK-006",
+  "status": "pass",
+  "category": "SDK",
+  "severity": "high",
+  "evidence": [
+    "git ls-files | grep -E '(^|/)pyproject\\.toml$|requirements.*\\.txt$|\\.lock$' -> nur pyproject.toml (kein verschachteltes Manifest, kein Lockfile); grep '\"mcp(\\[[a-z]+\\])?[><=]' -> pyproject.toml:43 `\"mcp[cli]>=2.0.0,<3\"`; installiert mcp 2.3.0",
+    "grep 'mcp\\.server\\.fastmcp|from fastmcp import|FastMCP(' src/ tests/ -> nur src/swiss_cultural_heritage_mcp/server.py:479 (Kommentar, kein Import; Muster schlaegt also an); Importe src/swiss_cultural_heritage_mcp/server.py:41-42 `from mcp.server.mcpserver import Context, MCPServer`; MCPServer in 5 Testdateien (test_cache_hints, test_protocol_version, test_response_shape, test_server, test_server_identity)",
+    "grep -rnE 'mcp\\.settings\\.[a-z_]+\\s*=|\\.settings\\.(host|port)\\s*=' src/ tests/ -> 0 (rc=1); camelCase-Lesezugriffe '\\.(readOnlyHint|...)\\b' -> 0 (rc=1); Negativkontrolle: beide Muster treffen eine Probezeile (`mcp.settings.host = \"x\"` / `x.annotations.readOnlyHint` -> je 1). Bind-Parameter gehen an uvicorn.run(host=, port=) und build_http_app(host=) ({S}:3599-3605, 3574)",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): Start auf Netz-Transport -> 'Uvicorn running on http://127.0.0.1:8765', /health 200, initialize 200 — kein ValueError zu Settings.host",
+    "Runtime in-process (scratchpad/probe/tools_probe.py): `x.annotations.read_only_hint is True` fuer 11/11 Tools in 2026-07-28 und 2025-11-25 — snake_case-Lesezugriff funktioniert; CI .github/workflows/ci.yml:26 `pip install -e \".[dev]\"` loest frisch gegen den 2.x-Bound auf und fuehrt die Suite aus (Zeile 30)"
+  ],
+  "gaps": [
+    "low: veralteter Kommentar src/swiss_cultural_heritage_mcp/server.py:479 nennt noch 'mcp.server.fastmcp' als die offizielle SDK — kein Import, aber irrefuehrend"
+  ],
+  "evaluator_notes": "Alle fuenf Kriterien belegt. Kein Lockfile: CI loest bei jedem Lauf gegen >=2.0.0,<3 auf, ein 1.x-Halt ist damit ausgeschlossen. Kein TypeScript-Server im Repo."
+}

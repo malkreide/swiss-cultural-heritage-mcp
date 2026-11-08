@@ -1,0 +1,21 @@
+{
+ "id": "ARCH-014",
+ "status": "pass",
+ "category": "ARCH",
+ "severity": "high",
+ "evidence": [
+  "Vorfrage festgestellt: grep '_fetch_with_retry|await _http_get|await _http_post' -> Retry-Pfad nur fuer Memobase/Dodis (server.py:2684, 2723, 3120, 3134); SIKART/SNM/NB rufen _http_get einmal (z. B. server.py:1407, 1648, 2011) — kein Wiederholungspfad, nach Abschnitt 'Was gilt, wenn gar nicht wiederholt wird' kein Befund.",
+  "Transport-Ebene: server.py:347-350 httpx.AsyncClient ohne transport=; Laufzeit: type(_new_client()._transport)=AsyncHTTPTransport, _pool._retries=0. Negative Kontrolle: httpx.AsyncHTTPTransport(retries=3)._pool._retries -> 3. grep 'HTTPTransport\\(|max_retries|Retry\\(|retries=' src/ -> exit 1 (Muster trifft in httpx/_client.py:731,750).",
+  "server.py:899-911 — HTTPStatusError: nur 429 und 5xx wiederholt, sonst raise; httpx.TimeoutException/RequestError wiederholt. Laufzeit (scratchpad/probe_retry.py, respx): 404 -> 1 Aufruf, sofort HTTPStatusError 404; ConnectError -> 4 Aufrufe (retry_attempts=4).",
+  "server.py:795-848 — parse_retry_after liest Sekundenzahl und HTTP-Datum fuer 429/503; compute_delay: Retry-After schlaegt die Kurve, einseitiger Jitter [1.0,1.25], exponentiell mit Streuung [0.5,1.5]; min(..., retry_max_delay) umschliesst den Jitter (Deckel NACH dem Jittern, nachgerechnet: max 20 s).",
+  "server.py:871-897 — Wanduhr-Deadline: deadline=monotonic()+retry_total_budget (25 s, server.py:111), async with asyncio.timeout(remaining) um Request+raise_for_status; Wartezeit ueber Restbudget -> Abbruch. Laufzeit: langsame Antwort (echtes asyncio.sleep 2 s) bei Budget 0.3 s -> TimeoutError nach 0.31 s.",
+  "Budget vs Client: server.py:106-111 begruendet 25 s gegen MCP_DEFAULT_TIMEOUT 30 s des Python-SDK; search_heritage faechert Memobase/Dodis parallel (asyncio.create_task + as_completed, server.py:2857-2860), Budgets addieren sich nicht.",
+  "Nach Erschoepfung: server.py:913-919 raise last_error (kein Cache, keine stillen Altdaten); ToolError 'nicht erreichbar' bzw. isError (tests/test_server.py:1804-1810, 1837-1844).",
+  "Im Test gebunden: tests/test_retry_policy.py:35-84 (Retry-After beide Formen, Jitter streut, Deckel nach Jitter, einseitiger Retry-After-Jitter); tests/test_server.py:1813-1834 (5xx wird wiederholt), :1837-1844 (Timeout)."
+ ],
+ "gaps": [
+  "Nicht im Test gebunden: Gesamtbudget/Wanduhr-Deadline (grep 'retry_total_budget|asyncio.timeout|_fetch_with_retry' tests/ -> leer; Negativkontrolle: 'retry' trifft tests/test_retry_policy.py und tests/test_server.py) und 'kein Retry auf 4xx ausser 429' im Schleifenpfad. Nur durch diese Pruefung zur Laufzeit belegt (medium).",
+  "Hinweis: tests/test_server.py:1667-1669 setzt nur retry_backoff_base auf 0; die Retry-After-Kurve laeuft in diesen Tests ungebremst — fuer die Pruefung unerheblich, fuer kuenftige 429-Tests eine Falle."
+ ],
+ "evaluator_notes": "Politik vollstaendig vorhanden und laufzeitbelegt: nur 5xx/429/Netz/Timeout, Jitter, Retry-After mit Deckel danach, Sekundenbudget an einer Wanduhr-Deadline unter dem SDK-Client-Timeout, genau eine Ebene (Transport-Retries 0, mit Negativkontrolle), keine schreibenden Tools, Fehler nach Erschoepfung. Die fehlende Testbindung von Budget und 4xx-Abbruch ist medium und blockiert ein high-Check nicht."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "IDENT-007",
+  "status": "partial",
+  "category": "IDENT",
+  "severity": "high",
+  "evidence": [
+    "Leeres venv (Python 3.14, scratch/verify060), pip install --no-cache-dir --isolated 'swiss-cultural-heritage-mcp==0.6.0' → exit 0; import: 'import ok 0.6.0 ...\\verify060\\Lib\\site-packages\\swiss_cultural_heritage_mcp\\__init__.py' (aus dem Index, nicht aus dem Checkout)",
+    "Aufgeloest (pip freeze): mcp==2.3.0, mcp-types==2.3.0, httpx==0.28.1, httpx2==2.16.0, pydantic==2.14.3, pydantic-settings==2.16.2, defusedxml==0.7.1, structlog==26.1.0",
+    "Entry Point verify060/Scripts/swiss-cultural-heritage-mcp.exe ueber stdio: initialize → protocolVersion 2025-11-25, serverInfo version 0.6.0; tools/list → 11 Tools",
+    "tools/call list_heritage_collections → isError=False, 1672 Zeichen; tools/call heritage_search_artists {query:'Hodler',limit:2} (echter Upstream-GET) → isError=False, 578 Zeichen, 'Gefunden: 25 Eintraege (zeige 2)'",
+    "PyPI-JSON: 0.6.0 yanked=False",
+    "grep -l 'schedule:' .github/workflows/*.yml → nur nightly-live.yml; dieser installiert den Checkout (pip install -e \".[dev]\", Zeile 32), nicht das publizierte Paket"
+  ],
+  "gaps": [
+    "medium: kein wiederkehrender Lauf im Repo, der das publizierte Artefakt installiert und startet (ob der externe mcp-continuous-auditor es tut, ist hier nicht pruefbar) — die Messung ist ein Zeitpunkt (2026-11-08 ~11:55 UTC)",
+    "medium (Datentreue, nicht Startfaehigkeit): Antwort von heritage_search_artists am 0.6.0-Artefakt rendert den Namen als '## (Unbekannt)' — Live-Schema ohne NAME/HAUPTNR/SIKART_LINK; HEAD 0.7.0 liest dieselben Felder (server.py:1317, 1473, 1527)",
+    "info: 0.7.0 ist nicht auf dem Index; nach dem Publish Modus 2 gegen 0.7.0 wiederholen"
+  ],
+  "evaluator_notes": "Das publizierte Artefakt installiert, importiert, startet und liefert. shipped_probe.py nicht verfuegbar, Modus 2 von Hand. Laeufe mit dem Konsolen-Skript (Kommandozeile ohne 'swiss_cultural_heritage_mcp.server') und vollstaendiger Ausgabe — vom parallelen Prozess-Kill nicht betroffen."
+}

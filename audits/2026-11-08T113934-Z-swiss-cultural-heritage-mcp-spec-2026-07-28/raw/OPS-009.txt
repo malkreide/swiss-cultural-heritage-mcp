@@ -1,0 +1,19 @@
+{
+ "id": "OPS-009",
+ "status": "partial",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  "tests/fixtures/PROVENANCE.md:1-25 — 'Aufgezeichnet am 2026-09-20 mit PYTHONPATH=src python scripts/record_fixtures.py'; je Datei Werkzeug, angefragte URL als Schlüssel, Kürzung, Grösse, SHA-256 (z. B. artists_1.json -> https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=…&q=Giacometti)",
+  "Aufgezeichnete Endpunkte: CKAN datastore_search (artists_1, artist_detail_1, cross_search_1), CKAN package_search (museum_datasets_1, cross_search_3), NB SRU (helveticat_1.xml, cross_search_2.xml), OAI ListSets (nb_collections_1.xml), OAI GetRecord (publication_1.xml), Memobase '/' und '/record/' (memobase_1, item_memobase_1), Dodis solr/query und solr/full (dodis_1, item_dodis_1). Nicht aufgezeichnet: OAI ListRecords (Grund genannt: 345 KB, scripts/record_fixtures.py:38) und heritage_browse_collection (datastore_search mit SNM-Ressource; nur Handmocks in tests/test_server.py)",
+  "tests/test_recorded_fixtures.py:159-456 — Aufnahmedatum, Vollständigkeit der Provenance, SHA-256 und gleiche Aufrufe des Recorders geprüft, jedes Werkzeug liest seine Aufzeichnung (:314); keine Funktion mit @pytest.mark.live (grep 'mark.live' in der Datei ohne Treffer)",
+  "git show --stat b079c99 (2026-09-20) — geändert nur cross_search_2/3, dodis_1, helveticat_1, memobase_1, museum_datasets_1, nb_collections_1, publication_1; artists_1.json, artist_detail_1.json, cross_search_1.json und item_*.json stammen inhaltlich aus 2464623 (2026-08-15), PROVENANCE nennt für alle ein Datum (2026-09-20)"
+ ],
+ "gaps": [
+  "Kein Live-Test hält eine Aufzeichnung auf Feldebene gegen die heutige Quelle; keine Gegenprobe mit erfundener Antwort (medium)",
+  "Ein Aufnahmedatum für das ganze Verzeichnis; ob die 08-15-Dateien am 09-20 inhaltsgleich neu aufgenommen wurden, lässt sich nicht unterscheiden (medium)",
+  "heritage_browse_collection hat keine Aufzeichnung, nur handgeschriebene Mocks (low)",
+  "Der Erneuerungsweg steht in PROVENANCE.md, nicht in CONTRIBUTING (low)"
+ ],
+ "evaluator_notes": "Eine starke Grundlage (Recorder, Hash, Schlüssel je Abfrage). Offen sind die Live-Verbindung Aufzeichnung <-> Quelle und die Datierung je Datei. Offene Frage, die das unterscheidet: Erzeugt 'scripts/record_fixtures.py' heute für artists_1.json denselben SHA-256 wie in PROVENANCE? Nicht ausgeführt, weil der Recorder ins Repo schreibt. Advisory."
+}

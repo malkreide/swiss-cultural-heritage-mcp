@@ -1,0 +1,15 @@
+{
+  "id": "IDENT-004",
+  "status": "pass",
+  "category": "IDENT",
+  "severity": "low",
+  "evidence": [
+    "Verification-Skript am HEAD-Export: README.de.md badges 1 → 'OK README.de.md: 0.7.0 (pyproject 0.7.0)'; README.md badges 1 → 'OK README.md: 0.7.0' (README.md aus HEAD, nicht aus dem veraenderten Arbeitsbaum)",
+    "scripts/check_version_sync.py:collect_declared prueft alle README*.md; laeuft in ci.yml im selben Schritt wie die server.json-Pruefung (IDENT-003)",
+    "Gegenprobe in Kopie (scratch/nc_badge): README.de.md-Badge auf 0.6.0 → 'DRIFT ... README.de.md -> Versions-Badge = 0.6.0' exit 1"
+  ],
+  "gaps": [
+    "low: Skript bricht beim ersten Befund ab — Kopie mit README.md-Badge 0.6.0 UND hartkodiertem UA-Literal in src/ meldete nur das Badge (exit 1), der src/-Befund blieb verdeckt (genau die Common Failure des Checks)"
+  ],
+  "evaluator_notes": "Alle vier Pass-Kriterien erfuellt; der Abbruch beim ersten Befund ist als Gap gefuehrt."
+}

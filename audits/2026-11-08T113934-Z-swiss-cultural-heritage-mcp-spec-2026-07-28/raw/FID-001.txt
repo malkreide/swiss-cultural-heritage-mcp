@@ -1,0 +1,23 @@
+{
+  "id": "FID-001",
+  "status": "partial",
+  "category": "FID",
+  "severity": "critical",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:1400-1406 — datastore_search (SIKART) sendet limit und offset immer; Upstream-Default ohne limit gemessen 2026-11-08 11:48 UTC: q=Malerin -> 100 Records bei total 1779. Request-Log des Tools: limit=20&offset=0.",
+    "src/swiss_cultural_heritage_mcp/server.py:1648-1651 — package_search sendet rows und start immer (Request-Log: rows=20&start=0); Upstream-Default ohne rows gemessen: 10 Treffer.",
+    "src/swiss_cultural_heritage_mcp/server.py:1284-1293 — SRU sendet maximumRecords=min(limit,50) immer; Upstream-Default ohne maximumRecords gemessen: 10 Records fuer alma.all_for_ui=\"Volksschule\" (numberOfRecords 1990). Der Deckel 50 ist im Tool-Result benannt (src/swiss_cultural_heritage_mcp/server.py:2129-2133) und als has_more im JSON (src/swiss_cultural_heritage_mcp/server.py:2062).",
+    "src/swiss_cultural_heritage_mcp/server.py:2684-2690 und src/swiss_cultural_heritage_mcp/server.py:2723-2729 — Memobase sendet size+offset, Dodis start+rows immer; Upstream-Defaults gemessen: Memobase ohne size 10 Members (total 335 fuer 'Escher'), Dodis ohne rows 963 Treffer (= rows=1000). Beide Defaults werden nie geerbt.",
+    "Recall-Delta datastore_search `language` (weggelassen = english vs german), live 2026-11-08: Hodler 25 vs 0, Bildhauer 1259 vs 0, Malerin 1779 vs 1779. Der Server laesst `language` weg und erbt damit die breitere Variante: kein Befund.",
+    "Recall-Delta datastore_search `plain` (Default true, vom Server nie gesendet): q=Hodler 25, q=Hodl 0, q=Hodl* 0, aber plain=false q='Hodl:*' 26. Der Default schliesst Praefixsuche aus und ist weder gesendet noch im Tool-Result oder in der Description deklariert.",
+    "src/swiss_cultural_heritage_mcp/server.py:2017-2035, src/swiss_cultural_heritage_mcp/server.py:2082-2086, src/swiss_cultural_heritage_mcp/server.py:2047-2053 — die bewusste Einschraenkung (query+set_spec filtert nur die abgerufene OAI-Seite) ist im Tool-Result sichtbar, nicht nur im README; ebenso search_heritage meta.clientside_filters (src/swiss_cultural_heritage_mcp/server.py:2897-2901).",
+    "rg -n -i 'default-matrix|ground.truth|recall|Referenzquer|Web-UI|reality-check' (Repo ohne audits/ und Fixture-Daten) -> keine Default-Matrix; Kontrolle: dasselbe Muster trifft den Katalogtext FID-002.md. PROBE_REPORT_helveticat.md:250-256 dokumentiert nur fuer SRU den maximumRecords-Deckel, :74-76 ListSets ohne resumptionToken (live bestaetigt 2026-11-08: 68 Sets, kein Token)."
+  ],
+  "gaps": [
+    "Keine Default-Matrix fuer alle optionalen Parameter aller genutzten Endpunkte (CKAN datastore_search/package_search, Memobase, Dodis solr/query); nur Teilbefunde fuer SRU/OAI im Probe-Bericht (Severity medium).",
+    "Kein Regressionstest, der den vollen Scope festhaelt (kein Recall-Floor unter @pytest.mark.live, siehe FID-002) (Severity high).",
+    "datastore_search `plain=true` (Upstream-Default) schliesst Praefix-Matching aus; der Server erbt ihn still und deklariert die Einschraenkung nirgends (Severity medium).",
+    "Dodis/Memobase: weitere serverseitige Defaults (Filter, Typ-Einschraenkungen) nicht spezifiziert und nicht gemessen; keine Spec-Parameterliste im Repo (Severity medium)."
+  ],
+  "evaluator_notes": "Der Kern des Checks ist erfuellt: Jeder gemessene einschraenkende Default (rows 10, limit 100, maximumRecords 10, size 10, Dodis-rows unbegrenzt) wird explizit uebersteuert, und bewusste Einschraenkungen stehen im Tool-Result. Es fehlen die Matrix als Artefakt, der Regressionstest und die Behandlung von `plain`. Alle Messungen lesend, 2026-11-08 11:45-11:48 UTC, direkt gegen die Upstreams und ueber die Tool-Funktionen."
+}

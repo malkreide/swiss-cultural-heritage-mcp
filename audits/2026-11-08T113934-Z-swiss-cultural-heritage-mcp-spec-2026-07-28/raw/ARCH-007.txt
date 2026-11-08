@@ -1,0 +1,18 @@
+{
+  "id": "ARCH-007",
+  "status": "pass",
+  "category": "ARCH",
+  "severity": "medium",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:2474-2490 — heritage_cross_search fächert per `asyncio.create_task` + `as_completed` parallel auf die gewählten Quellen auf, meldet Progress je Quelle; fällt eine Quelle aus, bleiben die anderen stehen",
+    "src/swiss_cultural_heritage_mcp/server.py:2857-2870 — search_heritage, dasselbe Muster für Memobase und Dodis parallel, Fehler in meta.errors + ctx.warning",
+    "Live 2026-11-08: heritage_cross_search('Ferdinand Hodler') in 0.66 s mit Treffern aus drei Quellen in einem Envelope (source = Liste der drei SourceInfo); search_heritage in 0.44 s mit 40 normalisierten Treffern inkl. Permalink/Lizenz",
+    "src/swiss_cultural_heritage_mcp/server.py:1462-1480 — Suchergebnisse sind selbsttragend (Name, Lebensdaten, Kanton, Vita, SIKART-Link), nicht nur IDs; src/swiss_cultural_heritage_mcp/server.py:1680-1730 — die Datensatzsuche liefert die Ressourcen samt IDs/URLs gleich mit",
+    "src/swiss_cultural_heritage_mcp/server.py:2368-2373 und src/swiss_cultural_heritage_mcp/server.py:2817-2820 — die Beschreibungen nennen den aggregierten Charakter ('Fächert auf drei Upstreams auf', 'Bei collection=all wird parallel gesucht')"
+  ],
+  "gaps": [
+    "low: heritage_browse_collection setzt eine resource_id aus heritage_search_museum_datasets voraus (src/swiss_cultural_heritage_mcp/server.py:1775); bewusste Zwei-Schritt-Kette, im Docstring ausgewiesen",
+    "low: heritage_list_nb_collections und list_heritage_collections sind reine Discovery-Hilfen ohne eigenständige Antwort auf eine Nutzerfrage"
+  ],
+  "evaluator_notes": "Alle vier Kriterien erfüllt: abgeschlossene Resultate, Parallelisierung wo aggregiert wird, aggregierter Charakter in der Beschreibung, Anchor-Query in <= 2 Calls. Die Live-Zeiten sind je eine Stichprobe."
+}

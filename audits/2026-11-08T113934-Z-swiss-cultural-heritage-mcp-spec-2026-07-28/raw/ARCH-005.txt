@@ -1,0 +1,20 @@
+{
+  "id": "ARCH-005",
+  "status": "partial",
+  "category": "ARCH",
+  "severity": "critical",
+  "evidence": [
+    "`gitleaks git . --redact` (v8.30.1) auf dem Repo: '142 commits scanned ... no leaks found', Report []; Negativkontrolle: Wegwerf-Repo im Scratchpad mit AWS-Key und ghp_-Token -> 'leaks found: 2'",
+    "`git grep -nIE \"(api[_-]?key|password|secret|token).*=.*[\\\"'][^\\\"']{16,}[\\\"']\" HEAD -- src scripts Dockerfile server.json claude_desktop_config.json .github` -> einziger Treffer server.py:1184 `token_el = root.find(\".//oai:resumptionToken\", OAI_NS)` (OAI-Resumption-Token, kein Secret); Negativkontrolle `API_KEY = \"sk-1234567890abcdef1234\"` -> Treffer. Connection-String-/AKIA-/ghp_-/sk--Muster über ganz HEAD -> rc=1",
+    "src/swiss_cultural_heritage_mcp/server.py:202, 228 — die einzigen Env-Zugriffe ausserhalb Settings: os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT') ohne Default, os.getenv('DEPLOYMENT_ENV', 'production'), kein Secret-Default; Settings src/swiss_cultural_heritage_mcp/server.py:65-150 hat keine Credential-Felder (auth_model none, Open Data)",
+    "Dockerfile:34-38 (HEAD) — ENV nur PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, MCP_HOST, MCP_PORT; kein Secret im Image-Layer",
+    "`git show HEAD:.gitignore` -> __pycache__/, *.py[cod], *.egg-info/, .pytest_cache/, .coverage*, htmlcov/, dist/, build/, .venv/, venv/: kein `.env`-Eintrag; `git ls-files | grep -iE '(^|/)\\.env'` -> rc=1 (weder .env noch .env.example)",
+    "`git grep -nIE 'gitleaks|trufflehog|secret.scan|detect-secrets' HEAD -- .github` -> rc=1: kein Secret-Scan in CI (ci.yml, nightly-live.yml, publish.yml)"
+  ],
+  "gaps": [
+    "medium: kein automatisierter Secret-Scan (gitleaks/trufflehog) in einem PR-Workflow",
+    "low: `.gitignore` schliesst `.env`/`.env.*` nicht aus; Settings liest zwar keine .env-Datei, eine lokal angelegte .env wäre aber commitbar",
+    "low: kein `.env.example` mit den MCP_*-Variablen (bei auth_model none ohne Secrets, fehlt aber als Konfig-Referenz)"
+  ],
+  "evaluator_notes": "Die Kernkriterien (keine Secrets in Code, History oder Image, keine Secret-Defaults, keine Secret-Logs) sind mit Werkzeug und Negativkontrolle belegt. Kriterien 3/4 (Laden aus Env, SecretStr) sind n/a, weil der Server keine Secrets braucht. Von den sechs anwendbaren Kriterien fehlen drei Hygiene-Punkte (6 .gitignore, 7 .env.example, 8 CI-Scan) -> 3 von 6 = 50 % -> partial. Kein Gap erreicht Severity critical; ein Leak liegt nicht vor."
+}

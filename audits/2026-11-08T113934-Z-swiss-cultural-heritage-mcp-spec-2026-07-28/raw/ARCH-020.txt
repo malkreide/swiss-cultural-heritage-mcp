@@ -1,0 +1,21 @@
+{
+ "id": "ARCH-020",
+ "status": "partial",
+ "category": "ARCH",
+ "severity": "medium",
+ "evidence": [
+  "server.py:390-396 CACHE_HINTS: tools/list, resources/list, resources/templates/list, prompts/list, server/discover je CacheHint(ttl_ms=300_000, scope='public'); Begruendung server.py:374-388 (Listen beim Import fest, keine Filterung nach Aufrufer; resources/read bewusst ohne Hinweis).",
+  "Laufzeit HTTP 2026-07-28 (scratchpad/probe_modern.out): tools/list, prompts/list, resources/list, resources/templates/list, server/discover -> ttlMs 300000, cacheScope 'public'; resources/read heritage://sik-isea/overview -> ttlMs 0, cacheScope 'private'. Alle Werte im Vorrat {public, private}. stdio: tools/list und server/discover ebenfalls ttlMs 300000/public.",
+  "tests/test_cache_hints.py:24-76 — ueber echte Client(mcp)-Session: tools/list, resources/list, prompts/list = LIST_CACHE_TTL_MS/public; resources/read = 0/private; Negativkontrolle MCPServer('kontrolle') ohne Hinweise -> 0/private.",
+  "Reihenfolge: 4 frische Prozesse mit PYTHONHASHSEED=random, random, 1, 12345 -> identischer Hash cc65e045d4cf1603 der 11 Tool-Namen; Negativkontrolle: ein set derselben Namen wechselt die Ordnung zwischen Seeds 1/2/3. names == sorted(names) -> False: die Ordnung ist Registrierungsreihenfolge (heritage_search_artists ... list_heritage_collections), keine explizite Sortierung.",
+  "Paginierung: offset/limit an die Quelle (server.py:1403, 1650 'start', 1791, 2687, 2726) ohne Sortierparameter; rg 'sort' server.py trifft nur sorted()-Aufrufe in Fehlermeldungen/Allow-List (700, 711, 2744, 3529-3530), kein sort=/order_by im Request — die Muster-Negativkontrolle schlaegt an (sorted(...) gefunden).",
+  "Datenresultate tragen kein ttlMs (CacheHints nur auf Protokollmethoden; tools/call-Ergebnis ohne ttlMs) — Kriterium zu source_freshness gegenstandslos."
+ ],
+ "gaps": [
+  "tools/list-Reihenfolge stammt aus der Registrierungsreihenfolge, nicht aus einer expliziten Sortierung; kein Test ueber Prozessgrenzen und keine Gegenprobe gegen set-Iteration im Repo (stabil nur gemessen, nicht gebunden).",
+  "Paginierte Query-Tools (SIKART, SNM, Memobase, Dodis, Helveticat-SRU) senden keinen totalen Sortierschluessel; bei Gleichstand (Relevanz-Score) entscheidet die Quelle je Abruf — Risiko doppelter/verlorener Datensaetze beim Blaettern. Kein Zwei-Seiten-Test (Schnittmenge + Vereinigung).",
+  "resources/read liefert ttlMs 0 (Common Failure 'ttlMs: 0 als sicherer Wert'); die Ressourcen sind statische Uebersichtstexte. Bewusst begruendet (server.py:385-387), aber ohne Frischehinweis.",
+  "Keine Gegenprobe der Werteprufung gegen cacheScope 'session' im Repo."
+ ],
+ "evaluator_notes": "Nur fuer 2026-07-28. Felder auf allen fuenf Methoden, Werte im zulaessigen Vorrat, public nur ueber aufruferunabhaengigen Listen (Public Open Data) — am Draht belegt. Reihenfolge ueber Prozessgrenzen stabil, aber nicht sortiert und nicht getestet; der Pagination-Schnitt ist ungesichert. Rund die Haelfte der anwendbaren Kriterien erfuellt -> partial."
+}

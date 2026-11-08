@@ -1,0 +1,22 @@
+{
+  "id": "ARCH-003",
+  "status": "fail",
+  "category": "ARCH",
+  "severity": "medium",
+  "evidence": [
+    "Modus 3, Zähler auf der respx-Route (scratchpad/probe/arch003_counter.py): heritage_search_artists(query='Xyzzyqq', region='Nirgendwo') gegen leere Antwort -> route.call_count=2, gesendete q-Werte ['Xyzzyqq Nirgendwo', 'Nirgendwo']; Kontrolle mit Treffer-Antwort ('Hodler','Bern') -> call_count=1, ['Hodler Bern'], match_type exact. Der Zähler schlägt also an",
+    "Modus 3, heritage_search_museum_datasets(query='Xyzzyqq Plonk') gegen leere Antwort -> call_count=2, zweite Abfrage '(Xyzzyqq* OR Plonk*) organization:schweizerisches-nationalmuseum-snm', ein Begriff, den der Aufrufer nie geschickt hat",
+    "src/swiss_cultural_heritage_mcp/server.py:1420-1425 — Fuzzy-Retry ruft `_query(max(q_terms, key=len))` erneut ab; src/swiss_cultural_heritage_mcp/server.py:1436-1444 — die Treffer daraus landen unter `results` desselben Envelopes, nur `match_type='fuzzy'` daneben",
+    "src/swiss_cultural_heritage_mcp/server.py:1664-1668 (SNM: OR-Präfix-Wildcards) und src/swiss_cultural_heritage_mcp/server.py:1993-1999 (Helveticat SRU: relation ' all ') — dasselbe Selbst-Verbreitern in zwei weiteren Tools",
+    "src/swiss_cultural_heritage_mcp/server.py:643-656 — `_no_match` liefert im JSON-Modus `ResultEnvelope(count=0, results=[], match_type='none')` ohne `suggestions` und ohne Hinweis, ob verbreitert wurde; gemessene Leer-Antwort: {'count': 0, 'total': 0, 'match_type': 'none', 'results': [], 'meta': None}",
+    "tests/test_server.py:1200-1221 und 1253-1268 — die Tests sichern das Selbst-Verbreitern ab (Handler liefert Treffer nur für den zweiten, veränderten Begriff und erwartet match_type 'fuzzy'); das Testpaar 'Vorschläge erscheinen' + 'genau ein Request mit unverändertem Begriff' fehlt"
+  ],
+  "gaps": [
+    "medium: bei Leermenge gehen pro Tool-Aufruf zwei Upstream-Requests raus, der zweite mit verändertem Begriff (heritage_search_artists, heritage_search_museum_datasets, heritage_search_helveticat)",
+    "medium: heuristische Treffer stehen unter `results`, nicht in einem eigenen Feld mit dem erzeugenden Begriff; das Modell kann sie nicht von exakten Treffern trennen",
+    "medium: keine aus der Eingabe abgeleiteten `suggestions`; der JSON-Leer-Envelope ist ohne handlungsfähigen Hinweis",
+    "low: die Antwort sagt nie, mit welchem Begriff verbreitert wurde; _FUZZY_NOTE (src/swiss_cultural_heritage_mcp/server.py:635-640) nennt den Ersatzbegriff nicht",
+    "medium: Testpaar aus Modus 3 und Gegenprobe gegen eine selbst-suchende Fassung fehlen; die vorhandenen Tests zementieren das Anti-Pattern"
+  ],
+  "evaluator_notes": "Erfüllt: match_type-Feld vorhanden (Kriterium 2), Markdown-Leermenge mit Hinweistext (Kriterium 3 teilweise), keine sensiblen Daten (Kriterium 4 n/a). Verfehlt: Kriterien 5 bis 11. Unter 50 % -> fail. Das ist genau der Belegfall der Check-Definition ('Der Vorschlag wird gleich mitgesucht, seine Treffer landen unter results'). Die Docstrings dokumentieren das Verhalten offen ('wird automatisch breiter ... gesucht'), Dokumentation heilt den Befund aber nicht."
+}

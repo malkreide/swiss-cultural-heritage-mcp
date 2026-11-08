@@ -1,0 +1,19 @@
+{
+ "id": "OPS-005",
+ "status": "partial",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  ".github/workflows/ci.yml:3-7, :28-29 — committeter Workflow, ausgelöst durch push und pull_request auf main, fährt pytest; Lauf 41281505123 (2026-11-01) grün auf 3.11, 3.12 und 3.13",
+  ".github/workflows/nightly-live.yml:36 continue-on-error mit sichtbarer Folge: :54-64 Einordnung clear/finding/unknown, :116-124 exit 1 bei != clear; die Pipe in :38-41 wird über set +e und ${PIPESTATUS[0]} ausgewertet. Mutationsprobe der Einordnung (scratchpad/probe/mutate_classify.py): 5 von 5 Mutationen (alle übersprungen -> clear, 0 Tests -> clear, fehlender Report -> clear, errors ignoriert, Zeilenumbruch nicht geglättet) machen je einen Test rot",
+  "CI-Log 41281505123 — '413 passed, 2 skipped': tests/test_server.py::TestTracing::test_tool_span_records_name_and_is_error und ::test_init_tracing_instruments_httpx; Grund ist pytest.importorskip('opentelemetry.sdk') (test_server.py:1353, :1394), das Extra 'otel' (pyproject.toml:66-69) installiert die CI nicht",
+  "ruff 0.16.9 (Pin) über die Kopie aus git archive HEAD: 'ruff format --check --line-length 88 scripts/' -> 2 Dateien würden umformatiert (scripts/check_version_sync.py:139, scripts/record_fixtures.py:157); bei 100, 110 und 120 formatgerecht. Kein Workflow-Schritt prüft die kopierte Datei gegen andere Breiten",
+  "ci.yml:43, :46 — ruff check/format über src/ tests/ scripts/ (alle Code-Verzeichnisse ausser audits/, das eine historische gen_findings.py enthält); kein auskommentiertes Gate (grep '#.*(ruff|mypy|pytest).*(deaktiviert|disabled|TODO|vorerst|ausstehend)' rc=1)"
+ ],
+ "gaps": [
+  "2 Tests werden in der CI wegen einer fehlenden, installierbaren Abhängigkeit (otel-Extra) übersprungen (medium)",
+  "scripts/check_version_sync.py, das portfolioweit kopierte Prüfskript, ist bei line-length 88 nicht formatgerecht, und kein Pipeline-Schritt erzwingt die Formatstabilität über die Breiten (medium)",
+  "publish.yml:69-71 'curl -L … | tar xz' ohne pipefail und ohne curl -f; ein HTTP-Fehler wird nur indirekt über tar sichtbar (low)"
+ ],
+ "evaluator_notes": "Tests laufen, und continue-on-error ist vorbildlich aufgelöst (geprüft per Mutation). Abzüge: Abhängigkeits-Skips und der Geltungsbereich des kopierten Skripts (fünfte Ausprägung des Checks). Advisory."
+}

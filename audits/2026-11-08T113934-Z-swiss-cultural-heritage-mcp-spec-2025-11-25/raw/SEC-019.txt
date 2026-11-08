@@ -1,0 +1,16 @@
+{
+  "id": "SEC-019",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "critical",
+  "evidence": [
+    "docs/security.md:75-85 — 'Lethal Trifecta assessment (SEC-019)' table with the three legs and the conclusion 'at most one leg'",
+    "grep -c '\"readOnlyHint\": True' src/swiss_cultural_heritage_mcp/server.py = 11 = grep -c '^@mcp.tool' (no readOnlyHint False); grep -nE 'smtplib|send_mail|webhook|slack|\\.put\\(|\\.patch\\(|\\.delete\\(' src/swiss_cultural_heritage_mcp/server.py -> no match; the only POST (src/swiss_cultural_heritage_mcp/server.py:773) is the Dodis Solr search to beta.dodis.ch (src/swiss_cultural_heritage_mcp/server.py:2724-2727)",
+    "src/swiss_cultural_heritage_mcp/server.py:129-136 + src/swiss_cultural_heritage_mcp/server.py:726-730 — outbound traffic only to 4 public hosts (ckan.opendata.swiss, helveticat.nb.admin.ch, api.memobase.ch, beta.dodis.ch); no auth, no PII source (profile: Public Open Data, auth_model none)",
+    "Score in code: private data no (0), untrusted content yes (upstream texts go to the LLM, 1), external send channel only as queries to fixed public sources (0-1) -> at most 2 legs, never 3"
+  ],
+  "gaps": [
+    "docs/security.md:83 says 'two-host egress allow-list ... immutable frozenset'. The code has four hosts, and the list can be overridden through MCP_ALLOWED_HOSTS (see SEC-021). The assessment rests partly on an outdated or wrong premise (severity: medium)"
+  ],
+  "evaluator_notes": "The assessment exists and is right in substance: without private data there is nothing to exfiltrate. No ADR needed (score <= 2 without private data). The doc should be corrected (host count, mutability)."
+}

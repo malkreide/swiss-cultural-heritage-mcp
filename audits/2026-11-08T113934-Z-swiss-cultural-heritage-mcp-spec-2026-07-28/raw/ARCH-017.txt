@@ -1,0 +1,16 @@
+{
+ "id": "ARCH-017",
+ "status": "pass",
+ "category": "ARCH",
+ "severity": "high",
+ "evidence": [
+  "Zustandsinventar (rg auf Modul-Level-Container, src/): nur statische Konstanten (OAI_NS, MARC_NS, SRW_NS, NB_PREFIX_BY_SET, CACHE_HINTS, _HERITAGE_SOURCE, _HERITAGE_SEARCH_FN, _HERITAGE_COLLECTIONS, CORS_ROUTING_HEADERS); Mutations-grep exit 1 mit schlagender Negativkontrolle; einzige veraenderliche Globals sind _http_client (Verbindungspool, server.py:343-370) und _otel_span (Tracer) — beides ohne Aufruferbezug.",
+  "rg 'resumption|token|cursor|continuation|handle' server.py -> kein Handle-Parameter in einem Tool-Schema; der OAI-resumptionToken wird nur gelesen (server.py:1181-1186, 2015) und als has_more/Hinweistext gemeldet (server.py:2062, 2127-2128), nie gespeichert und nie als Argument angenommen.",
+  "Paginierung ist zustandslos: offset als gewoehnliches Tool-Argument (z. B. server.py:1353, 1600, 1757, 2793) wird direkt an die Quelle gereicht (server.py:1403, 1650, 1791, 2687, 2726); der Server haelt zwischen Aufrufen keine Ergebnismenge, auf die ein Offset verweisen koennte. auth_model none, Public Open Data.",
+  "Laufzeit: tools/list identisch ueber HTTP, zwei stdio-Einstiege und 4 Prozesse mit verschiedenen Hash-Seeds; ein unbekanntes Tool liefert isError true, resultType complete (keine fremden Daten)."
+ ],
+ "gaps": [
+  "Kein Befund. Hinweis ausserhalb dieses Checks: Weil der resumptionToken nicht durchgereicht wird, ist ein Set ueber heritage_search_helveticat nicht ueber die erste Seite hinaus blaetterbar — eine Recall-Frage (FID), keine Handle-Frage."
+ ],
+ "evaluator_notes": "Nur fuer 2026-07-28. Der Server fuehrt keinen aufruferbezogenen Zustand ueber Requests hinweg, also gibt es keine Handles zu praegen, zu befristen oder an Identitaeten zu binden; die Kriterien zu Entropie, TTL, Fremd-Handle und Replica-Speicher sind gegenstandslos. Offset-Paginierung adressiert keinen Serverzustand, sondern die oeffentliche Quelle. Am Code inventarisiert, nicht aus leerem grep geschlossen."
+}

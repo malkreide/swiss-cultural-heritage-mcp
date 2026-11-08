@@ -1,0 +1,20 @@
+{
+  "id": "FID-005",
+  "status": "fail",
+  "category": "FID",
+  "severity": "medium",
+  "evidence": [
+    "tools/list (lokal aus dem installierten Paket, 11 Tools) | rg -n -i -U 'wildcard|lucene|cql|solr|whole\\s+word|ganze[nm]?\\s+W|Kompos|trunkier|platzhalter' -> nur zwei Treffer: heritage_search_museum_datasets 'Präfix-Wildcards' (beschreibt den automatischen Fuzzy-Retry des Servers, keine Syntax fuer den Aufrufer) und search_heritage 'JSON-REST/Solr' (Protokoll). Damit ist auch belegt, dass das Muster anschlaegt. Kein Tool nennt Abfragesprache, Operatoren oder Matching-Granularitaet.",
+    "src/swiss_cultural_heritage_mcp/server.py:1340-1344, :1376-1384 — heritage_search_artists sagt nur 'mehrere Begriffe werden UND-verknüpft'. Live 2026-11-08 (datastore_search, plain=Default): 'Hodler' 25, 'Hodl' 0, 'Hodl*' 0 — Ganzwort-Matching, `*` wirkungslos; nur plain=false mit 'Hodl:*' ergibt 26, und das sendet der Server nie.",
+    "src/swiss_cultural_heritage_mcp/server.py:1215-1225, :1877-1886 — Helveticat: der Begriff wird in eine CQL-Phrase gesetzt, `*` bleibt erhalten. Live: alma.all_for_ui=\"Volksschule\" 1990, \"Volksschul*\" 81, \"Volksschule*\" 1990. Trunkierung wirkt, aber nicht wie erwartet, und keine Description dokumentiert sie.",
+    "src/swiss_cultural_heritage_mcp/server.py:2762-2767, :2326-2334, :1755 — search_heritage, heritage_cross_search, heritage_browse_collection: das Such-Argument ist nur 'Suchbegriff (z. B. ...)', ohne jede Syntax-Angabe.",
+    "tests/test_server.py:1956-2050 — die 4 Live-Klassen pruefen keine Wildcard- oder Kompositum-Wirkung."
+  ],
+  "gaps": [
+    "Kein Tool mit freiem Such-Argument nennt die Abfragesprache (CKAN-Volltext, Solr, CQL, Memobase, Dodis-Solr) (Severity medium).",
+    "Die Matching-Granularitaet (ganze Woerter, kein Teilwort, deutsches Kompositum-Beispiel) ist nirgends benannt, obwohl sie live belegt ist (Hodl 0 vs Hodler 25) (Severity medium).",
+    "SIKART: Praefixsuche ist ueber den Server gar nicht moeglich (plain=true fest), und das steht nicht in der Description (Severity medium).",
+    "Kein Live-Test der Wildcard-Wirkung; kein Hinweis zu Escaping oder ungueltiger Syntax (Severity low)."
+  ],
+  "evaluator_notes": "Die Descriptions beschreiben Zugangswege und Fuzzy-Retries ausfuehrlich, aber nicht die Syntax, die das Modell selbst einsetzen koennte. Fuer eine deutschsprachige Quellenlandschaft wiegt die fehlende Granularitaetsangabe am schwersten."
+}

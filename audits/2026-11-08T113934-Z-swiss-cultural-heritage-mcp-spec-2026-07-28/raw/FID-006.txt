@@ -1,0 +1,23 @@
+{
+  "id": "FID-006",
+  "status": "fail",
+  "category": "FID",
+  "severity": "high",
+  "evidence": [
+    "Live 2026-11-08 11:46 UTC, datastore_search limit=0 auf der SIKART-Ressource ef3a9fd2-…: fields = _id, NUTZUNGSLIZENZ, ID, PERMALINK, NACHNAME_VORNAME, VORNAME_NACHNAME, PERSONENART, VITAZEILE, LEBENSDATEN, STARTDATUM(_TYP), ENDDATUM(_TYP), STARTORT(_TYP), ENDORT(_TYP), WEBSITE, WIKIDATA, GND, HLS, DOK (total 17665).",
+    "src/swiss_cultural_heritage_mcp/server.py:1315-1332, :1459-1475, :1527, :1550-1567, :2519-2525 — der Code liest NAME, VORNAME, NAMIDENT, HAUPTNR, GEBURTSJAHR, STERBEJAHR, GEBURTSKANTON, STERBEKANTON, SIKART_LINK, GEBURTSDATUM, GEBURTSORT, GEBURTSLAND, STERBEDATUM, STERBEORT, STERBELAND, TYPUS, HLS_ID. 17 von 22 gelesenen Feldern fehlen in der echten Antwort (per Skript abgeglichen; vorhanden sind nur LEBENSDATEN, VITAZEILE, NUTZUNGSLIZENZ, GND, WEBSITE).",
+    "Folge live: heritage_search_artists('Hodler') im Markdown -> '## (Unbekannt)' und '**SIKART-ID:** `—`' fuer jeden Treffer, heritage_cross_search ebenso '(Unbekannt)'; heritage_get_artist(artist_id='5000639' bzw. '4023584') -> ToolError 'API-Anfrage fehlgeschlagen (HTTP 409)'. Direkt: filters={\"HAUPTNR\":…} -> 409 'invalid value \"HAUPTNR\"', Positivkontrolle filters={\"ID\":5000639} -> 200, total 1. Kein eigener Fehlertyp, keine Meldung mit den vorhandenen Schluesseln.",
+    "tests/fixtures/PROVENANCE.md:3 + artists_1.json/artist_detail_1.json/cross_search_1.json — aufgezeichnet 2026-09-20 mit dem alten Schema (HAUPTNR, NAME, VORNAME, …); die Hand-Fixture tests/test_server.py:82-117 ebenso. pytest -m live -> 11 passed: Kein Test haelt die gelesenen Feldnamen gegen die echte Antwort.",
+    "src/swiss_cultural_heritage_mcp/server.py:2691-2693 — Memobase: members = data.get(\"hydra:member\", []) und total = data.get(\"hydra:totalItems\", len(members)) auf dem Wurzelpfad, genau das Fail-Pattern (das rg-Muster mit ':' im Schluessel trifft Zeile 2692; Kontrolle am synthetischen String -> 1).",
+    "src/swiss_cultural_heritage_mcp/server.py:1252-1254, :1153 — SRU-numberOfRecords mit Default '0' und findall('.//srw:record'), OAI findall('.//oai:record'): eine Namensraum- oder Strukturaenderung wird still zu 0 Treffern.",
+    "Positiv: src/swiss_cultural_heritage_mcp/server.py:670-714 UpstreamSchemaError + _ckan_result bestaetigen die CKAN-Wurzel und records/results, mit den vorhandenen Schluesseln in der Meldung; src/swiss_cultural_heritage_mcp/server.py:2736-2746 bestaetigt die Dodis-Wurzel; tests/test_response_shape.py:25-84 enthaelt Gegenproben gegen verschobene Huellen. Eine Bestaetigung der gelesenen Felder auf dem ersten Eintrag gibt es nirgends; rg '_normali[sz]e_keys|casefold\\(\\)|\\.lower\\(\\)\\s*:' -> 0 (Kontrolle am synthetischen String -> 1)."
+  ],
+  "gaps": [
+    "SIKART-Schemawechsel in Produktion: 17 von 22 gelesenen Feldern fehlen, Namen und IDs verschwinden still, und heritage_get_artist ist fuer jede ID unbrauchbar (Severity critical).",
+    "Die gelesenen Felder werden fuer keine Quelle auf dem ersten Eintrag bestaetigt (Severity high).",
+    "Memobase-Wurzelpfad mit stillem Default .get('hydra:member', []) (Severity high).",
+    "SRU/OAI: eine fehlende Struktur wird zu 0 Treffern statt zu einem UpstreamSchemaError (Severity medium).",
+    "Kein Test haelt Struktur und Feldnamen gegen die echte Antwort; die Fixtures tragen das alte Schema und bestaetigen den Irrtum dauerhaft (Severity high)."
+  ],
+  "evaluator_notes": "Der Belegfall dieses Checks liegt hier in Produktion vor: Unit-Tests und Live-Suite sind gruen, waehrend die SIKART-Werkzeuge keine Namen und keine IDs mehr liefern und der Einzelabruf fuer jede ID scheitert. Die Huellen-Bestaetigung (CKAN, Dodis) ist vorhanden und gut gemacht, die Feld-Ebene darunter fehlt. Wann SIKART das Schema wechselte, ist nicht gemessen; belegt ist das alte Schema am 2026-09-20 (Fixture) und das neue am 2026-11-08."
+}

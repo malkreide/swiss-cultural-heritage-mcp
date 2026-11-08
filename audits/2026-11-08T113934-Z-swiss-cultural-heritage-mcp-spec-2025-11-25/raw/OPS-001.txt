@@ -1,0 +1,21 @@
+{
+ "id": "OPS-001",
+ "status": "partial",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  "pyproject.toml:88 — Marker registriert: 'live: live API tests (skipped in CI by default)'; tests/test_server.py:1956-2081 — 11 Tests mit @pytest.mark.live (Klassen-Decorator)",
+  "grep -rc respx tests/*.py — respx in test_server.py (131), test_helveticat_zugaenge.py (35), test_response_shape.py (10), test_recorded_fixtures.py (5); Mocks gegen die importierten Konstanten",
+  ".github/workflows/ci.yml:28-29 'PYTHONPATH=src pytest tests/ -m \"not live\"'; CI-Lauf 41281505123 (2026-11-01): '413 passed, 2 skipped, 11 deselected' auf 3.11 und 3.13",
+  ".github/workflows/nightly-live.yml:10-13, :22 — eigener Live-Workflow (cron täglich, workflow_dispatch), timeout-minutes: 10",
+  "Kein Live-Test für heritage_get_artist, heritage_browse_collection und heritage_cross_search (Zählung der await-Aufrufe in tests/test_server.py:1953-2081: jeweils 0); list_heritage_collections ist statisch",
+  "tests/conftest.py:14-20 — der Client wird nach jedem Test geschlossen, auch für Live-Tests (kein Pool-Leck, aber kein geteilter Client); die Live-Suite läuft mit den Prod-Timeouts http_timeout=30.0, retry_total_budget=25.0 (server.py:94-111), ohne engere Test-Werte"
+ ],
+ "gaps": [
+  "3 von 10 Werkzeugen mit externem Abruf haben keinen Live-Test: heritage_get_artist, heritage_browse_collection, heritage_cross_search (medium)",
+  "Mindestens 5 Unit-Tests pro Tool nicht durchgehend: direkte Aufrufe in Tests z. B. heritage_browse_collection 2, heritage_list_nb_collections 2, heritage_get_artist 3 (parametrisierte Aufrufe in test_recorded_fixtures.py nicht mitgezählt) (low)",
+  "Die Live-Suite teilt keinen Client und nutzt Prod-Timeouts; bei 11 Tests begrenzt timeout-minutes: 10 den Schaden (low)",
+  "Datei-Layout weicht ab (kein tests/test_unit.py/test_live.py, Live-Tests in test_server.py); funktional gleichwertig (low)"
+ ],
+ "evaluator_notes": "Die Struktur (Marker, respx, CI-Ausschluss, geplanter Live-Workflow mit Obergrenze) steht. Abzüge: Live-Abdeckung je Tool und die Kostendisziplin der Live-Suite. Test-Credentials entfallen (auth_model none)."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "HITL-006",
+  "status": "pass",
+  "category": "HITL",
+  "severity": "high",
+  "evidence": [
+    "grep -rnE 'sampling/createMessage|create_message|elicitation/create|elicit|roots/list|list_roots' src/ --include=*.py -> 0 Treffer (rc=1); Negativkontrolle: dasselbe Muster gegen das installierte SDK site-packages/mcp -> 13 Dateien mit Treffern",
+    "grep -rnE 'input_required|inputRequests|inputResponses|requestState|request_state' src/ --include=*.py -> 0 Treffer (rc=1); Negativkontrolle SDK -> 16 Dateien. Kein Tool stellt Rueckfragen, es gibt also keinen Rueckfragepunkt und keinen Retry-Pfad",
+    "src/swiss_cultural_heritage_mcp/server.py:1364-2358ff — alle 11 @mcp.tool tragen readOnlyHint True / destructiveHint False (grep -c 'readOnlyHint\": True' = 11 = grep -c '^@mcp.tool'); Upstream-Zugriffe nur ueber _http_get (Zeilen 1284,1407,1523,1648,1796,2011,2174) und ein lesendes _http_post an Dodis src/swiss_cultural_heritage_mcp/server.py:2724 (POST /api/solr/query = Suchanfrage). Keine Nebenwirkung vor einem (nicht existierenden) Rueckfragepunkt",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): tools/call list_heritage_collections mit gefaelschtem requestState='forged-state' -> HTTP 400 {\"code\":-32602,\"message\":\"Invalid or expired requestState\",\"data\":{\"reason\":\"invalid_request_state\"}}; mit unaufgefordertem inputResponses -> HTTP 400 -32602 'Invalid request parameters'. Client-Eingaben auf dem MRTR-Kanal werden abgewiesen, keine Endlosschleife, kein input_required",
+    "Runtime: tools/call list_heritage_collections mit korrekten Headern -> HTTP 200 result (Positivkontrolle, dass der Aufrufweg selbst funktioniert)"
+  ],
+  "gaps": [
+    "low: kein Repo-Test, der den MRTR-Pfad (unaufgeforderte inputResponses / gefaelschter requestState) als Regression festhaelt — die Abweisung kommt vollstaendig aus dem SDK (RequestStateSecurity-Default)"
+  ],
+  "evaluator_notes": "Read-only-Server ohne serverinitiierte Requests und ohne input_required. Die Kriterien zu Idempotenz, Retry-Test und Gegenprobe haben keinen Gegenstand (write_capable=false, kein Rueckfragepunkt) — belegt durch die leeren Greps mit positiver Negativkontrolle am SDK und die readOnlyHint-Zaehlung. Der Retry-Pfad wurde trotzdem an der Laufzeit beruehrt: gefaelschte MRTR-Felder werden mit -32602 abgewiesen. Eine Beobachtung am Rand: das Server-Log zeigte waehrend der Probe weitere tool.call-Eintraege von parallel laufenden Agenten auf demselben Port; Log-Zaehlungen nach 11:46 UTC sind deshalb nicht als Evidenz verwendet."
+}

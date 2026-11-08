@@ -1,0 +1,17 @@
+{
+  "id": "SEC-008",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "medium",
+  "evidence": [
+    "pyproject.toml (read in full) — build-backend hatchling, only [project.scripts] as an entry point; grep -nE 'cmdclass|tool.hatch.build.hooks|build-hook' pyproject.toml -> no match; ls setup.py setup.cfg package.json -> none exist",
+    ".github/workflows/publish.yml:36-47 — job publish: environment pypi, permissions id-token: write, uses pypa/gh-action-pypi-publish@release/v1 without an API token (OIDC Trusted Publisher, attestations are the action's default)",
+    "git show HEAD:README.md lines 72-88 and 116-141 — full install commands (pip install -e ., uvx swiss-cultural-heritage-mcp) and both claude_desktop_config.json variants shown with every argument",
+    "Dockerfile:26-30 — the build runs only 'pip install --no-cache-dir --prefix=/install .', no curl|sh, no external download"
+  ],
+  "gaps": [
+    "CONTRIBUTING.md (117 lines; headings: Reporting Issues, Pull Requests, Git hooks, Code Style, Data Sources, live suite, License) does not explain the build or release process for independent verification (severity: low)",
+    "publish.yml publish-mcp loads 'releases/latest/download/mcp-publisher_...' unpinned via curl|tar in CI. That is not in the user install path, but it is a supply-chain weakness in the release (severity: low)"
+  ],
+  "evaluator_notes": "No install hooks, transparent commands, Trusted Publishing active. The npm criterion does not apply (Python)."
+}

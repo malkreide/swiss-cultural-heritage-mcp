@@ -1,0 +1,20 @@
+{
+  "id": "OBS-006",
+  "status": "partial",
+  "category": "OBS",
+  "severity": "medium",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:191-241 — _init_tracing: gated ueber OTEL_EXPORTER_OTLP_ENDPOINT; TracerProvider mit Resource service.name 'swiss-cultural-heritage-mcp', service.version, deployment.environment (DEPLOYMENT_ENV, Default 'production'); BatchSpanProcessor(OTLPSpanExporter) (HTTP); HTTPXClientInstrumentor().instrument() → Upstream-Calls als Child-Spans",
+    "src/swiss_cultural_heritage_mcp/server.py:245-253, 515-535 — Span 'mcp.tool.<name>' je Tool-Call mit Attributen mcp.tool.name, mcp.tool.is_error, error.type; keine Argumente/PII als Attribut (grep set_attribute → nur diese drei)",
+    "git show HEAD:Dockerfile:30 — 'pip install --no-cache-dir --prefix=/install .' (ohne [otel]); Laufzeit mit gesetztem Endpoint ohne Extra → stderr '{\"event\": \"otel.unavailable\", \"reason\": \"opentelemetry nicht installiert ...\"}' — im ausgelieferten Container/Render-Image ist Tracing nicht aktivierbar",
+    "grep -rnE 'traceparent|tracestate|baggage|propagat|extract\\(' src/ → exit 1: kein Uebernehmen/Weiterreichen des Trace-Kontexts aus _meta (SEP-414, 2026-07-28)",
+    "ci.yml installiert nur '.[dev]'; tests/test_server.py::TestTracing lokal: '1 passed, 2 skipped' (OTel nicht installiert) — die Span-Tests laufen auch in der CI nicht"
+  ],
+  "gaps": [
+    "medium: Trace-Kontext aus _meta (traceparent/tracestate/baggage) wird weder uebernommen noch weitergegeben — jede Anfrage beginnt einen neuen Trace (2026-07-28-Kriterien)",
+    "medium: Docker-Image (Render-Deployment) enthaelt das otel-Extra nicht; Tracing ist im Cloud-Deployment ohne Umbau des Images nicht einschaltbar",
+    "medium: Span-Tests werden in CI uebersprungen (otel nicht in [dev]) — die Instrumentierung ist ungeprueft",
+    "low: Attributname mcp.tool.is_error statt mcp.tool.result.is_error; mcp.user.id entfaellt (auth_model none)"
+  ],
+  "evaluator_notes": "applies_when is_cloud_deployed: Render/Docker-Profil → anwendbar. Code-Grundlage solide, aber im Deployment nicht wirksam und nicht getestet; Propagation nach SEP-414 fehlt."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "SCALE-008",
+  "status": "pass",
+  "category": "SCALE",
+  "severity": "high",
+  "evidence": [
+    "Runtime a) (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): POST tools/call name=list_heritage_collections, Header Mcp-Method: tools/call + Mcp-Name: list_heritage_collections + MCP-Protocol-Version: 2026-07-28 -> HTTP 200 {\"result\":{\"content\":[...]}}",
+    "Runtime b) Header Mcp-Name: list_heritage_collections, Body name=search_heritage -> HTTP 400 {\"code\":-32020,\"message\":\"mcp-name header does not match the request body's 'name' parameter\"}; b2) Mcp-Method: tools/list bei Body tools/call -> HTTP 400 -32020 'mcp-method header does not match the request body's method'. Server-Log: nur ein tool.call-Eintrag fuer list_heritage_collections (Fall a), kein search_heritage -> keine Ausfuehrung vor der Ablehnung",
+    "Runtime c) ohne Mcp-Method/Mcp-Name -> HTTP 400 -32020 (method); c2) nur Mcp-Method, ohne Mcp-Name -> HTTP 400 -32020 (name). Fehlende Header werden abgelehnt, nicht aus dem Body ergaenzt",
+    "SDK site-packages/mcp/shared/inbound.py:450-472 — Header-Rung vergleicht MCP-Protocol-Version, Mcp-Method und Mcp-Name gegen den Body vor dem Dispatch; mcp_types/jsonrpc.py:73 `HEADER_MISMATCH = -32020`. Negativkontrolle des Greps: Muster 'mcp-method|HeaderMismatch|-32020' trifft im SDK (shared/inbound.py, client/session.py), im src/ nur die CORS-Liste",
+    "src/swiss_cultural_heritage_mcp/server.py:3543 `CORS_ROUTING_HEADERS = ['Mcp-Method','Mcp-Name','Mcp-Protocol-Version']`, src/swiss_cultural_heritage_mcp/server.py:3579 in allow_headers; Runtime-Preflight OPTIONS /mcp -> `access-control-allow-headers: ... Mcp-Method, Mcp-Name, Mcp-Protocol-Version, Mcp-Session-Id` — Browser-Clients koennen die Pflichtheader senden"
+  ],
+  "gaps": [
+    "low: kein Repo-Regressionstest fuer das Paar Widerspruch->-32020 / Uebereinstimmung->200 (tests/test_server_identity.py:142 sendet Mcp-Method nur im Gutfall); die Pruefung haengt vollstaendig am SDK innerhalb mcp[cli]>=2.0.0,<3"
+  ],
+  "evaluator_notes": "Nur 2026-07-28. Das Evidence-Paar ist an der Laufzeit erbracht (a gegen b/b2, plus c/c2). Kein Gateway, keine ausgehenden MCP-Aufrufe, kein Reverse-Proxy im Repo — diese Kriterien haben keinen Gegenstand. Hinweis: Fall a nutzt list_heritage_collections, das keine Upstream-Anfrage macht."
+}

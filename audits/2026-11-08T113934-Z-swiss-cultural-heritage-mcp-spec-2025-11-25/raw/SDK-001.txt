@@ -1,0 +1,16 @@
+{
+  "id": "SDK-001",
+  "status": "pass",
+  "category": "SDK",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:360-371 — `@asynccontextmanager async def lifespan(_server: MCPServer)`: erzeugt `_http_client = _new_client()`, `try: yield` / `finally: await client.aclose()`",
+    "src/swiss_cultural_heritage_mcp/server.py:466-474 — `mcp = MCPServer(__dist__, ..., lifespan=lifespan, cache_hints=CACHE_HINTS)`",
+    "grep -rnE 'AsyncClient\\(|async with httpx|httpx\\.(get|post)\\(' src/ -> genau 1 Treffer src/swiss_cultural_heritage_mcp/server.py:348 in `_new_client()` (Muster schlaegt an); alle Tool-Zugriffe laufen ueber `_get_http_client()` (src/swiss_cultural_heritage_mcp/server.py:353-357) in `_http_get`/`_http_post` (src/swiss_cultural_heritage_mcp/server.py:733,762) — kein Client pro Tool-Call",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): Server-Start auf HTTP -> Log 'Waiting for application startup' / 'StreamableHTTP session manager started' / 'Application startup complete'; GET /health 200 — Lifespan laeuft unter uvicorn ohne Fehler"
+  ],
+  "gaps": [
+    "low: geteilter Client als Modul-Global (`_http_client`, {S}:344) statt im Lifespan-Kontext/Server-State; ausserhalb des Lifespans wird lazy ein Client erzeugt, der nie geschlossen wird (nur Tests/Direktaufrufe)"
+  ],
+  "evaluator_notes": "Ein einzelner Server, kein Multi-Mount — AsyncExitStack-Kriterium entfaellt. Der Global-Ansatz ist das im Katalog genannte Schoenheits-Anti-Pattern, keine Leckquelle im Serverbetrieb."
+}

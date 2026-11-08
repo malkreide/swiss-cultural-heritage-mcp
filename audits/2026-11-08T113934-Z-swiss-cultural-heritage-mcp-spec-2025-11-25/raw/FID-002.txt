@@ -1,0 +1,20 @@
+{
+  "id": "FID-002",
+  "status": "fail",
+  "category": "FID",
+  "severity": "high",
+  "evidence": [
+    "rg -n -i 'ground.truth|recall|Referenzquer|Web-UI|reality-check|Untergrenze|floor' ueber das Repo ohne audits/ und Fixture-Daten -> keine Referenzquery-Tabelle; die einzigen Treffer sind fachfremd (CHANGELOG.md:734 und pyproject.toml:35: 'floor' = SDK-Versionsuntergrenze). Kontrolle: das Muster 'Web-UI' trifft FID-002.md des Katalogs.",
+    "tests/test_server.py:1956-2110 — alle 11 Live-Tests; keiner mit Mindest-Trefferzahl. SIKART/SNM pruefen nur 'Fehler' not in result (:1960-1977), Memobase/Dodis nur isinstance(result, str) (:2054-2075), NB nur 'Gefunden:' in result (:2003).",
+    "pytest tests/ -m live (lokal, 2026-11-08) -> '11 passed, 417 deselected', waehrend heritage_search_artists live jede Person als '(Unbekannt)' mit SIKART-ID '—' ausgibt und heritage_get_artist auf jede ID HTTP 409 liefert (siehe FID-006). Die Live-Suite ist keine Recall- oder Inhaltswache.",
+    "PROBE_REPORT_helveticat.md:195-206 — die einzigen Trefferzahlen (SRU, 20.09.2026), aber nur API gegen API, kein Vergleich mit helveticat.ch. Fuer SIKART, SNM, Memobase und Dodis gibt es keine Messung gegen eine offizielle Oberflaeche und keine Ersatz-Ground-Truth.",
+    "Die Durchreiche selbst ist treu (gemessen 2026-11-08): SRU numberOfRecords 1990 fuer 'Volksschule' = Tool total 1990; datastore total 25 fuer 'Hodler' = Tool total 25; Memobase hydra:totalItems 56 = Tool total 56. Das belegt API-Treue, nicht Recall gegen die Web-UI."
+  ],
+  "gaps": [
+    "Kein Set von 3-5 Referenzqueries mit Trefferzahlen beider Oberflaechen (Severity high).",
+    "Kein Recall-Regressionstest mit Untergrenzen unter @pytest.mark.live (Severity high).",
+    "Keine Ersatz-Ground-Truth (Bestandszahl SIKART 17665, Dodis-/Memobase-Bestand) dokumentiert und gegen das Tool gehalten (Severity medium).",
+    "Ein Web-UI-Vergleich wurde in diesem Lauf nicht durchgefuehrt (recherche.sik-isea.ch, memobase.ch und dodis.ch sind JS-Apps). Das Urteil stuetzt sich auf das Fehlen der Artefakte, nicht auf ein gemessenes Delta."
+  ],
+  "evaluator_notes": "Fail, weil die geforderten Artefakte vollstaendig fehlen und die vorhandene Live-Suite nachweislich gruen bleibt, waehrend eine Quelle inhaltlich ausfaellt. Das offene Issue #106 (nightly-live-failure, 2026-10-19) existiert; seine Ursache wurde nicht untersucht."
+}

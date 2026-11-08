@@ -1,0 +1,20 @@
+{
+ "id": "DRIFT-003",
+ "status": "fail",
+ "category": "DRIFT",
+ "severity": "high",
+ "evidence": [
+  "Gegenprobe scratchpad/probe/drift003_probe.py: heritage_cross_search mit SIK-ISEA, SNM und NB alle auf HTTP 503 liefert Markdown mit '## SIK-ISEA / ⚠️ Fehler: …' je Quelle, ohne isError. Ausgabe: 'assert SIK-ISEA in result: True | SNM: True | NB: True' — der Totalausfall erfüllt alle drei Assertions von tests/test_server.py:974-976 (test_cross_search_all_sources)",
+  "Gegenprobe: Dodis /solr/full/44755 mit leerem Body -> 'Kein Dodis-Objekt gefunden für ID `44755`.'; Ausgabe \"'44755' in result: True | 'doc_att_file_content' not in result: True\" — beide Assertions von tests/test_server.py:2077-2081 (test_live_get_dodis_document) bestehen im Nicht-Fund. Live am 2026-11-08 liefert dieselbe ID 'Typ: Bundesratsprotokoll · Datum: 12.8.1921', also Werte, die der Test prüfen könnte",
+  "tests/test_server.py:2055-2075 test_live_search_memobase/_dodis und :1965-1970 test_live_search_by_region prüfen nur isinstance(result, str); :1959-1962 und :1975-1978 prüfen nur 'Fehler' not in result, während server.py:1672-1675 bzw. _no_match (server.py:643-656) bei 0 Treffern 'Keine SNM-Datensätze gefunden…' ohne 'Fehler' liefert — ein leerer Lauf besteht",
+  "server.py:951-961 _raise_tool_error und server.py:2904-2905 — in den Einzelwerkzeugen und in search_heritage ist der Totalausfall maschinell erkennbar (ToolError -> isError). In heritage_cross_search fehlt das: server.py:2504-2506 rendert den Fehler je Quelle als Prosa '⚠️ Fehler', auch wenn alle Quellen ausfallen",
+  "grep -rnE 'match=' tests/*.py — kein Muster mit Metazeichen ('Allow-List', 'HTTPS', 'nicht erreichbar', 'Unbekannter SRU-Index', 'Fehler', 'schon maskiert', 'nicht gefunden'); dass der Metazeichen-Filter greift, zeigen die Treffer auf 'pytest.raises(' selbst"
+ ],
+ "gaps": [
+  "Die Erfolgstests von heritage_cross_search prüfen Quellennamen, die auch im Degradationspfad stehen; die Gegenprobe zeigt, dass sie beim Totalausfall bestehen (high)",
+  "Mehrere Live-Tests (test_live_get_dodis_document, test_live_search_memobase/_dodis, test_live_search_by_region, test_live_search_snm, test_live_search_hodler) bestehen auf dem Nicht-Fund- bzw. Leerpfad; keiner prüft einen Wert, den nur der Erfolgsfall hat (high)",
+  "heritage_cross_search meldet den Ausfall aller Quellen nicht als isError, nur als Prosa-Marker (medium)",
+  "Im Repo keine Gegenprobe je Tool (Modus 2), die zeigt, dass die Erfolgsassertions im Degradationspfad rot werden (medium)"
+ ],
+ "evaluator_notes": "Für die meisten Einzelwerkzeuge greift die Absicherung strukturell: ein Upstream-Fehler wirft ToolError, also kann ein Erfolgstest den Fehlerpfad nicht erfüllen. Die Lücke liegt in der Quersuche (Fehler als Prosa) und bei Nicht-Fund- und Leerantworten, die wie Erfolg aussehen. Der Regex-Teil (Modus 3) ist sauber. Beide Gegenproben liefen am 2026-11-08 gegen den committeten Code (src im Arbeitsbaum = HEAD; git status zeigt nur README.md geändert)."
+}

@@ -1,0 +1,19 @@
+{
+ "id": "DRIFT-004",
+ "status": "partial",
+ "category": "DRIFT",
+ "severity": "high",
+ "evidence": [
+  "server.py:267-273 — 5 Endpoint-Konstanten; Live-Abdeckung in tests/test_server.py:1956-2081: CKAN datastore_search (TestLiveSIKISEA), CKAN package_search (TestLiveSNM), NB_OAI_PMH ListSets/ListRecords/GetRecord (TestLiveNB), NB_SRU (test_live_volltextsuche_liefert_treffer), MEMOBASE_API '/' (test_live_search_memobase), DODIS_API solr/query und solr/full (TestLiveHeritageInstitutions)",
+  "gh run view 42475229230 --log (Nightly 2026-11-08, headSha 7f665fa; git diff origin/main HEAD -- tests/test_server.py .github/workflows tests/conftest.py ist leer) — '11 passed, 415 deselected in 13.87s', state=clear",
+  "tests/test_server.py:618-927, tests/test_response_shape.py:102-161, tests/test_helveticat_zugaenge.py:78-408 — respx-Routen gegen die importierten Konstanten (f\"{CKAN_API}/datastore_search\", NB_SRU, NB_OAI_PMH, f\"{DODIS_API}/solr/query\"); das einzige Upstream-Literal, tests/test_server.py:550, ist ein Egress-Test (http-Schema) und kein Mock",
+  "scripts/classify_live_run.py:96-140 — die Einordnung kennt nur clear/finding/unknown nach JUnit-Zählern; 404 und 5xx bzw. Timeout landen beide in 'finding'. Beleg: Lauf 39233988544 (2026-10-19) state=finding wegen httpx.ReadTimeout (transient) -> Issue #106",
+  "server.py:3122 MEMOBASE_API '/record/{id}' — kein Live-Test ruft get_heritage_item(collection='memobase'); test_live_search_snm (tests/test_server.py:1975-1978) besteht auch bei 0 Treffern und prüft SNM_ORG (server.py:1636) damit nicht wirksam"
+ ],
+ "gaps": [
+  "Die Live-Einordnung trennt 404 (Endpoint weg) nicht von 5xx oder Timeout; ein transienter Timeout ergibt denselben Befund wie ein abgeschalteter Endpoint (medium)",
+  "Der Pfad MEMOBASE_API/record/{id} kommt nur in Mocks und Fixtures vor, nicht live (medium)",
+  "Die Konstante SNM_ORG wird im Live-Test nicht wirksam geprüft, 0 Treffer bestehen (medium)"
+ ],
+ "evaluator_notes": "Alle fünf Basis-Konstanten sind live abgedeckt, und die Suite läuft nachweislich täglich gegen die Quelle. Abzüge: keine 404/5xx-Trennung, zwei Pfade bzw. Konstanten ohne wirksame Live-Prüfung. Ein Probe-Manifest (mcp-continuous-auditor) liegt nicht im Repo."
+}

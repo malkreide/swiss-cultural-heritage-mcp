@@ -1,0 +1,19 @@
+{
+  "id": "IDENT-001",
+  "status": "pass",
+  "category": "IDENT",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:55-56 — USER_AGENT = f\"{__dist__}/{__version__}{_UA_REFERRER}\"; __version__ aus importlib.metadata (src/swiss_cultural_heritage_mcp/__init__.py:27), __dist__ = 'swiss-cultural-heritage-mcp' (src/swiss_cultural_heritage_mcp/__init__.py:24)",
+    "src/swiss_cultural_heritage_mcp/server.py:347-350 — einziger httpx.AsyncClient (_new_client) setzt headers={'User-Agent': USER_AGENT}; grep 'httpx\\.(Async)?Client\\(|AsyncClient\\(' findet nur diese Stelle; Pro-Request-Header (2688, 2727, 3123, 3137) setzen nur Accept",
+    "grep -rniE 'swiss[-_]?cultural[-_]?heritage[-_]?mcp/[0-9]+\\.[0-9]' src/ → exit 1 (kein Treffer); negative Kontrolle: dasselbe Muster trifft 'Swiss_Cultural-HeritageMCP/0.7.0' (exit 0)",
+    "Mehrzeilen-Kontrolle: in Kopie (scratch/nc_src) USER_AGENT als mehrzeiliges Literal 'SwissCulturalHeritageMCP/0.7.0' gesetzt → scripts/check_version_sync.py: 'HARDCODED: ... server.py:57' exit 1 (normalisierter Token-Vergleich, ganzes Modul)",
+    "Artefakt vom Index: frisches venv, pip install --no-cache-dir swiss-cultural-heritage-mcp==0.6.0 → server.USER_AGENT (Modul-Namespace) = 'swiss-cultural-heritage-mcp/0.6.0 (+https://github.com/malkreide/swiss-cultural-heritage-mcp)' und _new_client().headers['User-Agent'] identisch — passt zur installierten Version 0.6.0",
+    "Auf der Leitung (Checkout 0.7.0, httpx.MockTransport, Request mit eigenem Accept-Header): gesendeter User-Agent 'swiss-cultural-heritage-mcp/0.7.0 (+https://github.com/malkreide/swiss-cultural-heritage-mcp)'"
+  ],
+  "gaps": [
+    "info: published_probe.py (mcp-continuous-auditor) nicht verfuegbar; die drei Strategien (Quelltext-Literal normalisiert, Modul-Namespace, Client-Header/Leitung) wurden von Hand gefahren",
+    "info: 0.7.0 ist nicht publiziert; die Artefakt-Messung gilt fuer 0.6.0. Nach dem Publish am Index-Artefakt 0.7.0 wiederholen"
+  ],
+  "evaluator_notes": "Produkt-Token = Dist-Name (normalisiert gleich), kein fremder UA, ein Client. 0.6.0-Artefakt sendet die eigene Version."
+}

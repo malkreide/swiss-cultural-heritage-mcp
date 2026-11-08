@@ -1,0 +1,14 @@
+{
+ "id": "OPS-006",
+ "status": "pass",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  "pyproject.toml:57-62 — 'ruff==0.16.9' exakt gepinnt im dev-Extra, mit Begründung im Kommentar; ci.yml:24-25 installiert über pip install -e \".[dev]\"; ci.yml:32-38 begründet, warum kein zweiter Pin; keine .pre-commit-config.yaml, also nur ein Pin-Ort",
+  "python scripts/check_ruff_pin.py in der Kopie mit globalem ruff 0.16.4 zuerst im PATH -> 'ruff-Version weicht ab. Gepinnt ist 0.16.9 … meldet 0.16.4', exit=1; mit dem venv-ruff zuerst im PATH -> 'Ruff-Pin OK (0.16.9; geprueft: 2 Aufrufweg(e))', exit=0 — das Gate ist in beide Richtungen belegt",
+  "ci.yml:39-46 — das Urteil kommt aus dem Exit-Code von ruff check und ruff format --check, nicht aus dem Ausgabetext; tests/test_ruff_pin_doku.py hält ruff==-Angaben in Markdown gegen den Pin",
+  "git log -S'ruff==' -- pyproject.toml — Pinwechsel als eigener Commit (0268096 'build: ruff-Pin nach pyproject.toml ziehen'); Bumps kommen über Dependabot-PRs"
+ ],
+ "gaps": [],
+ "evaluator_notes": "Ein Pin, CI zieht ihn, ein Gate prüft PATH- und Modul-ruff gegen ihn, beide Richtungen am 2026-11-08 lokal belegt. Lokal liegt ein abweichendes ruff 0.16.4 im PATH (C:\\Program Files\\Python314\\Scripts), genau der Fall, den das Gate fängt; die eigenen lokalen Nachweise stammen deshalb aus dem venv-ruff 0.16.9."
+}

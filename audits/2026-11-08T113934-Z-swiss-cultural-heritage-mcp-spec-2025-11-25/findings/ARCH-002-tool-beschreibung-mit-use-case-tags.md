@@ -1,0 +1,82 @@
+## Finding: ARCH-002 — Tool-Beschreibung mit Use-Case-Tags
+
+| Feld | Wert |
+|---|---|
+| **Severity** | medium |
+| **Adoption** | enforced |
+| **Check-Status** | partial |
+| **Status** | open |
+| **Server** | `swiss-cultural-heritage-mcp` |
+| **Check-Reference** | `ARCH-002` |
+| **PDF-Reference** | Sec 2.2 |
+| **Audit-Datum** | 2026-11-08 |
+| **Run** | `2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2025-11-25` |
+| **Ziel** | `9b3a1b4dde89` auf `claude/release-0.7.0` (Working-Tree dirty: nur `README.md`, fachfremd) |
+| **Auditor** | Claude (mcp-audit 2.3.0, Subagent je Kategorie; Ergebnis per verify_raw_outputs geprueft) |
+
+### Observed Behavior
+
+2 von 4 Kriterien voll (Länge, Important-Notes), Differenzierung teilweise, Use-Case-Quote verfehlt -> partial. Die Docstrings tragen Args/Returns-Blöcke, die die Länge treiben, ohne Auswahlwissen zu liefern; 'Returns: str' ist bei ResultEnvelope|str ungenau.
+
+### Expected Behavior
+
+Aus dem Katalog (`checks/ARCH-002.md`, Pass Criteria):
+
+- [ ] Tool-Beschreibungen sind ≥ 100 Zeichen im Median
+- [ ] Use-Case-Tag (`<use_case>` oder Äquivalent) in mindestens 80% der Tools vorhanden
+- [ ] Wo relevant: Important-Notes-Tag mit Caveats / Limitierungen
+- [ ] Bei mehreren ähnlichen Tools: Description macht Differenzierung explizit
+
+### Evidence
+
+- Laufzeit `mcp.list_tools()`: Beschreibungslängen Median 799 Zeichen, Minimum 268 (heritage_list_nb_collections) -> Längenkriterium (Median >=100, keines <50) erfüllt
+- `git grep -cE '<use_case>|<important_notes>|<example>' HEAD -- src` -> keine Ausgabe, rc=1; Negativkontrolle: dasselbe Muster gegen checks/ARCH-002.md -> 10 Treffer. Keine Tags im Code
+- src/swiss_cultural_heritage_mcp/server.py:1932-1945 (heritage_search_helveticat), src/swiss_cultural_heritage_mcp/server.py:1775 (heritage_browse_collection: 'Voraussetzung: Resource-ID aus ...'), src/swiss_cultural_heritage_mcp/server.py:3229 (list_heritage_collections: 'Discovery-Tool für search_heritage'), src/swiss_cultural_heritage_mcp/server.py:2237 (heritage_get_publication: 'Was NICHT enthalten ist') — Use-Case-/Wann-verwenden-Äquivalent in 4 von 11 Beschreibungen (~36 %, Ziel 80 %)
+- src/swiss_cultural_heritage_mcp/server.py:1376-1384, 1617-1621, 2817-2826 u. a. — Caveats (Important-Notes-Äquivalent) vorhanden: Fuzzy-Verhalten, clientseitige Filter, Lizenzsplit, keine Volltexte
+- src/swiss_cultural_heritage_mcp/server.py:2368 (heritage_cross_search: 'Durchsucht SIK-ISEA, SNM und NB') und src/swiss_cultural_heritage_mcp/server.py:2809 (search_heritage: 'Memobase, Dodis') — Abgrenzung nur implizit über Quellennamen; der explizite Satz 'Keiner von beiden erreicht die Quellen des anderen' steht nur in INSTRUCTIONS (src/swiss_cultural_heritage_mcp/server.py:407-411), nicht in den Tool-Beschreibungen
+
+### Gaps
+
+- medium: Use-Case-Angabe (Tag oder 'verwenden wenn'-Satz) nur in ~4/11 Tools, Ziel >=80 %
+- medium: die beiden föderierten Such-Tools machen ihre Differenzierung in der eigenen Beschreibung nicht explizit; ein Client, der INSTRUCTIONS verwirft, sieht sie nicht
+- low: heritage_get_artist und heritage_list_nb_collections ohne Kontext über den Funktionssatz hinaus
+
+### Risk Description
+
+Siehe Gaps; Severity laut Katalog `medium`. Katalogbeschreibung:
+
+LLMs wählen Tools nicht über exakte Namens-Treffer, sondern über semantische Embeddings der Tool-Beschreibung. Eine Beschreibung wie `"Searches database"` lässt das Modell zwischen drei `getX`-Tools rätseln. Eine Beschreibung mit explizitem Use-Case-Tag, Trigger-Phrasen und Negativ-Hinweisen («NICHT verwenden für…») reduziert Halluzinationen drastisch.
+
+Die Best-Practice-Konvention im PDF nutzt XML-artige Tags innerhalb der Description:
+
+- `<use_case>` — Wann soll das Tool verwendet werden?
+- `<important_notes>` — Caveats, Side-Effects, Limitierungen
+- `<example>` — Konkrete Beispiel-Inputs
+
+Das LLM sieht diese Tags zwar nicht als HTML, aber die strukturierte Information erhöht semantische Trennschärfe.
+
+### Remediation
+
+Aus dem Katalog (`checks/ARCH-002.md`, Remediation), auf die Gaps oben anzuwenden:
+
+```diff
+  @mcp.tool(
+      name="searchEducationStats",
+-     description="Search education statistics."
++     description=(
++         "Sucht in den städtischen Bildungsstatistiken nach Kennzahlen "
++         "(Klassengrösse, Lehrer-Schüler-Verhältnis, Anteil DaZ, etc.).\n\n"
++         "<use_case>Politische / journalistische Recherche, "
++         "Schulamts-interne Reportings, Pädagogik-Analysen.</use_case>\n\n"
++         "<important_notes>Daten werden quartalsweise aktualisiert. "
++         "Personendaten sind nicht abrufbar — nur aggregierte "
++         "Kennzahlen.</important_notes>"
++     ),
+  )
+```
+
+### Effort Estimate
+
+Katalog-Richtwert (checks/ARCH-002.md, Abschnitt Effort), nicht fuer diesen Server nachgeschaetzt:
+
+S — Pro Tool 5–10 Minuten. Bei 10 Tools: ~1 Tag.

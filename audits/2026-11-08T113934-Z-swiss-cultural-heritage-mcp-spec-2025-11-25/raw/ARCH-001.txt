@@ -1,0 +1,18 @@
+{
+  "id": "ARCH-001",
+  "status": "partial",
+  "category": "ARCH",
+  "severity": "medium",
+  "evidence": [
+    "Laufzeit `await mcp.list_tools()` (HEAD 9b3a1b4, venv mcp 2.3.0): 11 Tools, alle matchen `^[a-z][a-z0-9]*(_[a-z0-9]+)*$` (snake=True); Negativkontrolle derselben Regex: 'getUserInfo', 'get user', 'client.get' -> False",
+    "src/swiss_cultural_heritage_mcp/server.py:1365,1501,1605,1762,1919,2150,2219,2355 — acht Tools mit Namensraum-Präfix vorn: heritage_search_artists, heritage_get_artist, heritage_search_museum_datasets, heritage_browse_collection, heritage_search_helveticat, heritage_list_nb_collections, heritage_get_publication, heritage_cross_search",
+    "src/swiss_cultural_heritage_mcp/server.py:2798,3091,3214 — drei Tools mit Verb vorn und Namensraum hinten: search_heritage, get_heritage_item, list_heritage_collections; Casing einheitlich, Wortfolge nicht",
+    "src/swiss_cultural_heritage_mcp/server.py:407-411 — INSTRUCTIONS müssen `heritage_cross_search` und `search_heritage` ausdrücklich auseinanderhalten ('Keiner von beiden erreicht die Quellen des anderen'); das verwechselbare Paar entsteht aus der gemischten Wortfolge",
+    "src/swiss_cultural_heritage_mcp/server.py:1512 und src/swiss_cultural_heritage_mcp/server.py:2163 — heritage_get_artist (318 Zeichen) und heritage_list_nb_collections (268 Zeichen): je ein Funktionssatz plus Args/Returns, kein Kontext; die übrigen 9 Beschreibungen haben mehrere Sätze mit Quelle/Kontext (Median 799 Zeichen)"
+  ],
+  "gaps": [
+    "medium: zwei Namensschemata nebeneinander (heritage_<verb>_<obj> vs. <verb>_heritage[_obj]); das Paar heritage_cross_search / search_heritage ist allein über den Namen nicht unterscheidbar, die Abgrenzung steht nur in INSTRUCTIONS",
+    "low: 2 von 11 Tool-Beschreibungen (heritage_get_artist, heritage_list_nb_collections) nennen nur die Funktion, keinen Use-Case/Kontext"
+  ],
+  "evaluator_notes": "Kriterien 2 und 3 (snake_case akzeptabel, keine Sonderzeichen) voll erfüllt, an der Laufzeit-Toolliste per Regex samt Negativkontrolle gemessen. Kriterium 1 (einheitliche Convention): Casing einheitlich, Wortstellung gemischt (8 vs. 3). Kriterium 4 für 9/11 erfüllt. Die Toolliste hängt nicht an der Protokollrevision, das Urteil gilt für beide."
+}

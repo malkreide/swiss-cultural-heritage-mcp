@@ -1,0 +1,13 @@
+{
+ "id": "OPS-004",
+ "status": "todo",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  "ls audits/2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2026-07-28/ — applicability.json, audit-meta.json, findings, profile.yaml, raw; noch kein audit-report.md. Gegenstand dieses Checks ist der Report dieses Laufs, und der entsteht erst nach Schritt 4"
+ ],
+ "gaps": [
+  "Beim Report-Schritt prüfen: Abschnitte Gemessen/Geschlossen/Offen, keine Vermutungssprache ausserhalb davon, not_verified sauber ausgewiesen"
+ ],
+ "evaluator_notes": "Nicht mit einem Urteil belegbar, weil das Prüfobjekt noch nicht existiert. Zur Orientierung, kein Urteil: der letzte committete Report audits/2026-06-02T041532-Z-swiss-cultural-heritage-mcp/audit-report.md (Katalog v0.5, älter als OPS-004) hat keinen der drei Abschnitte (grep '^#+.*(Gemessen|Geschlossen|Offen|Measured|Inferred)' ohne Treffer; das Muster schlägt an '### Gemessen' an) und trägt 'likely >2s' im Befundteil (:771). Für den Orchestrator: Report und raw-Dateien dieses Laufs tragen die Trennung bereits je Finding (evidence / gaps / evaluator_notes)."
+}

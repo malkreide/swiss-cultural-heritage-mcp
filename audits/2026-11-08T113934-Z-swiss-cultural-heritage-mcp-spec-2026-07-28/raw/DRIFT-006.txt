@@ -1,0 +1,18 @@
+{
+ "id": "DRIFT-006",
+ "status": "fail",
+ "category": "DRIFT",
+ "severity": "medium",
+ "evidence": [
+  "git show HEAD:README.md:155 und README.de.md:156 — 'In claude.ai … add: https://your-app.onrender.com/sse'. Laufzeit-Probe scratchpad/probe/sse_probe.py (build_http_app über den Starlette TestClient, ohne Port): routes ['/mcp', '/health'], GET /sse -> 404, GET /mcp -> 400; server.py:3574 baut nur mcp.streamable_http_app. Dazu README:146 'Cloud Deployment (SSE for browser access)', :157 'SSE for the browser' und das Diagramm :223 'Stdio | SSE'",
+  "git show HEAD:README.md:289 und README.de.md:290 — 'All tools perform HTTP GET requests only'; dem widerspricht server.py:2724-2726: _search_dodis ruft _http_post(f\"{DODIS_API}/solr/query\") (search_heritage mit collection dodis oder all); docs/roadmap.md:7 wiederholt 'only HTTP GET requests'",
+  ".github/workflows/nightly-live.yml:3-6 — Kommentar 'Upstream failures do NOT fail this workflow … The job itself stays green by design'; widerlegt durch :116-124 (exit 1 bei state != clear) und durch Lauf 39233988544 (2026-10-19) mit conclusion failure. CLAUDE.md:368-369 behauptet dasselbe ('statt den Lauf rot zu färben')",
+  "CHANGELOG.md:8 — [Unreleased] ist leer. [0.7.0] stichprobenartig gegen den Code gehalten, alles gedeckt: SOURCE_NB.name (server.py:599), SRU-Index-Whitelist _SRU_INDEXES/_cql_term (server.py:1204-1222), SRU_MAX_RECORDS=50 (1212), '11 von 15' = 11 @mcp.tool + 2 resource + 2 prompt (grep zählt 15), codex-gate-Dateien entfernt (ls .github/workflows scripts | grep -i codex leer), 32 Tests in tests/test_helveticat_zugaenge.py, SKIP_VERSION_SYNC_HOOK in .githooks/pre-commit:79"
+ ],
+ "gaps": [
+  "README (EN/DE) nennt einen /sse-Endpunkt, den der Server nicht ausliefert (404); die Cloud-Anleitung führt ins Leere (medium)",
+  "Workflow-Kopfkommentar und CLAUDE.md beschreiben einen Live-Job, der grün bleibt; tatsächlich wird er rot, seit es 'Ergebnis durchreichen' gibt (medium)",
+  "README (EN/DE) und docs/roadmap.md behaupten 'nur HTTP GET', die Dodis-Suche nutzt POST; read-only bleibt richtig, die Begründung nicht (low)"
+ ],
+ "evaluator_notes": "Modus 1 geführt an CHANGELOG [0.7.0] (Stichprobe von 8 Behauptungen, alle gedeckt), an den README-Einschränkungen und an den Workflow-Kommentaren. Die drei Widersprüche liegen ausserhalb des CHANGELOG. Nicht jede Zeile des 0.7.0-Abschnitts wurde einzeln geprüft, etwa die Messaussagen vom 20.09."
+}

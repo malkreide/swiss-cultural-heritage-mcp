@@ -1,0 +1,18 @@
+{
+  "id": "FID-007",
+  "status": "fail",
+  "category": "FID",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:2721-2747 — _search_dodis liefert als Gesamtzahl immer -1; src/swiss_cultural_heritage_mcp/server.py:2876-2885 known_total summiert nur Quellen mit total > 0; src/swiss_cultural_heritage_mcp/server.py:2911 total=known_total or None. Bei collection='all' ist `total` damit nur die Memobase-Zahl, ohne Kennzeichnung.",
+    "Live 2026-11-08: search_heritage(query='Volksschule', collection='all', JSON) -> total=56, has_more=true, meta={'per_source': {'memobase': 5, 'dodis': 5}, 'errors': {}}, ohne Hinweis, dass Dodis nicht mitgezaehlt ist. Direkt: Memobase hydra:totalItems 56, Dodis solr/query mit rows=100 -> 100 Treffer (Seite voll). Das Feld heisst 'Gesamtzahl upstream verfügbar' (src/swiss_cultural_heritage_mcp/server.py:568) und ist eine Untergrenze, die sich als Summe ausgibt (>=156 statt 56).",
+    "src/swiss_cultural_heritage_mcp/server.py:1659 res.get(\"count\", 0), src/swiss_cultural_heritage_mcp/server.py:1807 result.get(\"total\", 0), src/swiss_cultural_heritage_mcp/server.py:1252 int(numberOfRecords … or 0) — stille Null-Defaults auf Zaehlwerten der Quelle (das rg-Muster '\\.get\\([^)]*,\\s*0\\s*\\)' trifft :1659 und :1807).",
+    "Positiv: Datenzellen der Quellen werden nicht in Zahlen konvertiert. rg '\\b(int|float)\\(' in src/swiss_cultural_heritage_mcp/server.py trifft nur validierte Eingaben (:2623, :2625, Jahresmuster), Regex-Jahre (:2619), Retry-After (:811) und numberOfRecords (:1252); Datensaetze werden unveraendert durchgereicht (z. B. src/swiss_cultural_heritage_mcp/server.py:1441, :1823)."
+  ],
+  "gaps": [
+    "search_heritage mit collection='all': `total` schliesst Dodis still aus und ist nicht als Untergrenze gekennzeichnet; eine Richtung wird nicht angegeben (Severity high).",
+    "Stille 0-Defaults auf den Upstream-Zaehlern count/total/numberOfRecords statt eines Fehlers bzw. None (Severity medium).",
+    "Keine Gegenprobe und kein Test zur Kennzeichnung ausgenommener Anteile (Severity medium)."
+  ],
+  "evaluator_notes": "Die eigentliche Unterdrueckungsklasse (Marker wie '1 bis 5' in Zaehlspalten) trifft diesen Server nicht, weil er keine Datenzellen summiert. Die einzige Aggregation, die er bildet, zeigt aber genau das Anti-Pattern 'ausnehmen ohne kennzeichnen': eine zu tiefe Gesamtzahl, der man nichts ansieht. Deshalb fail statt pass."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "SCALE-003",
+  "status": "fail",
+  "category": "SCALE",
+  "severity": "high",
+  "evidence": [
+    "git ls-files | grep -iE 'haproxy|nginx|ingress|render\\.yaml|railway\\.toml|docker-compose|k8s/|helm/|fly\\.toml' -> leer (rc=1): keine Edge-LB-Konfiguration im Repo",
+    "git grep -nIiE 'stick|http_mcp_session_id|session.?affinity' -- ':!audits' -> nur docs/scaling.md:30-48 (Beispiel-Snippets HAProxy 'stick on req.hdr(Mcp-Session-Id)', nginx 'hash $http_mcp_session_id consistent') — Doku-Vorschlag, keine ausgelieferte Konfiguration (Positivkontrolle: Muster schlaegt an)",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): initialize 2025-11-25 liefert `mcp-session-id`; der Header ist also das Routing-Merkmal, das ein LB lesen muesste — keine Instanz im Repo tut es"
+  ],
+  "gaps": [
+    "high: kein Edge-LB liest Mcp-Session-Id; keine Stick-Table/Hash-Konfiguration, keine TTL, kein Failover-Test"
+  ],
+  "evaluator_notes": "Nur 2025-11-25. Folgebefund derselben Ursache wie SCALE-002: Die Architektur setzt auf Single-Instance, und dafuer braucht es keinen LB mit Header-Affinitaet — aber diese Voraussetzung ist nur dokumentiert (docs/scaling.md), nicht erzwungen. Wird der Single-Instance-Entscheid als Restrisiko akzeptiert, sollte das fuer SCALE-002 und SCALE-003 gemeinsam geschehen."
+}

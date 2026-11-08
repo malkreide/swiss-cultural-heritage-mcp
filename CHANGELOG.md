@@ -100,6 +100,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`scripts/check_version_sync.py` war unter Windows immer rot.** Auf einer
+  cp1252-Konsole fand das Gate keine Abweichung und endete trotzdem mit Exit 1:
+  ein `UnicodeEncodeError` an dem `→` in der *Erfolgsmeldung* (gemessen am
+  8.11.2026, Windows 11). Damit haette auch der pre-commit-Hook jeden Commit
+  abgelehnt, sobald `core.hooksPath` gesetzt ist. Die Ausgaben tragen jetzt
+  `->`. Die CI sah das nie, weil ihre Runner UTF-8 sprechen;
+  `tests/test_gates_cp1252.py` erzwingt die Kodierung per `PYTHONIOENCODING`
+  und faellt deshalb auch auf Linux, gegengeprueft an der alten Fassung (beide
+  Faelle rot).
+
 - **Die Nationalbibliothek lieferte nichts — und die Quelle war nie zu.** Zwei
   der drei NB-Werkzeuge antworteten auf **jede** Eingabe mit einem Fehler,
   `heritage_get_publication` für jede gültige ID mit `idDoesNotExist`, und jede

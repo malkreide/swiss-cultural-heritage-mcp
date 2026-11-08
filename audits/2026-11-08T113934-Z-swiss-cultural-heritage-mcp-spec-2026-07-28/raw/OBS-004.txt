@@ -1,0 +1,19 @@
+{
+  "id": "OBS-004",
+  "status": "pass",
+  "category": "OBS",
+  "severity": "critical",
+  "evidence": [
+    "grep -rnE '\\bprint\\(' src/ --include='*.py' → exit 1; negative Kontrolle mit 'print(\"x\")' → Treffer",
+    "src/swiss_cultural_heritage_mcp/server.py:155,174 — _configure_logging(stream=sys.stderr) und structlog.WriteLoggerFactory(file=stream); grep 'StreamHandler|sys\\.stdout|basicConfig' src/ → kein stdout-Bezug",
+    "Laufzeit stdio (Konsolen-Skript, 2026-11-08T11:58Z, wiederholt nach Kill-Hinweis): stdin leerlaufend 6 s → exit 124, stdout 0 Bytes; mit OTEL-Endpoint → exit 124, stdout 0 Bytes, stderr '{\"event\": \"otel.unavailable\", \"level\": \"warning\", ...}' (Log geht nach stderr, nicht stdout)",
+    "Laufzeit stdio-Session (stdio_session2.py): initialize, notifications/initialized, tools/call mit ungueltigem Argument, tools/call unbekanntes Tool → jede stdout-Zeile parst als JSON-RPC (R1, R3 isError, R4 isError); SDK-Logs ('Tool ... rejected arguments') erscheinen ausschliesslich auf stderr",
+    "Dual-Transport: dieselbe _configure_logging-Konfiguration beim Import, kein transportabhaengiger Logging-Switch ({SV}:179, 3589-3607)"
+  ],
+  "gaps": [
+    "low: stdlib-Logging (build_http_app-Warnung, httpx) wird nicht vom Server explizit auf stderr gelegt, sondern vom SDK-Handler — zur Laufzeit stderr beobachtet, aber fremd konfiguriert",
+    "low: im HTTP-Modus schreibt uvicorns Access-Log per Default auf stdout (dort kein Protokollkanal, daher unschaedlich)",
+    "info: kein CI-Guard gegen print() in src/; MCP Inspector nicht verwendet, ersetzt durch rohe stdio-Session"
+  ],
+  "evaluator_notes": "Nebenbeobachtung (nicht bewertet): eine erste stdio-Session, die initialized und zwei tools/call ohne Warten pipelinte und nach 5 s stdin schloss, bekam die Antworten auf die beiden Calls nicht auf stdout, obwohl stderr sie als bearbeitet loggte (Konsolen-Skript, nicht vom Kill-Muster erfasst). Mit Request/Response-Takt kamen alle Antworten. Moeglicher Verlust ausstehender Antworten bei stdin-EOF — separat pruefen."
+}

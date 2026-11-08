@@ -1,0 +1,20 @@
+{
+  "id": "OBS-002",
+  "status": "partial",
+  "category": "OBS",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:478-537 — mask_unexpected_errors (Aequivalent zu mask_error_details; MCPServer kennt das Flag nicht): unerwartete Exception → bound.error('tool.unexpected_error', error_type=..., exc_info=True) ins Log, an den Client 'Interner Fehler bei der Tool-Ausfuehrung. Details wurden serverseitig protokolliert.' (from None); alle 11 Tools dekoriert",
+    "Laufzeit beide Aeren (probe_errors.py unexpected, RuntimeError('SECRET-INTERNAL /etc/app/config.toml token=abc123')): MODERN und LEGACY → isError=true, Text nur 'Error executing tool heritage_search_artists: Interner Fehler ...' — kein Secret, kein Pfad; stderr-JSON enthaelt den vollen Traceback (event tool.unexpected_error)",
+    "grep -rnE 'traceback|format_exc|sys\\.exc_info' src/ → nur structlog format_exc_info-Prozessor im Logging ({SV}:171), nichts in Tool-Returns",
+    "src/swiss_cultural_heritage_mcp/server.py:922-948 — Execution-Errors mit kuratierten deutschen Meldungen (404/429/503/Timeout/XML)",
+    "Laufzeit heritage_cross_search mit HTTP 503 (MockTransport): results[*].error = \"Server error '503 Service Unavailable' for url 'https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=ef3a9fd2-...&q=Hodler&limit=5'\\nFor more information check: https://developer.mozilla.org/...\" — roher httpx-Text ins Tool-Ergebnis ({SV}:2411, 2434, 2464: 'error': str(e))",
+    "stderr des HTTP-Laufs: SDK-Logging (rich, INFO) protokolliert httpx-Requests mit voller URL ('HTTP Request: GET https://...') — Query-Strings mit Suchbegriffen landen im Log"
+  ],
+  "gaps": [
+    "medium: heritage_cross_search reicht str(e) ungefiltert ans Modell durch (interne Upstream-URL samt resource_id und Query, httpx-Hilfetext) — Kriterium 3 an dieser Stelle nicht erfuellt",
+    "low: ValueError-Unterklassen (UpstreamSchemaError listet Upstream-Schluessel, Allow-List-Host) und jede ValueError aus Parsing-Code gehen als 'Fehler: {e}' an den Client ({SV}:945) — kein Stacktrace, aber unkuratierter Text",
+    "low: httpx-INFO-Logs enthalten Suchbegriffe aus Query-Strings (Nutzereingaben) — widerspricht dem Docstring 'keine Payloads/PII' ({SV}:156-160); keine Tokens, auth_model none"
+  ],
+  "evaluator_notes": "Kern erfuellt und zur Laufzeit belegt: keine Stacktraces/Secrets ans LLM, Original nur im Log. Teilweise wegen des rohen httpx-Texts in cross_search. Alter Lauf (v0.5) blockierte hier — heute behoben, unabhaengig nachgemessen."
+}

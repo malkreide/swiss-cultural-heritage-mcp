@@ -1,0 +1,16 @@
+{
+  "id": "SEC-020",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "critical",
+  "evidence": [
+    "git grep -nE 'os\\.system\\(|shell\\s*=\\s*True|\\beval\\(|\\bexec\\(|os\\.popen\\(|subprocess|pickle\\.loads|yaml\\.load\\(|__import__\\(|compile\\(' HEAD -- src/ -> only server.py:1040 and :2606 (re.compile, false positive from 'compile\\('); no shell, eval or subprocess site",
+    "Negative control: the same pattern matches 3/3 lines of a synthetic sample (subprocess.run(x, shell=True) / os.system / eval)",
+    "src/swiss_cultural_heritage_mcp/server.py:39 — XML is parsed via defusedxml.ElementTree; external access only through httpx (library instead of shell, criterion 3)",
+    "Informational outside src/: scripts/check_ruff_pin.py:71 subprocess.run(call, capture_output=True, ...) with a list, no shell (dev gate, not reachable from tools)"
+  ],
+  "gaps": [
+    "No parametrized injection test suite (severity: low; there is no subprocess site such a suite could cover)"
+  ],
+  "evaluator_notes": "No command-execution surface in server code. The subprocess criteria are therefore met trivially; there is no file-path tool (SEC-017 synergy does not apply)."
+}

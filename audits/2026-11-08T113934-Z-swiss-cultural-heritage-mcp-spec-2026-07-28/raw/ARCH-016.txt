@@ -1,0 +1,19 @@
+{
+ "id": "ARCH-016",
+ "status": "pass",
+ "category": "ARCH",
+ "severity": "high",
+ "evidence": [
+  "grep 'server/discover|discover' src/ -> nur server.py:395 (CACHE_HINTS-Eintrag) und Kommentare; der RPC stammt aus dem SDK: mcp/server/lowlevel/server.py:460 registriert ('server/discover', ..., self._handle_discover), :672-687 DiscoverResult(supported_versions=list(MODERN_PROTOCOL_VERSIONS), capabilities=self.get_capabilities(...), instructions=...). Installiert mcp 2.3.0; Manifest-Untergrenze pyproject.toml:39 'mcp[cli]>=2.0.0,<3'.",
+  "Laufzeit HTTP (scratchpad/probe_modern.out): server/discover -> 200, resultType complete, supportedVersions ['2026-07-28'] (Liste), capabilities {prompts, resources{subscribe,listChanged}, tools}, _meta.io.modelcontextprotocol/serverInfo {name 'swiss-cultural-heritage-mcp', title, version '0.7.0', description, websiteUrl}, instructions = server.INSTRUCTIONS.",
+  "Laufzeit stdio: python -m swiss_cultural_heritage_mcp.server UND Konsolen-Skript swiss-cultural-heritage-mcp.exe -> server/discover mit identischer supportedVersions-Liste, Capabilities und serverInfo.version 0.7.0 (scratchpad/probe_stdio.py).",
+  "Version aus Metadaten: server.py:470-479 version=__version__; __init__.py:26-29 version('swiss-cultural-heritage-mcp'); pyproject.toml:7 version='0.7.0' = gemeldete 0.7.0.",
+  "tests/test_server_identity.py:183-198 (version gegen pyproject.toml), :201-222 (name gegen __dist__), :277-294 (instructions, supportedVersions enthaelt 2026-07-28) — alle ueber echte HTTP-Anfragen an build_http_app, parametrisiert u. a. ueber 'server/discover' (:102-108)."
+ ],
+ "gaps": [
+  "Test prueft die capabilities von server/discover nicht einzeln (nur Identitaet, instructions, supportedVersions); kein stdio-Test. Hier zur Laufzeit nachgemessen (low).",
+  "Ob mcp 2.0.0 (die Manifest-Untergrenze) server/discover bereits liefert, ist nicht gemessen — nur 2.3.0 installiert (low).",
+  "Keine dokumentierte Gegenprobe 'Server ohne Handler' fuer den discover-Test; der Identitaetstest nennt eine Gegenprobe nur fuer die Identitaetsfelder (test_server_identity.py Docstring)."
+ ],
+ "evaluator_notes": "Nur fuer 2026-07-28. server/discover antwortet ueber beide bedienten Transporte und beide stdio-Einstiege mit allen drei Teilen (Versionsliste, Capabilities, Identitaet mit Metadaten-Version). Die Restluecken betreffen Testtiefe und die ungemessene SDK-Untergrenze, beide unterhalb high."
+}

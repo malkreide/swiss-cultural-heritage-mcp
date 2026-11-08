@@ -1,0 +1,21 @@
+{
+  "id": "SEC-018",
+  "status": "partial",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:1338,1490,1587,1748,1875,2144,2208,2324,2760,2966,3157 — all 11 tool input models are pydantic BaseModel with ConfigDict(extra='forbid'); limit fields with ge/le (e.g. :1351-1353 ge=1, le=MAX_LIMIT), date fields with a pattern (:1904, :2775, :2780)",
+    "venv python -I model_validate probe — limit 99999 -> REJECTED less_than_equal; unknown field -> REJECTED extra_forbidden; query 500 chars -> REJECTED string_too_long",
+    "Same probe — limit '5' (string) -> ACCEPTED as int 5 (no strict mode); offset 10**12 -> ACCEPTED (offset only ge=0, no le, :1354/:1599/:1760); ArtistDetailInput.artist_id 10'000 chars -> ACCEPTED (only min_length=1, :1492-1496); CollectionBrowseInput.resource_id 'a\\x00b' -> ACCEPTED (:1750-1754); PublicationDetailInput.identifier 10'000 chars -> ACCEPTED (:2210-2214); HeritageItemInput.item_id '../../solr/admin' -> ACCEPTED",
+    "src/swiss_cultural_heritage_mcp/server.py:3135-3137 + httpx.URL probe — item_id flows unencoded into the path: '../../solr/admin' becomes https://beta.dodis.ch/api/solr/admin (path traversal on the allowed host)",
+    "mcp.call_tool('heritage_search_artists', {'params': {'query':'Hodler','limit':99999}}) -> ToolError 'Input should be less than or equal to 100' (comes back as isError, no crash)",
+    "tests/test_server.py:683-735 — tests for limit bounds, blank query, date pattern, invalid sources (with pytest.raises(Exception)); no test for extra fields, overlong strings, or offset"
+  ],
+  "gaps": [
+    "strict=True is set nowhere: type coercion '5' -> 5 (severity: medium)",
+    "Numeric field offset without an upper bound in 4 models (severity: medium)",
+    "ID strings (artist_id, resource_id, identifier) without max_length or a whitelist pattern; item_id without a pattern, which allows path traversal on the upstream host (severity: high)",
+    "Edge-case tests for extra fields, overlong strings, control characters missing (severity: low)"
+  ],
+  "evaluator_notes": "Schema coverage and extra='forbid' are complete, and validation errors come back as isError. Gaps in strictness, bounds and whitelist patterns, the most serious being item_id flowing unencoded into the upstream path. The host stays fixed (see SEC-004), so this is no SSRF, but it is uncontrolled path access on beta.dodis.ch / api.memobase.ch."
+}

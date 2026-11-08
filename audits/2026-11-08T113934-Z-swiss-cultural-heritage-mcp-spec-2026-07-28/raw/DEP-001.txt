@@ -1,0 +1,20 @@
+{
+  "id": "DEP-001",
+  "status": "partial",
+  "category": "DEP",
+  "severity": "high",
+  "evidence": [
+    "git show HEAD:pyproject.toml [project].dependencies — alle sechs Laufzeit-Abhaengigkeiten mit beiden Enden: mcp[cli]>=2.0.0,<3; httpx>=0.27.0,<1.0.0; pydantic>=2.0.0,<3.0.0; pydantic-settings>=2.0.0,<3.0.0; defusedxml>=0.7.1,<1.0.0; structlog>=24.1.0,<27.0.0; kein == in Laufzeit-Deps (ruff==0.16.9 nur im dev-Extra)",
+    "src/swiss_cultural_heritage_mcp/server.py:38-44 + src/swiss_cultural_heritage_mcp/__init__.py:3 — Top-Level-Imports aus mcp.server.mcpserver, httpx, pydantic, pydantic_settings, structlog, defusedxml; alle gedeckelt. SDK gedeckelt (<3), Kommentar pyproject.toml begruendet Floor und Cap",
+    "pyproject.toml [project.optional-dependencies].otel — opentelemetry-sdk>=1.20.0, opentelemetry-exporter-otlp-proto-http>=1.20.0, opentelemetry-instrumentation-httpx>=0.40b0: OHNE Obergrenze; importiert aus Modulpfaden in server.py:205-209 (im try/except ImportError) und server.py:233 (OTLPSpanExporter, ausserhalb des try → ImportError dort bricht den Start, sobald OTEL_EXPORTER_OTLP_ENDPOINT gesetzt ist). Keine aufgeschriebene Begruendung fuer die offene Range",
+    "Modus 3 (leer aufgeloest): neues venv (Python 3.14), pip install --no-cache-dir --isolated swiss-cultural-heritage-mcp==0.6.0 → mcp 2.3.0, mcp-types 2.3.0, httpx 0.28.1, httpx2 2.16.0, pydantic 2.14.3, pydantic-settings 2.16.2, defusedxml 0.7.1, structlog 26.1.0. Kein Lockfile im Repo (ls uv.lock poetry.lock requirements*.txt → nicht vorhanden); Majors identisch mit dem Dev-venv",
+    "Modus 4a: PyPI-JSON 2026-11-08: hoechste stabile Versionen mcp 2.3.0, httpx 0.28.1, pydantic 2.14.3, pydantic-settings 2.16.2, defusedxml 0.7.1, structlog 26.1.0 = hoechste vom Cap erlaubte; installiert im Audit-venv, importiert, Suite: 375 passed, 40 failed (die bekannten Windows-only-Fehler), 2 skipped; publiziertes 0.6.0 mit diesen Versionen importiert und tools/call beantwortet",
+    "Modus 4b: pip install --dry-run --no-cache-dir --isolated ohne Caps (\"mcp[cli]>=2.0.0\" \"httpx>=0.27.0\" ... \"structlog>=24.1.0\" + otel) → mcp 2.3.0, httpx 0.28.1, pydantic 2.14.3, pydantic-settings 2.16.2, defusedxml 0.7.1, structlog 26.1.0, opentelemetry-sdk 1.45.2, instrumentation-httpx 0.66b2. pip config list leer. Negative Kontrolle unabhaengig: PyPI-JSON fuehrt fuer keine der sechs einen naechsten Major → Ergebnis ist kein Aufbaufehler",
+    "git show HEAD:.github/dependabot.yml — package-ecosystem pip, monatlich, gruppiert: Anhebungsprozess vorhanden"
+  ],
+  "gaps": [
+    "medium: otel-Extra (3 Pakete) ohne Obergrenze, obwohl aus deren Modulpfaden importiert wird; nicht dokumentiert als bewusste Ausnahme. Wirkung beschraenkt auf Deployments mit [otel] und gesetztem Endpoint",
+    "info: Wirkung aller sechs Caps ungeprueft — Gegenversuch 4b fuehrt fuer keine Abhaengigkeit einen hoeheren Major herein, weil auf dem Index keiner existiert (kein Fehler, aber kein Beleg; bei naechstem Major erneut fragen)"
+  ],
+  "evaluator_notes": "Laufzeit-Distribution sauber begrenzt und gemessen. Abzug nur fuer das ungedeckelte otel-Extra. SDK-006 nicht vermischt: der mcp-Bound ist am 2er-Major verankert, das ist hier nur als Existenz des zweiten Bounds gewertet. Bezieht sich auf 0.6.0 (publiziert) und HEAD 0.7.0 (identische Ranges laut PyPI requires_dist vs pyproject.toml)."
+}
