@@ -152,13 +152,13 @@ def collect_declared(expected: str) -> list[tuple[str, str]]:
 
     if SERVER_JSON.exists():
         server = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
-        found.append(("server.json → version", server.get("version", "")))
+        found.append(("server.json -> version", server.get("version", "")))
         for i, pkg in enumerate(server.get("packages", [])):
-            found.append((f"server.json → packages[{i}].version", pkg.get("version", "")))
+            found.append((f"server.json -> packages[{i}].version", pkg.get("version", "")))
 
     for readme in sorted(ROOT.glob("README*.md")):
         for match in _BADGE.finditer(readme.read_text(encoding="utf-8")):
-            found.append((f"{readme.name} → Versions-Badge", match.group(1)))
+            found.append((f"{readme.name} -> Versions-Badge", match.group(1)))
 
     return found
 
@@ -185,11 +185,11 @@ def tool_pin_drift(expected: str) -> str | None:
         # `.get` -> AttributeError). Den braucht es hier mit:
         return f"ist nicht als Pin lesbar ({fehler})"
     except AttributeError:
-        return "enthält kein JSON-Objekt"
+        return "enthaelt kein JSON-Objekt"
     if recorded is None:
-        return "führt kein Feld `generated_for_version`"
+        return "fuehrt kein Feld `generated_for_version`"
     if recorded != expected:
-        return f"ist für {recorded!r} erzeugt"
+        return f"ist fuer {recorded!r} erzeugt"
     return None
 
 
@@ -223,7 +223,7 @@ def main() -> None:
     if version is None:
         # `dynamic = ["version"]`: die Version entsteht beim Bauen, ein
         # Literal in src/ ist dort die Quelle und kein Fehler.
-        print("Versions-Sync übersprungen: pyproject.toml nutzt eine dynamische Version.")
+        print("Versions-Sync uebersprungen: pyproject.toml nutzt eine dynamische Version.")
         return
 
     found = collect_declared(version)
@@ -237,7 +237,7 @@ def main() -> None:
             print(f"  {where} = {value!r}", file=sys.stderr)
         print(
             "\nAlle Stellen im selben Commit bumpen. Hinweis: publish.yml "
-            "überschreibt server.json beim Veröffentlichen ohnehin aus dem Tag — "
+            "ueberschreibt server.json beim Veroeffentlichen ohnehin aus dem Tag -- "
             "die committete Version bleibt trotzdem die, die Menschen lesen.",
             file=sys.stderr,
         )
@@ -252,9 +252,9 @@ def main() -> None:
         )
         print(
             "\nDas Feld NICHT von Hand nachtragen: Die Hashes daneben "
-            "beschreiben die freigegebene Tool-Oberfläche, und ein "
+            "beschreiben die freigegebene Tool-Oberflaeche, und ein "
             "nachgeschriebenes `generated_for_version` behauptete eine "
-            "Freigabe für eine Version, gegen die nie geprüft wurde. Im "
+            "Freigabe fuer eine Version, gegen die nie geprueft wurde. Im "
             "selben Commit wie den Bump neu erzeugen:\n"
             "    PYTHONPATH=src python scripts/pin_tools.py",
             file=sys.stderr,
@@ -269,7 +269,7 @@ def main() -> None:
         print(
             "\nDie Laufzeit-Version kommt aus den Paket-Metadaten "
             "(`__version__`, gespeist aus importlib.metadata). Statt eines "
-            "Literals von dort lesen — sonst beginnt dieselbe Drift von vorn.",
+            "Literals von dort lesen -- sonst beginnt dieselbe Drift von vorn.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -279,9 +279,9 @@ def main() -> None:
     # eine Datei umbenannt wurde und der Check sie seither überspringt.
     checked = [where for where, _ in found]
     if TOOL_PIN.exists():
-        checked.append(f"{TOOL_PIN.relative_to(ROOT)} → generated_for_version")
+        checked.append(f"{TOOL_PIN.relative_to(ROOT)} -> generated_for_version")
     stellen = ", ".join(checked) or "keine weiteren Stellen"
-    print(f"Versions-Sync OK ({version}; geprüft: {stellen}; keine hartkodierte Version in src/)")
+    print(f"Versions-Sync OK ({version}; geprueft: {stellen}; keine hartkodierte Version in src/)")
 
 
 if __name__ == "__main__":
