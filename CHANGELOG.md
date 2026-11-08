@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-08
+
 ### Added
 
 - **Der SessionStart-Hook meldet ein nicht gesetztes `core.hooksPath`.**
@@ -78,6 +80,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Die Erfolgsausgabe nennt jede geprüfte Stelle. Ohne das sieht ein gruener
   Lauf genauso aus, wenn eine Pruefung stillschweigend herausfaellt.
+
+- **`PROBE_REPORT_helveticat.md`** — der Messbericht, auf dem die Änderungen
+  oben beruhen: Befunde, funktionierende Kombinationen, drei Optionen mit
+  Aufwand, eine Empfehlung und eine ausformulierte Verwerfen-Option. Sein
+  letzter Abschnitt hält fest, was die Probe **nicht** hergibt: ein Zeitpunkt
+  statt einer Reihe, ungeprüfte Nutzungsbedingungen des SRU, keine Aussage
+  über die Herkunft der Profilkarte.
+
+- **Aufzeichnungen, die es vorher nicht geben konnte.** `helveticat_1.xml`
+  (SRU) und `publication_1.xml` (MARCXML) — der Recorder vermerkte bis jetzt,
+  eine Erfolgs-Aufzeichnung gebe es «erst, wenn der Parser MARC21 lesen kann».
+  Die ID des Einzelabrufs stammt aus der Suche daneben und nicht aus dem Code;
+  zwei hingeschriebene IDs könnten nur belegen, dass zwei Stellen dieselbe
+  Annahme teilen. Die OAI-Seite einer Sammlung fehlt weiterhin, jetzt aber aus
+  genanntem Grund: 345 KB, und OAI-PMH kennt keinen Parameter für die
+  Seitengrösse.
+
+- **Der nächtliche Live-Lauf wacht jetzt über die Profilkarte.** Bisher deckte
+  er von der Nationalbibliothek nur `ListSets` ab — das eine NB-Verb, das kein
+  Publishing Profile braucht und als einziges nie kaputt war. Der Lauf wäre
+  durch den ganzen Ausfall grün geblieben. Neu sind vier Fälle: Volltextsuche,
+  Sammlungsabruf, die zwei Sonderfälle `RFN`/`RFN2` und die Brücke von der
+  Suche zum Einzelabruf. Gegen die echte Quelle geprüft, dass sie den
+  ursprünglichen Defekt fangen.
+
+- **`serverInfo.name` wird gemessen.** `tests/test_server_identity.py` prüfte
+  jedes Identitätsfeld — ausser `name`. Genau das eine ungemessene Feld war das
+  eine, das abwich; der dortige Gegenprobe-Nachweis («6 Fälle rot») belegte das
+  nicht und konnte es nicht, weil er die Fälle der gemessenen Felder zählte.
+  Neu sind sechs Draht-Zusicherungen plus eine, die `__dist__` gegen
+  `server.json` bindet. Die zweite ist nicht Zierde: Ohne sie vergleichen die
+  sechs den Wert gegen sich selbst und bleiben grün, wenn man `__dist__`
+  verdreht.
+
+- **`tests/test_helveticat_zugaenge.py`** — 32 Fälle über die Profilkarte, den
+  MARC-Parser, den SRU-Index-Schutz, die Zugangswahl, die gelockerte Suche und
+  die Ausgabe. Gegenprobe über 16 Mutationen gefahren, jede Zusicherung einzeln
+  neutralisiert, jede fällt mit den zugehörigen Tests. Sie hat dabei einen
+  wertlosen Test widerlegt: Der Deckel-Test lief über das Werkzeug, dessen
+  `limit` selbst auf 50 begrenzt ist, und blieb ohne den Deckel grün.
+
+- **`tests/test_helveticat_doku.py`** — hält die READMEs gegen den Code, nicht
+  gegen eine Liste im Test: Ist ein SRU-Endpunkt konfiguriert, muss das Wort in
+  beiden Sprachfassungen stehen; der voreingestellte `metadataPrefix` muss
+  genannt sein, wie er heisst. Anlass war, dass genau diese Doku nach der
+  Umstellung zwei Tage lang den Zustand davor beschrieb, ohne dass ein Gate
+  etwas sagte — die CI prüft Code, nicht Prosa.
+
+  Gegenprobe: READMEs auf den Stand vor der Nachführung → alle vier Fälle rot;
+  nur `SRU` entfernt → nur die zwei SRU-Fälle; nur `marc21` entfernt → nur die
+  zwei Prefix-Fälle.
+
+  Sein Docstring sagt auch, was er **nicht** kann: Er zählt Namen, keine
+  Aussagen. Ob der Text die Zugänge richtig *beschreibt*, hält er nicht — genau
+  daran ist der `INSTRUCTIONS`-Text im September vorbeigelaufen, der alle fünf
+  Quellen nannte und trotzdem das falsche Tool als quellenübergreifenden
+  Einstieg auswies.
 
 ### Removed
 
@@ -243,65 +302,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   «Schweizerische Nationalbibliothek (Helveticat)» statt «… (Helveticat
   OAI-PMH)»: Die Quelle hat zwei Zugänge, und ein Lizenzhinweis, der einen
   davon nennt, wäre für die Hälfte der Ergebnisse falsch.
-
-### Added
-
-- **`PROBE_REPORT_helveticat.md`** — der Messbericht, auf dem die Änderungen
-  oben beruhen: Befunde, funktionierende Kombinationen, drei Optionen mit
-  Aufwand, eine Empfehlung und eine ausformulierte Verwerfen-Option. Sein
-  letzter Abschnitt hält fest, was die Probe **nicht** hergibt: ein Zeitpunkt
-  statt einer Reihe, ungeprüfte Nutzungsbedingungen des SRU, keine Aussage
-  über die Herkunft der Profilkarte.
-
-- **Aufzeichnungen, die es vorher nicht geben konnte.** `helveticat_1.xml`
-  (SRU) und `publication_1.xml` (MARCXML) — der Recorder vermerkte bis jetzt,
-  eine Erfolgs-Aufzeichnung gebe es «erst, wenn der Parser MARC21 lesen kann».
-  Die ID des Einzelabrufs stammt aus der Suche daneben und nicht aus dem Code;
-  zwei hingeschriebene IDs könnten nur belegen, dass zwei Stellen dieselbe
-  Annahme teilen. Die OAI-Seite einer Sammlung fehlt weiterhin, jetzt aber aus
-  genanntem Grund: 345 KB, und OAI-PMH kennt keinen Parameter für die
-  Seitengrösse.
-
-- **Der nächtliche Live-Lauf wacht jetzt über die Profilkarte.** Bisher deckte
-  er von der Nationalbibliothek nur `ListSets` ab — das eine NB-Verb, das kein
-  Publishing Profile braucht und als einziges nie kaputt war. Der Lauf wäre
-  durch den ganzen Ausfall grün geblieben. Neu sind vier Fälle: Volltextsuche,
-  Sammlungsabruf, die zwei Sonderfälle `RFN`/`RFN2` und die Brücke von der
-  Suche zum Einzelabruf. Gegen die echte Quelle geprüft, dass sie den
-  ursprünglichen Defekt fangen.
-
-- **`serverInfo.name` wird gemessen.** `tests/test_server_identity.py` prüfte
-  jedes Identitätsfeld — ausser `name`. Genau das eine ungemessene Feld war das
-  eine, das abwich; der dortige Gegenprobe-Nachweis («6 Fälle rot») belegte das
-  nicht und konnte es nicht, weil er die Fälle der gemessenen Felder zählte.
-  Neu sind sechs Draht-Zusicherungen plus eine, die `__dist__` gegen
-  `server.json` bindet. Die zweite ist nicht Zierde: Ohne sie vergleichen die
-  sechs den Wert gegen sich selbst und bleiben grün, wenn man `__dist__`
-  verdreht.
-
-- **`tests/test_helveticat_zugaenge.py`** — 32 Fälle über die Profilkarte, den
-  MARC-Parser, den SRU-Index-Schutz, die Zugangswahl, die gelockerte Suche und
-  die Ausgabe. Gegenprobe über 16 Mutationen gefahren, jede Zusicherung einzeln
-  neutralisiert, jede fällt mit den zugehörigen Tests. Sie hat dabei einen
-  wertlosen Test widerlegt: Der Deckel-Test lief über das Werkzeug, dessen
-  `limit` selbst auf 50 begrenzt ist, und blieb ohne den Deckel grün.
-
-- **`tests/test_helveticat_doku.py`** — hält die READMEs gegen den Code, nicht
-  gegen eine Liste im Test: Ist ein SRU-Endpunkt konfiguriert, muss das Wort in
-  beiden Sprachfassungen stehen; der voreingestellte `metadataPrefix` muss
-  genannt sein, wie er heisst. Anlass war, dass genau diese Doku nach der
-  Umstellung zwei Tage lang den Zustand davor beschrieb, ohne dass ein Gate
-  etwas sagte — die CI prüft Code, nicht Prosa.
-
-  Gegenprobe: READMEs auf den Stand vor der Nachführung → alle vier Fälle rot;
-  nur `SRU` entfernt → nur die zwei SRU-Fälle; nur `marc21` entfernt → nur die
-  zwei Prefix-Fälle.
-
-  Sein Docstring sagt auch, was er **nicht** kann: Er zählt Namen, keine
-  Aussagen. Ob der Text die Zugänge richtig *beschreibt*, hält er nicht — genau
-  daran ist der `INSTRUCTIONS`-Text im September vorbeigelaufen, der alle fünf
-  Quellen nannte und trotzdem das falsche Tool als quellenübergreifenden
-  Einstieg auswies.
 
 ## [0.6.0] - 2026-09-19
 
