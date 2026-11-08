@@ -1,0 +1,14 @@
+{
+  "id": "SEC-027",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "grep -rniE 'x-mcp-header|custom_headers|extra_headers|headers=.*param|passthrough_headers|Mcp-Param' src/ -> only the comment server.py:3541-3542; outbound headers are constant: server.py:349 (User-Agent), :2688/:2727/:3123/:3137 (fixed Accept); no tool parameter reaches a header",
+    "SDK mcp 2.3.0 (venv/Lib/site-packages/mcp): shared/inbound.py:69 X_MCP_HEADER_KEY = 'x-mcp-header' is an opt-in JSON-schema annotation; server/mcpserver/tools/base.py:107-109 reads it only from the tool's generated input schema; headers get the prefix 'Mcp-Param-' (inbound.py:234), so no Authorization/Host/Mcp-Name can come from it",
+    "venv python -I runtime: 11 tools, tools with 'x-mcp-header' in their input schema = []; control: the key is found in a synthetic schema (True)",
+    "tests/test_cors.py:105-111 — regression test: list_tools(), offenders with 'x-mcp-header' in input_schema must be empty"
+  ],
+  "gaps": [],
+  "evaluator_notes": "Measured only for 2026-07-28 as instructed. The 'not used' branch is backed by server code and the SDK default (version 2.3.0, opt-in per schema annotation, prefix forces Mcp-Param-*). The 'when used' criteria do not apply."
+}

@@ -1,0 +1,19 @@
+{
+  "id": "SCALE-002",
+  "status": "fail",
+  "category": "SCALE",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:3574 — `mcp.streamable_http_app(transport_security=security, host=host)` ohne stateless_http/event_store; SDK-Signatur (mcp 2.3.0): `stateless_http: bool = False, session_idle_timeout: float | None = 1800, max_sessions = 10000` -> Sessions liegen im Prozessspeicher",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): POST /mcp initialize 2025-11-25 -> Antwortheader `mcp-session-id: 1705ca61107f46ef823af62c3697d9c7`; GET /mcp ohne Session -> HTTP 400 `Bad Request: Missing session ID`. Die Legacy-Aera ist sitzungsgebunden",
+    "git grep -nIiE 'stick|session.?affinity|sessionAffinity|redis|memcached|DurableObject|SessionStore|http_mcp_session_id' -- ':!audits' -> Treffer nur in docs/scaling.md (Beispielkonfigurationen), CHANGELOG.md:820, docs/security.md:73 — keiner in src/ oder in einer Konfigurationsdatei (Positivkontrolle: das Muster schlaegt auf die Doku-Beispiele an)",
+    "git ls-files | grep -iE 'haproxy|nginx|ingress|render\\.yaml|railway\\.toml|docker-compose|k8s/|helm/|fly\\.toml' -> leer (rc=1): kein LB- oder Deployment-Manifest, das Affinitaet oder replicas=1 erzwingt",
+    "docs/scaling.md:5-9 — 'The server must run as a single instance' (Behauptung, keine Evidenz; durch nichts im Repo erzwungen)"
+  ],
+  "gaps": [
+    "high: weder Sticky Sessions noch Shared-State-Session-Manager implementiert; Session-State nur in-process",
+    "medium: Session-TTL nicht explizit gesetzt — es gilt der SDK-Default session_idle_timeout=1800 s, im Code nicht verankert",
+    "medium: kein Failover-Test; die Single-Instance-Auflage ist nur dokumentiert, nicht in einer Deploy-Konfiguration festgeschrieben"
+  ],
+  "evaluator_notes": "Gemessen nur fuer 2025-11-25 (Legacy-Handshake mit Mcp-Session-Id). Der dokumentierte Single-Instance-Betrieb entschaerft das Risiko praktisch, ist aber kein Pass-Muster des Checks und wird durch keine Konfiguration erzwungen (Render-Autoscaling koennte ihn still brechen). Eine Akzeptanz als bewusstes Restrisiko waere ein Entscheid des Owners, nicht ein Pass. Billigste Behebung fuer die Legacy-Aera: stateless_http=True pruefen (Tool-Logik ist zustandslos) oder replicas=1 in einem eingecheckten render.yaml festschreiben."
+}

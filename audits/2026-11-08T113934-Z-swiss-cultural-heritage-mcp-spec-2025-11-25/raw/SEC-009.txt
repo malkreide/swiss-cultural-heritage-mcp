@@ -1,0 +1,16 @@
+{
+  "id": "SEC-009",
+  "status": "partial",
+  "category": "SEC",
+  "severity": "critical",
+  "evidence": [
+    "venv/Lib/site-packages/mcp/server/streamable_http_manager.py:313 (mcp 2.3.0) — mcp_session_id=uuid4().hex (CSPRNG via os.urandom, 122 random bits); runtime log of the rebind probe: 'Created new transport with session ID: 9a4d96429fe54fe0a6f12bd25b1207fa' (32 hex)",
+    "streamable_http_manager.py:38,94 — DEFAULT_SESSION_IDLE_TIMEOUT = 30*60; the server does not override it (server.py:3574 mcp.streamable_http_app(transport_security=..., host=...) without session_idle_timeout) -> TTL 30 min",
+    "streamable_http_manager.py:252-259,283-284 — DELETE terminates the transport server-side and removes the session",
+    "Profile auth_model: none; grep -rniE 'authorization|bearer|token_verifier|auth=' src/ -> no auth surface. There is no validated identity (no 'sub') to bind a session to"
+  ],
+  "gaps": [
+    "No binding of the session ID to a user identity, no 401/403 on mismatch. Structurally impossible under auth_model none (severity: low in this profile: public, read-only, no per-user context)"
+  ],
+  "evaluator_notes": "Measured only for 2025-11-25 as instructed. Generation (criterion 1), TTL (5) and server-side invalidation (6) come from SDK 2.3.0 and are met. Criteria 2-4 assume OAuth; without auth there is no victim context that a stolen session ID could take over, beyond progress/log notifications on that session's GET stream. That is why this is partial and not fail. Whether criteria 2-4 should count as n/a in this profile is the caller's call."
+}

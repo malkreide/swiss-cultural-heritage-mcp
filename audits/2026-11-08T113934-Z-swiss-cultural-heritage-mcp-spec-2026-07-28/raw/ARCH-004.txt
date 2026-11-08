@@ -1,0 +1,21 @@
+{
+  "id": "ARCH-004",
+  "status": "pass",
+  "category": "ARCH",
+  "severity": "high",
+  "evidence": [
+    "`git show HEAD:src/swiss_cultural_heritage_mcp/server.py | grep -A60 '@mcp\\.tool' | grep -nE 'request\\.|websocket\\.|stdin|stdout|Request\\b|\\.headers\\['` -> einziger Treffer ist ein Docstring ('Aufrufen ohne Request `None`'), kein Zugriff; Negativkontrolle mit `async def s(q, request: Request): ua = request.headers[...]` -> 1 Treffer",
+    "src/swiss_cultural_heritage_mcp/server.py:2366, 2486-2488, 2808, 2864-2870 — Client-/Session-Bezug nur über `ctx: Context` (report_progress, warning)",
+    "src/swiss_cultural_heritage_mcp/server.py:65-150 — `class Settings(BaseSettings)` mit env_prefix MCP_, u. a. transport: Literal['stdio','http'], host, port, Endpunkte, Timeouts; die Modul-Konstanten (CKAN_API, HTTP_TIMEOUT usw.) sind daraus abgeleitet",
+    "src/swiss_cultural_heritage_mcp/server.py:361-371, 466-475 — ein gemeinsamer `lifespan` (geteilter httpx-Client) am MCPServer, für beide Transports derselbe",
+    "Modus 3 (scratchpad/probe/dual.py): `tools/call list_heritage_collections {response_format: json}` über stdio (`python -m swiss_cultural_heritage_mcp.server`) und über Streamable HTTP (`MCP_TRANSPORT=http MCP_PORT=8765 python -m ...server`, /health -> {\"status\":\"ok\"}) -> 'IDENTICAL result: True' nach Entfernen von meta; Negativkontrolle json vs. markdown über HTTP -> False",
+    "src/swiss_cultural_heritage_mcp/server.py:3589-3607 — Transportwahl `settings.transport == 'http' or '--http' in sys.argv` steht nur im `if __name__ == '__main__'`-Block",
+    "`MCP_TRANSPORT=http MCP_PORT=8766 swiss-cultural-heritage-mcp.exe < /dev/null` -> exit=0 nach 2 s, `curl :8766/health` -> keine Verbindung: das Konsolen-Skript `server:mcp.run` (pyproject.toml [project.scripts]) startet immer stdio, weil SDK `MCPServer.run(transport='stdio')` der Default ist"
+  ],
+  "gaps": [
+    "medium: Konsolen-Skript / `uvx swiss-cultural-heritage-mcp` ignoriert MCP_TRANSPORT und startet immer stdio; HTTP geht nur über `python -m swiss_cultural_heritage_mcp.server` (so in Dockerfile CMD und README). Auf dem uvx-/Registry-Pfad ist HTTP ohne Codeänderung nicht wählbar",
+    "low: `--port 8000` in README.md:99/154 und Dockerfile CMD wird nicht ausgewertet (Port nur aus MCP_PORT); es wirkt nur, weil der Default 8000 ist",
+    "low: veränderlicher Modul-Global `_http_client` (src/swiss_cultural_heritage_mcp/server.py:344-358) neben dem Lifespan (lazy-Fallback für Tests)"
+  ],
+  "evaluator_notes": "Alle fünf Kriterien am Code und am Verhalten erfüllt: kein Transport-Leak in Handlern, Settings-Objekt, Transport per ENV wählbar (über python -m), identische Tool-Ergebnisse stdio vs. Streamable HTTP, gemeinsamer Lifespan. Die Gaps liegen unter der Check-Severity high. Der Laufzeitvergleich lief mit dem Legacy-initialize-Handshake des SDK-Clients 2.3.0; der Tool-Handler selbst ist revisionsunabhängig. Server danach beendet (http.log: 'Application shutdown complete')."
+}

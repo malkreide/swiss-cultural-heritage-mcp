@@ -1,0 +1,18 @@
+{
+  "id": "SEC-024",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:3495-3531 build_transport_security: TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts, allowed_origins); list from MCP_INBOUND_ALLOWED_HOSTS (src/swiss_cultural_heritage_mcp/server.py:147, :3490-3492), loopback entries carry the port (src/swiss_cultural_heritage_mcp/server.py:3512), CORS origins are added without '*' (src/swiss_cultural_heritage_mcp/server.py:3525-3526); src/swiss_cultural_heritage_mcp/server.py:3565-3574 wired into the only HTTP path streamable_http_app(transport_security=security, host=host)",
+    "src/swiss_cultural_heritage_mcp/server.py:3566-3573 — startup warning 'DNS-Rebinding-Schutz ist AUS ...' on a non-loopback bind without a list (observed at runtime, see SEC-016)",
+    "Runtime pair via TestClient against build_http_app([], '0.0.0.0', 8000) with MCP_INBOUND_ALLOWED_HOSTS=kultur.example.ch:8000: Host kultur.example.ch:8000 -> 200, kultur.example.ch:9999 -> 421, evil.example.com -> 421, allowed host + Origin http://evil.example.com -> 403, 127.0.0.1:8000 -> 200",
+    "Mutation control in the same probe (build_transport_security -> None): the same five requests -> 200/200/200/200/200; without the variable (Docker default) likewise all 200 plus the warning. The pair (exact 200 / wrong port 421) comes from the passed list, not from an SDK default",
+    "tests/test_transport_security.py — 13 tests incl. test_right_host_wrong_port_is_rejected (421), test_foreign_host_is_rejected, test_wildcard_cors_is_not_copied, test_cors_origins_pass_the_transport_check; run: 'pytest tests/test_transport_security.py tests/test_cors.py' -> 21 passed"
+  ],
+  "gaps": [
+    "MCP_INBOUND_ALLOWED_HOSTS is documented neither in README, docs nor Dockerfile, and there is no .env.example or render.yaml: the shipped container runs fail-open by default (with a warning) (severity: medium)",
+    "In the repo test the served half of the pair uses a portless entry (test_configured_host_is_served), not the same name:port as the wrong-port test. The exact pair is only covered by the runtime probe here (severity: low)"
+  ],
+  "evaluator_notes": "Auth-token criterion does not apply (auth_model none, no token). Only one network path (build_http_app); the console script is stdio. The rebind_probe.py gate from mcp-continuous-auditor was not run (not available here); Modus 3 was carried out by hand in-process. Careful with that gate: it sets MCP_ALLOWED_HOSTS, which is this server's EGRESS list (see SEC-021)."
+}

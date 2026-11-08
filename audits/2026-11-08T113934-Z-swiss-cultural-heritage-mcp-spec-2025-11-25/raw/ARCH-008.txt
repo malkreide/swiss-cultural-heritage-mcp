@@ -1,0 +1,18 @@
+{
+  "id": "ARCH-008",
+  "status": "partial",
+  "category": "ARCH",
+  "severity": "medium",
+  "evidence": [
+    "Laufzeit: `mcp.list_resources()` -> ['heritage://sik-isea/overview', 'heritage://nb/collections']; `mcp.list_prompts()` -> ['heritage_research_artist', 'heritage_find_educational_resources']; dazu 11 Tools, also alle drei Primitive in Gebrauch",
+    "src/swiss_cultural_heritage_mcp/server.py:3283-3284, 3321-3322 — @mcp.resource mit Schema heritage://<quelle>/<thema>; src/swiss_cultural_heritage_mcp/server.py:3383-3384, 3419-3420 — @mcp.prompt, zwei kuratierte Workflows mit Tool-Folge und Ausgabeformat",
+    "`git show HEAD:README.md | grep -nE 'heritage://|[Rr]esource|[Pp]rompt'` -> nur Zählungen (:52 '11 tools, 2 resources, 2 prompts', :58 'Prompt templates', :221-222, :268); keine URI und kein Prompt-Name in README.md oder README.de.md; `git grep heritage:// HEAD -- docs` -> nichts",
+    "src/swiss_cultural_heritage_mcp/server.py:3213-3232 — list_heritage_collections hat openWorldHint=False und keinen Netzaufruf (grep nach _http|await|fetch im Handler-Block -> rc=1): statische, deterministische Daten als Tool, klassischer Resource-Kandidat; heritage_list_nb_collections überschneidet sich inhaltlich mit der Resource heritage://nb/collections"
+  ],
+  "gaps": [
+    "medium: keine dokumentierte Prüfung, welche read-only Tools Resources sein könnten; list_heritage_collections ist statisch und bleibt ohne Begründung ein Tool",
+    "low: URI-Schema konsistent, aber nirgends in README/docs dokumentiert; die Resource-URIs erfährt man nur über resources/list",
+    "low: sik_isea_overview listet 3 der 11 Tools und spricht von 'allen drei Quellen'; für SNM, Memobase und Dodis gibt es keine Resource, das Inventar ist ungleichmässig"
+  ],
+  "evaluator_notes": "Kriterium 1 (>= zwei Primitive) klar erfüllt, Prompts kuratiert (Kriterium 4). Kriterium 3 nur halb (konsistent, nicht dokumentiert), Kriterium 5 nicht belegt -> partial."
+}

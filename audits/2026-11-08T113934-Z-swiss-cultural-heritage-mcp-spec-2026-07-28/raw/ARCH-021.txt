@@ -1,0 +1,16 @@
+{
+ "id": "ARCH-021",
+ "status": "partial",
+ "category": "ARCH",
+ "severity": "medium",
+ "evidence": [
+  "rg 'io\\.modelcontextprotocol/|extensions' src/ -> exit 1; rg 'tasks/(get|update|result|list)|TaskHandle|task_id' src/ -> exit 1. Negative Kontrolle: das erste Muster trifft venv/.../mcp/server/lowlevel/server.py 15-mal.",
+  "Laufzeit server/discover (HTTP und stdio): capabilities = {prompts:{listChanged}, resources:{listChanged, subscribe}, tools:{listChanged}} — kein extensions-Feld, keine Tasks. Deklaration und Code decken sich in beide Richtungen (beides leer).",
+  "README: git show HEAD:README.md | rg -i 'extension' -> exit 1; rg -i 'extension' README.de.md -> exit 1. Der Abschnitt '## MCP Protocol Version' (HEAD:README.md:325-340) sagt nicht, dass keine Extensions gefuehrt werden."
+ ],
+ "gaps": [
+  "README haelt nicht in einem Satz fest, dass der Server keine Extensions fuehrt (Kriterium 1; 'keine' und 'nicht dokumentiert' sind ununterscheidbar).",
+  "server/discover laesst das extensions-Feld weg statt {} zu melden (SDK-Verhalten; Remediation: 'Leer ist eine Aussage. Weglassen ist keine.') — low."
+ ],
+ "evaluator_notes": "Nur fuer 2026-07-28. Keine Extension, keine Tasks, keine Anmassung des io.modelcontextprotocol-Namensraums; Deklaration deckt Realitaet. Es fehlt allein der README-Satz, den das erste Kriterium ausdruecklich verlangt -> partial."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "SCALE-007",
+  "status": "fail",
+  "category": "SCALE",
+  "severity": "medium",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:3574 — `mcp.streamable_http_app(transport_security=security, host=host)`: kein event_store-Argument; SDK-Signatur `event_store: EventStore | None = None` -> Default None, keine Resumability",
+    "grep -rnE 'event_store|EventStore|StreamableHTTPSessionManager' src/ -> 0 Treffer; Negativkontrolle: dasselbe Muster greift in der SDK-Signatur (inspect.signature(MCPServer.streamable_http_app) nennt event_store)",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): SSE-Antwort auf initialize 2025-11-25 besteht aus `event: message` + `data: {...}` OHNE `id:`-Zeile — ohne Event-IDs ist Last-Event-ID-Resume grundsaetzlich unmoeglich"
+  ],
+  "gaps": [
+    "medium: kein Event-Store verdrahtet, SSE-Events tragen keine id — ein abgerissener Stream verliert die laufende Antwort",
+    "low: keine Proxy-Konfiguration (Buffering/Timeout) im Repo; der Server setzt selbst x-accel-buffering: no"
+  ],
+  "evaluator_notes": "Nur 2025-11-25. Read-only-Server mit lesenden Tools: ein wiederholter Tool-Call kommt ans Ziel, der Schaden ist Latenz, keine Doppelwirkung (deshalb Severity medium im Katalog). Auf 2026-07-28 entfaellt der Check (SEP-2575)."
+}

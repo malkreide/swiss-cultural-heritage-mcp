@@ -1,0 +1,20 @@
+{
+  "id": "IDENT-002",
+  "status": "partial",
+  "category": "IDENT",
+  "severity": "medium",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/__init__.py:3,26-29 — __version__ = version('swiss-cultural-heritage-mcp'), except PackageNotFoundError → '0.0.0+local'; Versionsblock steht vor jedem Submodul-Import (__init__ importiert kein Submodul)",
+    "grep -rnE '__version__\\s*=\\s*\"[0-9]+\\.[0-9]' src/ → nur __init__.py:29 '0.0.0+local' (Fallback mit '+'); kein Literal sonst",
+    "grep -rnE '__version__\\s*==\\s*\"[0-9]+\\.[0-9]|==\\s*\"v?[0-9]+\\.[0-9]+\\.[0-9]+\"' tests/ → exit 1; negative Kontrolle 'assert __version__ == \"0.3.0\"' trifft (exit 0)",
+    "tests/test_server_identity.py:197-202 — vergleicht die gemeldete serverInfo.version (aus den installierten Metadaten) gegen pyproject.toml; Fehlermeldung nennt 'pip install -e \".[dev]\"' (Editable-Fall). Lauf: 33 passed (test_server_identity.py + TestPackageMetadata)",
+    "Invariante gegen server.json: scripts/check_version_sync.py vergleicht pyproject ↔ server.json (version, packages[*]); verstimmt in Kopie (packages[0]=0.6.0) → 'DRIFT ... server.json -> packages[0].version = 0.6.0' exit 1",
+    "Laufzeit: Audit-venv (editable) meldet __version__ 0.7.0 = pyproject 0.7.0; Index-Artefakt meldet 0.6.0 = installierte 0.6.0"
+  ],
+  "gaps": [
+    "low: kein Test, der __version__ direkt gegen server.json haelt; die Invariante liegt im Gate-Skript (pyproject ↔ server.json), nicht im Test",
+    "low: tests/test_server_identity.py wird ohne Installation nicht uebersprungen — im reinen Quell-Checkout faellt __version__ auf 0.0.0+local und der Test waere rot statt skip",
+    "tests/test_server.py:463-467 (TestPackageMetadata) prueft nur 'nicht leer' — wirkungslos, aber harmlos"
+  ],
+  "evaluator_notes": "Kern (Ableitung aus Metadaten, kein Literal in src/ und tests/) erfuellt. Aus diesem Check wird nichts ueber das publizierte Paket geschlossen (dafuer IDENT-001/006)."
+}

@@ -31,14 +31,21 @@ Schreibpfad, keine Authentifizierung, keine Personendaten.
 
 ## Audit-Status
 
-Dieser Server wurde gegen den internen MCP-Best-Practice-Katalog (v0.5.0,
-68 Checks) mit der `mcp-audit`-Methodik geprüft. Die Audit-Läufe — inklusive der
+Dieser Server wird gegen den internen MCP-Best-Practice-Katalog mit der
+`mcp-audit`-Methodik geprüft. Die Audit-Läufe — inklusive der
 pass/partial/fail-Scorecards und der erfassten offenen Findings — liegen unter
-[`audits/`](audits/); der jüngste Lauf ist
-`audits/2026-06-02T041532-Z-swiss-cultural-heritage-mcp/`. Der aktuelle
-Finding-Stand und der Remediation-Status sind diesen Berichten zu entnehmen;
-dieses Dokument ist die Meldepolitik für Schwachstellen und die Zusammenfassung
-der Sicherheitslage, nicht das Scorecard.
+[`audits/`](audits/). Das jüngste Audit (2026-11-08, mcp-audit 2.3.0) besteht
+aus zwei Läufen gegen dieselbe Revision, einem je Protokollstand, den der
+Server spricht:
+
+- `audits/2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2025-11-25/`
+- `audits/2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2026-07-28/`
+
+Keiner der beiden Läufe hat die Production-Readiness erreicht. Die Zahlen und
+die blockierenden Findings stehen je Lauf in `summary.json`; wie die beiden
+Läufe zusammenhängen, erklärt `00-RUN-NOTE.md`. Dieses Dokument ist die
+Meldepolitik für Schwachstellen und die Zusammenfassung der Sicherheitslage,
+nicht das Scorecard.
 
 ## Re-Evaluierungs-Auslöser
 

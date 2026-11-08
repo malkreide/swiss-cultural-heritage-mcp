@@ -1,0 +1,17 @@
+{
+  "id": "SDK-002",
+  "status": "pass",
+  "category": "SDK",
+  "severity": "medium",
+  "evidence": [
+    "pyproject.toml:45 `\"pydantic>=2.0.0,<3.0.0\"`; installiert pydantic 2.14.3",
+    "src/swiss_cultural_heritage_mcp/server.py:1375,1511,1615,1772,1929,2162,2229,2367,2808,3101,3226 — alle 11 Tools mit Rueckgabe-Annotation `-> ResultEnvelope | str`",
+    "src/swiss_cultural_heritage_mcp/server.py:555-574 — `class ResultEnvelope(BaseModel)`: source (SourceInfo|list), count, total, offset, has_more, `match_type: Literal['exact','fuzzy','none'] = Field(default='exact')`, `results: list[dict] = Field(default_factory=list)`, meta",
+    "Runtime in-process (scratchpad/probe/tools_probe.py): tools/list in 2026-07-28 und 2025-11-25 -> tools=11, with_outputSchema=11 (Schema wird exponiert)"
+  ],
+  "gaps": [
+    "low: kein `provenance`-Feld im Envelope (Katalog-Muster source/provenance/results/count); alle Quellen sind live_api, das Feld waere konstant",
+    "low: wegen der Union `ResultEnvelope | str` ist das outputSchema als {result: ...} gewickelt (Runtime: properties ['result']) statt das Envelope-Schema direkt"
+  ],
+  "evaluator_notes": "Pydantic v2, explizite Annotationen, Literal fuer match_type, Field-Defaults ohne Mutable-Default — erfuellt. Die offenen Punkte sind kosmetisch und unter Check-Severity."
+}

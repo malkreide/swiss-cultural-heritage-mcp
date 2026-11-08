@@ -1,0 +1,16 @@
+{
+  "id": "SEC-014",
+  "status": "fail",
+  "category": "SEC",
+  "severity": "medium",
+  "evidence": [
+    "find . (without .git/audits) -iname '*allowlist*' -o -iname '*tool-policy*' -o -iname '*gateway*' -> no hit; positive control: the same find with '*egress*' finds ./docs/network-egress.md",
+    "git grep -ciE 'require_group|allowed_tools|tool_allowlist' HEAD -- src/ -> 0 (rc=1): no role/group check in src",
+    "Profile auth_model none; there are no claims or groups a server-side check could read. tools/list returns all 11 tools unfiltered (11 @mcp.tool in server.py, the TestToolPins snapshot lists 11)"
+  ],
+  "gaps": [
+    "No documented tool allow-list per team or role, neither as a gateway config nor in the server config (severity: medium)",
+    "No default-deny, no audit of denied calls, no role-specific tools/list filtering (severity: medium)"
+  ],
+  "evaluator_notes": "Applies through is_cloud_deployed (Render). The control normally lives in a central gateway, not in the single-server repo; nothing points to one, and none is referenced in the docs. Risk in this profile is low (all tools read-only, public data), but the criteria are not met."
+}

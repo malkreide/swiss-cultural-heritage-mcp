@@ -1,0 +1,18 @@
+{
+  "id": "SEC-005",
+  "status": "fail",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "grep -rnE 'getaddrinfo|gethostbyname|dns\\.resolve' src/ -> no match (rc=1); control: the pattern matches 'socket.getaddrinfo(h)'. The server never resolves DNS itself",
+    "src/swiss_cultural_heritage_mcp/server.py:347-350 — _new_client(): plain httpx.AsyncClient(timeout, follow_redirects=False, headers=UA) with no custom transport or resolver; hostname resolution happens inside httpcore at connect time",
+    "grep -rnE 'sni_hostname|SSLContext|verify_hostname|replace\\(.*hostname' src/ -> no match; there is no pinned-IP URL and no Host/SNI override",
+    "docs/security.md:46 — 'DNS pinning ... Deferred', with the trigger 'any tool starts accepting a user-supplied URL/host, or the allow-list grows beyond trusted fixed hosts'",
+    "tests/: grep -rnE 'getaddrinfo|gaierror|pinning' tests/*.py -> no test asserts a single DNS call per request"
+  ],
+  "gaps": [
+    "No single resolution plus pinned IP for the TCP connection (severity: high)",
+    "No test that checks for exactly one DNS lookup per request (severity: medium)"
+  ],
+  "evaluator_notes": "All five pass criteria are unmet; the maintainer documents the deferral on purpose (docs/security.md:46). Real risk is low: attacking it needs control over DNS for one of four federal or institutional hosts, and no tool argument sets the host. The check gives no exemption for that, and the allow-list can be widened by env (MCP_ALLOWED_HOSTS), which moves the deferral's trigger condition into the operator's hands. TLS validation is httpx's default (verify=True, no verify=False in src/), so a rebinding to an internal IP would fail the certificate check against the hostname. That mitigates the vector but does not replace the criterion."
+}

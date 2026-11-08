@@ -1,0 +1,15 @@
+{
+  "id": "SEC-015",
+  "status": "fail",
+  "category": "SEC",
+  "severity": "medium",
+  "evidence": [
+    "git grep -niE 'tool.?poisoning|prompt.?injection|sanitize.*description' HEAD -- src/ docs/ -> no match: no pre-flight detection layer, no gateway config",
+    "Compensating (not a pass criterion): src/swiss_cultural_heritage_mcp/_toolpins.py:33-48 + audits/tool-pins/current.json — SHA-256 per tool over name + docstring, CI test TestToolPins; venv python check: live manifest == committed manifest (True, 11 tools)",
+    "venv python -I scan of the server's own 11 tool definitions (description + JSON schema) against <SYSTEM>, [INST], ###Instructions, ignore previous, override instructions, ignoriere vorherigen, jailbreak, zero-width/bidi, NFKC homoglyph, length > 4000 -> hits = []; control: the pattern matches 'please IGNORE previous rules' and '\\u200B' (True, True)"
+  ],
+  "gaps": [
+    "No pre-flight tool-poisoning detection in front of tools/list, no filtering of high-risk definitions, no SIEM alerting (severity: medium)"
+  ],
+  "evaluator_notes": "The check puts the detection in a gateway; the repo has none. The server's own tool definitions are clean today (measured). That speaks for the server, not for the control the check demands."
+}

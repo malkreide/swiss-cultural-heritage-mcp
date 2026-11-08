@@ -1,0 +1,22 @@
+{
+  "id": "OBS-001",
+  "status": "partial",
+  "category": "OBS",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:951-961 — _raise_tool_error wirft ToolError(_handle_error(e)); src/swiss_cultural_heritage_mcp/server.py:922-948 handlungsorientierte Meldungen je Fehlerart; Tools fangen ExpectedUpstreamError (src/swiss_cultural_heritage_mcp/server.py:661-667) und melden ueber diesen Pfad",
+    "src/swiss_cultural_heritage_mcp/server.py:506-537 — mask_unexpected_errors: ToolError durchgereicht, alle anderen Exceptions → generische ToolError",
+    "Laufzeit beide Aeren (ASGI, probe_errors.py validation): ungueltiges Argument limit=9999 → MODERN 2026-07-28 und LEGACY (negotiated 2025-11-25) je http 200, result.isError=true, Text 'params.limit Input should be less than or equal to 100'; ebenso response_format='xml' (nennt 'markdown' oder 'json') und Extra-Feld → Validierung ueber den Execution-Pfad, Feld und Wertebereich benannt",
+    "Laufzeit beide Aeren: Upstream ConnectError → isError=true 'Fehler: Netzwerkfehler (ConnectError): '; HTTP 503 → isError=true 'Dienst voruebergehend nicht verfuegbar' (probe_cross2.py)",
+    "Laufzeit beide Aeren + stdio: unbekanntes Tool 'gibt_es_nicht' → result {content:'Unknown tool: gibt_es_nicht', isError:true}, KEIN JSON-RPC-Error (SDK-Verhalten mcp 2.3.0; Server ueberschreibt nichts)",
+    "grep -rnE -- '-320[0-9]{2}|McpError|ErrorData|JSONRPCError' src/ → exit 1: keine eigenen Codes, also keine im reservierten Bereich -32020…-32099",
+    "tests/test_server.py:1421-1458 TestErrorIsFlagged — Execution-Error-Pfad ueber echten Client (503 → is_error True; leeres Ergebnis → False)",
+    "Laufzeit heritage_cross_search, alle Quellen ConnectError bzw. 503 (httpx.MockTransport): is_error=False, results[*].error = '' bzw. httpx-Rohtext; search_heritage im selben Fall dagegen isError=true 'Alle angefragten Quellen sind derzeit nicht erreichbar' ({SV}:2904-2905)"
+  ],
+  "gaps": [
+    "high: heritage_cross_search meldet den Totalausfall aller Quellen als normales Ergebnis (isError=false, count 0, error-Felder leer bei ConnectError) — anders als search_heritage",
+    "medium: unbekanntes Tool kommt als Execution-Error (isError) statt als Protocol-Error (JSON-RPC -32602) zurueck, auf beiden Aeren — die Spec 2025-11-25 fuehrt 'unknown tools' als Protocol Error; Ursache im SDK, im Server nicht abgefangen",
+    "medium: kein Test fuer den Protocol-Error-Pfad (falsches Tool) und kein Test, der ein ungueltiges Argument ueber den Protokollpfad als Execution-Error belegt (tests/test_server.py:699 prueft nur das Pydantic-Modell direkt)"
+  ],
+  "evaluator_notes": "Validierungs- und Upstream-Fehler laufen auf beiden Protokollstaenden korrekt als isError. Abzug: cross_search-Totalausfall, SDK-Mapping des unbekannten Tools, fehlende Protokoll-Tests. Laeufe in-process (ASGI) bzw. via Konsolen-Skript, ausserhalb des Kill-Musters."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "ARCH-011",
+  "status": "pass",
+  "category": "ARCH",
+  "severity": "medium",
+  "evidence": [
+    "`git cat-file -e HEAD:<f>` -> OK für README.md, README.de.md, CHANGELOG.md, LICENSE, pyproject.toml; Negativkontrolle HEAD:NOPE.md -> 'does not exist'. `git ls-tree HEAD` zeigt src/swiss_cultural_heritage_mcp/, tests/ (23 Testdateien), .github/workflows/{ci.yml, nightly-live.yml, publish.yml}",
+    "pyproject.toml (HEAD) — build-backend hatchling, `[tool.hatch.build.targets.wheel] packages = [\"src/swiss_cultural_heritage_mcp\"]`; src/ enthält nur das Paketverzeichnis (src-Layout)",
+    ".github/workflows/ci.yml:14,30 (HEAD) — Matrix 3.11/3.12/3.13, `pytest tests/ -m \"not live\"` (die Funktion von test.yml); publish.yml:40,50 — id-token: write + pypa/gh-action-pypi-publish (Trusted Publisher)",
+    "Sektionsabgleich `grep -E '^## '` (CR entfernt): README.md 20, README.de.md 19 Überschriften, 19 Paare semantisch deckungsgleich (Overview/Übersicht ... Credits/Credits); einzige Differenz ist der generierte zweite 'Installation'-Block README.md:421-438, die Sektion selbst existiert in beiden",
+    "README.md:283 / README.de.md:284 (HEAD) — die Abweichung ('Single-file server: the 11 tools live in one server.py rather than a tools/ package ...') ist im README begründet, wie das Kriterium verlangt"
+  ],
+  "gaps": [
+    "low: die Begründung 'At this size a single, linear module is easier to read' trägt bei 3607 Zeilen server.py (Richtwert < 200) nur schwach; die Schwelle 'if the tool count grows materially' ist nicht beziffert",
+    "low: die Projektstruktur im README (README.md:262-282) nennt nur tests/test_server.py und ci.yml; tatsächlich gibt es 23 Testdateien, nightly-live.yml, publish.yml und scripts/",
+    "low: README.de.md fehlt der generierte uvx-Installationsblock aus README.md:421-438",
+    "low: der Workflow heisst ci.yml statt test.yml (funktional gleich)"
+  ],
+  "evaluator_notes": "Alle sieben Kriterien erfüllt; die Abweichung (kein tools/-Paket) ist im README begründet. README.md wurde wegen der uncommitteten Änderung nur per `git show HEAD:README.md` gelesen."
+}

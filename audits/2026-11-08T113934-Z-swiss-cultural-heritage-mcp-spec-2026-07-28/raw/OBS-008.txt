@@ -1,0 +1,17 @@
+{
+  "id": "OBS-008",
+  "status": "fail",
+  "category": "OBS",
+  "severity": "medium",
+  "evidence": [
+    "Laufzeit 2026-11-08T11:58Z (wiederholt nach dem Kill-Hinweis, Konsolen-Skript swiss-cultural-heritage-mcp.exe): stdin leerlaufend, timeout 6 → exit 124 (Server lief), stderr 0 Bytes, stdout 0 Bytes; stdin=/dev/null → exit 0 (EOF beendet sauber), stderr 0 Bytes. Erstlauf 11:45Z mit 'python -m ...server' identisch",
+    "Negative Kontrolle, selber Aufbau: OTEL_EXPORTER_OTLP_ENDPOINT gesetzt → exit 124, stderr '{\"reason\": \"opentelemetry nicht installiert ...\", \"event\": \"otel.unavailable\", \"level\": \"warning\", ...}' — der Aufbau laesst Server-stderr durch; das Schweigen ist ein Ergebnis",
+    "src/swiss_cultural_heritage_mcp/server.py:360-370 — lifespan erzeugt den HTTP-Client und yieldet ohne jede Log-Zeile; kein READY-Marker im Modul",
+    "git show HEAD:README.md / README.de.md | grep -niE 'marker|bereitschaft|ready' → keine Treffer (Kontrolle 'Bereitschaftsmarker: server ready' trifft)"
+  ],
+  "gaps": [
+    "medium: kein Bereitschaftsmarker auf stderr — von aussen nicht von einem beim Start gestorbenen Prozess unterscheidbar",
+    "medium: kein dokumentierter Marker im README, kein Test"
+  ],
+  "evaluator_notes": "adoption: advisory laut Frontmatter. Bei geschlossenem stdin beendet sich der Server sofort sauber (exit 0) — deshalb zusaetzlich mit leerlaufendem stdin gemessen."
+}

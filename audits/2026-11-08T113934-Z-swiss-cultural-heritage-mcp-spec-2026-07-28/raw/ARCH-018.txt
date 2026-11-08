@@ -1,0 +1,17 @@
+{
+ "id": "ARCH-018",
+ "status": "partial",
+ "category": "ARCH",
+ "severity": "medium",
+ "evidence": [
+  "rg 'resultType|result_type' src tests -> exit 1 (kein eigener Code, kein Test). Negative Kontrolle: dasselbe Muster trifft mcp_types/_types.py, methods.py, _v2026_07_28/__init__.py im venv — das Feld stammt aus dem SDK.",
+  "Laufzeit HTTP 2026-07-28 (scratchpad/probe_modern.out): resultType 'complete' auf server/discover, tools/list, prompts/list, resources/list, resources/templates/list, resources/read, tools/call Erfolg (list_heritage_collections, isError false), tools/call ungueltiges Argument (isError true) und tools/call unbekanntes Tool (isError true).",
+  "Laufzeit stdio (scratchpad/probe_stdio2.py): tools/call does_not_exist -> resultType complete, isError true; tools/call list_heritage_collections -> resultType complete, isError false; server/discover -> resultType complete.",
+  "Kein MRTR im Server (rg 'input_required' src -> kein Treffer im eigenen Code, da resultType gar nicht vorkommt); Wert ist durchgehend 'complete'. SDK: mcp 2.3.0 mit exakt mcp-types==2.3.0; Manifest-Untergrenze pyproject.toml:39 mcp>=2.0.0."
+ ],
+ "gaps": [
+  "Kein Test prueft resultType am Wire-Format (Kriterium 5); die Konformitaet haengt ungetestet am SDK. Medium = Check-Severity.",
+  "Ob die Manifest-Untergrenze mcp 2.0.0 das Feld bereits setzt, ist nicht gemessen (nur 2.3.0 installiert); die Untergrenze ist damit nicht als Mindestversion fuer dieses Feld belegt."
+ ],
+ "evaluator_notes": "Nur fuer 2026-07-28. Am Draht liegt resultType auf jedem gemessenen Ergebnisweg an, Erfolg und isError, HTTP und stdio. Gesetzt wird es vom SDK, und kein Repo-Test haelt es fest; die SDK-Untergrenze ist fuer das Feld nicht verifiziert. Damit partial."
+}

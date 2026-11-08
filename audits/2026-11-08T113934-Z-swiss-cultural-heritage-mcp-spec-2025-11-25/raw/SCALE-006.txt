@@ -1,0 +1,17 @@
+{
+  "id": "SCALE-006",
+  "status": "partial",
+  "category": "SCALE",
+  "severity": "medium",
+  "evidence": [
+    "git ls-files | grep -iE 'docker-compose|k8s/|helm/|render\\.yaml|railway\\.toml' -> leer: kein Manifest im Repo setzt Memory-/CPU-Limits",
+    "Dockerfile:16 — Limits nur als Kommentar ('resources: { requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 256Mi} }'); die Dockerfile-Syntax kann keine Limits setzen",
+    "docs/security.md:91-101 — Abschnitt 'Resource limits (SCALE-006)': CPU 100m/500m, Memory 128Mi/256Mi (Requests < Limits), ulimit -n >= 4096 mit Begruendung (Fan-out in heritage_cross_search), Restart-Policy-Empfehlung; Satz 'The container declares no limits itself; operators should set them at the platform level'"
+  ],
+  "gaps": [
+    "medium: Memory- und CPU-Limit nirgends konfiguriert, nur empfohlen (Render: Plan/UI, nicht eingecheckt)",
+    "low: FD-Limit >= 4096 nur empfohlen, nicht gesetzt",
+    "low: OOM-Verhalten nicht getestet"
+  ],
+  "evaluator_notes": "Der Check laesst fuer Render/Railway die dokumentierte UI-Konfiguration gelten ('pruefen ob dokumentiert') — die Dokumentation ist vorhanden und inhaltlich vollstaendig (Requests < Limits, FD, Restart). Durchgesetzt ist nichts davon im Repo, und ein OOM-Test fehlt. Deshalb partial statt pass."
+}

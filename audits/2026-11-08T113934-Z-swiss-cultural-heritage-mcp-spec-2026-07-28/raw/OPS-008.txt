@@ -1,0 +1,16 @@
+{
+ "id": "OPS-008",
+ "status": "pass",
+ "category": "OPS",
+ "severity": "medium",
+ "evidence": [
+  "grep -c \"<<'PY'\\|<<'EOF'\\|<<PY\\|<<EOF\\|python -c\\|python - \" .github/workflows/*.yml -> ci.yml:0, nightly-live.yml:0, publish.yml:0; negative Kontrolle: dasselbe Muster an einem Text mit \"python - <<'PY'\" -> 1",
+  ".github/workflows/nightly-live.yml:54-64 — das Urteil clear/finding/unknown liegt in scripts/classify_live_run.py (eigene Datei, Docstring 'WARUM DAS EIN SKRIPT IST UND KEIN YAML-BLOCK'), der Workflow verzweigt nur auf das Zustandswort; 'unknown' ist ein eigener Zustand und schliesst nichts",
+  "tests/test_classify_live_run.py — 19 Tests; Mutationen in der Kopie (scratchpad/probe/mutate_classify.py): C1 alle übersprungen -> clear, C2 0 Tests -> clear, C3 fehlender Report -> clear, C4 errors ignoriert, C5 Zeilenumbruch in GITHUB_OUTPUT -> jede macht genau 1 Test rot (Baseline 19 passed)",
+  "Inline-Logik, die bleibt: nightly-live.yml:69-105 (github-script, entscheidet Issue anlegen vs. kommentieren, nicht rot/grün) und :116-124 (echo + exit 1 unter einer YAML-if-Bedingung auf das Zustandswort) — beides urteilt nicht"
+ ],
+ "gaps": [
+  "Die Issue-Routing-Logik im github-script (offenes Issue per Label finden, kommentieren oder anlegen) ist ungetestet; sie urteilt nicht über rot/grün (low)"
+ ],
+ "evaluator_notes": "Kein urteilender Heredoc; der urteilende Teil ist ausgelagert, hat drei Zustände und ist per Mutation belegt. Die Gegenprobe zur Abfrage selbst (reine Werkzeugschritte erzeugen keinen Befund) ist durch die 0-Zählung bei vorhandenen ruff- und pytest-Schritten gezeigt. Advisory."
+}

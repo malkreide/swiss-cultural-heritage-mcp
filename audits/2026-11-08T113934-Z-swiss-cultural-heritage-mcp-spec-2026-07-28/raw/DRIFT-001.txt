@@ -1,0 +1,18 @@
+{
+ "id": "DRIFT-001",
+ "status": "partial",
+ "category": "DRIFT",
+ "severity": "medium",
+ "evidence": [
+  "src/swiss_cultural_heritage_mcp/server.py:267-273 — Basis-URLs als Modul-Konstanten (CKAN_API, NB_OAI_PMH, NB_SRU, MEMOBASE_API, DODIS_API), gespeist aus Settings server.py:70-91; im Abrufcode keine wiederholten Basis-Literale",
+  "grep -nE '(CKAN_API|NB_OAI_PMH|NB_SRU|MEMOBASE_API|DODIS_API)' server.py — f\"{CKAN_API}/datastore_search\" an 4 Stellen zusammengesetzt (server.py:1407, 1524, 1796, 2394), f\"{CKAN_API}/package_search\" an 2 Stellen (1649, 2417); grep 'def _[a-z_]*url' in server.py ohne Treffer, also keine Konstruktionsfunktion",
+  "server.py:2674 vs 3078 — Memobase-Permalink f\"https://memobase.ch/de/document/{local}\" zweimal als Literal; server.py:2713 vs 3044 — Dodis-Permalink f\"https://dodis.ch/{hid}\" zweimal; die Kopien weichen schon voneinander ab (Normalisierer mit Fallback `if local else SOURCE_MEMOBASE.url`, Markdown-Ansicht ohne)",
+  "Laufzeit-Probe scratchpad/probe/drift003_probe.py (alle Upstreams 503): die Fehlermeldung nennt die tatsächlich abgerufene URL aus httpx ('Server error 503 ... for url https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=...'), Meldung und Abruf sind also gekoppelt"
+ ],
+ "gaps": [
+  "Pfadstruktur datastore_search 4x und package_search 2x inline gebaut statt an einer Konstruktionsstelle (medium)",
+  "Permalinks für Memobase und Dodis je zweimal als Literal, Fallback-Logik bereits auseinandergelaufen; Host wiederholt SOURCE_*.url als Literal (medium)",
+  "Keine Konstruktionsfunktion mit Docstring zu Encoding- und Präfixregeln (low)"
+ ],
+ "evaluator_notes": "Erfüllt: Basis-Konstanten und die Kopplung der Fehlermeldung an den Abruf. Ein data_source_url-Feld gibt es nicht; die Provenance nennt SOURCE_*.url (Homepage), nicht die abgerufene URL. Befund ist die mehrfache Zusammensetzung derselben Pfade. 2 von 4 Kriterien erfüllt."
+}

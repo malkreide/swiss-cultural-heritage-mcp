@@ -1,0 +1,14 @@
+{
+  "id": "SDK-004",
+  "status": "pass",
+  "category": "SDK",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:3575-3581 — `app.add_middleware(CORSMiddleware, allow_origins=cors_origins or [], allow_methods=['GET','POST','DELETE','OPTIONS'], allow_headers=['Mcp-Session-Id','Content-Type', *CORS_ROUTING_HEADERS], expose_headers=['Mcp-Session-Id'])` — kein allow_credentials",
+    "src/swiss_cultural_heritage_mcp/server.py:3481-3487 `cors_origins_from_env()` liest MCP_CORS_ORIGINS komma-separiert, Default leere Liste; src/swiss_cultural_heritage_mcp/server.py:3522-3525 konfigurierte Origins werden in TransportSecuritySettings.allowed_origins uebernommen, `*` ausgefiltert",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08, MCP_CORS_ORIGINS=https://client.example): POST initialize 2025-11-25 mit Origin https://client.example -> HTTP 200, `mcp-session-id: 3bf6...`, `access-control-expose-headers: Mcp-Session-Id`, `access-control-allow-origin: https://client.example`",
+    "Runtime: Preflight OPTIONS /mcp (Access-Control-Request-Headers: content-type,mcp-session-id) -> HTTP 200, allow-headers enthaelt Mcp-Session-Id; Gegenprobe POST mit Origin https://evil.example -> HTTP 403 Forbidden, kein allow-origin"
+  ],
+  "gaps": [],
+  "evaluator_notes": "Nur 2025-11-25 gemessen. Positiv- und Negativfall an der Laufzeit. Tests im Repo: tests/test_cors.py:114 `test_der_session_header_ist_weiterhin_freigegeben`."
+}

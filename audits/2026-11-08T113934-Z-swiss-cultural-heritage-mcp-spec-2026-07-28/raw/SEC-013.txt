@@ -1,0 +1,17 @@
+{
+  "id": "SEC-013",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:64-148 — Settings (single config load point) holds endpoints, timeouts, retry, allow-list, host/port/CORS/log-level: no field for a key, token or password",
+    "grep -nE 'os\\.environ|os\\.getenv' src/swiss_cultural_heritage_mcp/server.py -> only :202 OTEL_EXPORTER_OTLP_ENDPOINT and :228 DEPLOYMENT_ENV; grep -rniE 'api_key|apikey|secret|token|password|bearer|authorization' src/ -> only OAI resumption token and MCP progress token (no credentials)",
+    "Dockerfile:21-38 — ENV only PIP_NO_CACHE_DIR, PIP_DISABLE_PIP_VERSION_CHECK, PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, MCP_HOST, MCP_PORT; COPY only pyproject.toml, README.md, LICENSE, src -> no secret in an image layer",
+    "docs/security.md:87-89 — 'Secret management (SEC-013)': no secret material, Level 1 acceptable for Public Open Data, migration path to a Secret Manager (CH/EU) documented"
+  ],
+  "gaps": [
+    "The documentation lives in docs/security.md and not in docs/secret-management.md as the criterion literally asks (severity: low)",
+    "docker history not run (daemon not running); the image-layer statement rests on reading the Dockerfile (severity: low)"
+  ],
+  "evaluator_notes": "No secrets exist; data class Public Open Data; the Level-1 exception is documented. Rotation and Secret Manager region do not apply without secret material. OTLP exporter headers (OTEL_EXPORTER_OTLP_HEADERS) would be read by the OTel library itself; the server code does not handle them."
+}

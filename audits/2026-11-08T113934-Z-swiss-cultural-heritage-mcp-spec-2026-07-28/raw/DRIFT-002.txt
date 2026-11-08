@@ -1,0 +1,18 @@
+{
+ "id": "DRIFT-002",
+ "status": "partial",
+ "category": "DRIFT",
+ "severity": "high",
+ "evidence": [
+  "server.py:1418-1427 (heritage_search_artists), 1662-1669 (heritage_search_museum_datasets), 1985-2000 (heritage_search_helveticat, SRU '=' -> ' all ') — der Fuzzy-Retry erweitert die Treffermenge, ist aber als Feld ausgewiesen: match_type='fuzzy' (ResultEnvelope server.py:571) plus Markdown-Hinweis _FUZZY_NOTE (server.py:634-639)",
+  "Mutation M5 (scratchpad/probe/mutate.py auf einer Kopie aus git archive HEAD): match_type nach dem Fuzzy-Retry auf 'exact' gesetzt -> neu rot: TestFuzzyMatch::test_artists_fuzzy_retry und ::test_artists_fuzzy_note_in_markdown",
+  "server.py:2609-2627 _date_passes — bei gesetztem date_from/date_to werden undatierte Objekte AUFGENOMMEN ('lieber ein falsch-positiver Treffer als ein verlorener'); kein Antwortfeld meldet, dass der Filter auf diese Treffer nicht griff; die Feldbeschreibung server.py:2772-2781 sagt 'Nur ab diesem Jahr' ohne Hinweis; grep 'ndatiert' trifft nur den internen Docstring (2614)",
+  "tests/test_server.py:1681 — der Test schreibt die Substitution fest (_date_passes(None,'1800','1899') is True); Mutation M6 (undatierte ausschliessen) -> nur dieser Test wird rot",
+  "server.py:1536-1541 und 2270-2275 — records[0] nur nach einer ID-gepinnten Abfrage (HAUPTNR-Filter bzw. GetRecord-Identifier), das ist eine Drift-Wache, keine Substitution; server.py:329-338 _nb_prefix wählt das Profil je Set aus einer festen Karte, ohne Fallback auf 'irgendeinen Prefix'"
+ ],
+ "gaps": [
+  "Der clientseitige Datumsfilter in search_heritage lässt undatierte Treffer durch, ohne Feld, das die Abweichung benennt; die Markdown-Ansicht zeigt bei ihnen unter 'Filter: Zeitraum …' gar kein Datum (medium)",
+  "Kein Test hält fest, dass das Zeitfenster ohne passenden Treffer leer bleibt; der vorhandene Test verlangt das Gegenteil (medium)"
+ ],
+ "evaluator_notes": "Die Fuzzy-Fallbacks sind die zulässige, ausgewiesene Erweiterung (Feld plus Prosa, getestet). Nicht ausgewiesen ist allein der Datumsfilter. JSON trägt je Treffer date:null; das ist ein Indiz, kein Ausweis der Filterabweichung. Kein Fallback tauscht Quelle oder Entität."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "OBS-007",
+  "status": "fail",
+  "category": "OBS",
+  "severity": "medium",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:888-920 — _fetch_with_retry reicht die Original-Exception durch ('raise last_error', Kommentar 913-917) und loggt upstream_unreachable mit attempts, limit, error_type (Pass-Muster) — aber ohne Ziel/Host",
+    "src/swiss_cultural_heritage_mcp/server.py:922-930 — _handle_error loggt upstream.error mit error_kind und status, ohne Ziel/Host; Laufzeit: '{\"error_kind\": \"ConnectError\", \"status\": null, \"event\": \"upstream.error\", \"tool\": \"heritage_search_artists\", ...}' — welcher Endpunkt, steht nirgends",
+    "Laufzeit heritage_cross_search mit ConnectError('') auf allen Quellen (httpx.MockTransport): einziges Log-Event ist tool.call — KEIN Fehler-Log, kein Typ; im Ergebnis 'error': '' je Quelle ({SV}:2407-2412, 2430-2435, 2460-2465)",
+    "grep -rnE 'f\".*\\{(exc|e|err|error|last_error)...\\}' src/ → src/swiss_cultural_heritage_mcp/server.py:945, 947, 948, 2870; grep 'str\\((exc|e|...)\\)' → src/swiss_cultural_heritage_mcp/server.py:2411, 2434, 2464 (negative Kontrolle 'f\"Fehler: {e}\"' trifft). Laufzeit 947: 'Fehler: Netzwerkfehler (ConnectError): ' — endet auf ': '",
+    "grep -rnE 'ConnectTimeout\\(\"\"\\)|ConnectError\\(\"\"\\)|upstream_unreachable' tests/ → keine Treffer: kein Test fuer den Fall str(exc) == ''"
+  ],
+  "gaps": [
+    "medium: heritage_cross_search verschluckt Upstream-Fehler ohne jedes Log (Typ, Ziel, Versuche fehlen) und liefert bei Netzfehlern ein leeres error-Feld",
+    "medium: kein Log-Event nennt das Ziel (Host/Endpoint/Datensatz) — bei fuenf Quellen ist die Stoerung nicht zuordenbar",
+    "low: Meldungen mit '{e}' ohne Fallback fuer leeres str() (947 endet auf ': ')",
+    "medium: kein Test, der den Meldungsinhalt fuer str(exc) == '' festhaelt"
+  ],
+  "evaluator_notes": "Der Retry-Pfad ist vorbildlich (Durchreichen, Typ, Versuche), deckt aber nur Memobase/Dodis/get_heritage_item. Die Einzelquellen-Tools loggen den Typ ohne Ziel, die foederierte Suche gar nichts. Weniger als die Haelfte der Kriterien erfuellt."
+}

@@ -1,0 +1,18 @@
+{
+ "id": "OPS-002",
+ "status": "pass",
+ "category": "OPS",
+ "severity": "medium",
+ "evidence": [
+  "git show HEAD:README.md:40-42 — zwei konkrete Anchor-Demo-Queries in natürlicher Sprache, eine mit dem fertigen Aufruf search_heritage(query=\"Volksschule Zürich\", collection=\"all\", date_from=\"1800\", date_to=\"1899\")",
+  "git show HEAD:README.md — Pflichtabschnitte vorhanden: Installation :71 (Clone und uvx) plus der generierte uvx-Block :423, Configuration :112, Available Tools :163, Architecture mit ASCII-Box-Diagramm :214-230, Safety & Limits :287 (Read-only, keine PII, keine Auth) mit Verweis auf SECURITY.md :390, Known Limitations :298 (4 Einträge), License :397, Contributing :384",
+  "grep -c '^## ' — README.md 20, README.de.md 19; die DE-Fassung hat jeden Abschnitt in Übersetzung (Übersicht…Credits); der Unterschied ist allein der generierte Block 'BEGIN GENERATED: install', der in DE fehlt (DE führt uvx in Installation :85-88)",
+  "CHANGELOG.md:8-884 — Keep-a-Changelog mit datierten Versionen 0.1.0-0.7.0 und Abschnitten Added/Changed/Removed/Fixed; CONTRIBUTING.md und CONTRIBUTING.de.md vorhanden",
+  "docs/security.md:75-77 — Lethal-Trifecta-Bewertung (SEC-019); im README nur indirekt über SECURITY.md/docs verlinkt"
+ ],
+ "gaps": [
+  "Die Trifecta-Bewertung steht nicht im README selbst, nur in docs/security.md (low)",
+  "README.de.md fehlt der generierte uvx-Installationsblock; der Inhalt ist anderweitig abgedeckt (low)"
+ ],
+ "evaluator_notes": "Alle 8 Pflichtabschnitte, Anchor-Demo, ASCII-Diagramm, Limits (4), CHANGELOG-Format und zweisprachiges CONTRIBUTING vorhanden. Die inhaltlichen Widersprüche im README (/sse, nur GET) sind unter DRIFT-006 erfasst, nicht hier."
+}

@@ -1,0 +1,22 @@
+{
+ "id": "ARCH-013",
+ "status": "partial",
+ "category": "ARCH",
+ "severity": "high",
+ "evidence": [
+  "Pfad-Inventar: grep 'streamable_http_app\\(|sse_app\\(|http_app\\(' -> einzig server.py:3574 (mcp.streamable_http_app in build_http_app); 'mcp.run\\(|uvicorn.run\\(' -> server.py:3600 (uvicorn.run im __main__-HTTP-Zweig) und server.py:3607 (mcp.run() im stdio-Zweig); keine Factory, kein SSE-Pfad im Code.",
+  "pyproject.toml [project.scripts] swiss-cultural-heritage-mcp = 'swiss_cultural_heritage_mcp.server:mcp.run' — MCPServer.run(transport='stdio') ist der Default (inspect.signature: transport='stdio'); das Konsolen-Skript ist reiner stdio-Pfad, kein Netzweg.",
+  "Deployment-Manifeste: Dockerfile:63 CMD ['python','-m','swiss_cultural_heritage_mcp.server','--http','--port','8000'] -> derselbe __main__-HTTP-Zweig; render.yaml/railway.toml/Procfile/docker-compose existieren nicht (ls: No such file).",
+  "server.py:3592-3605 — der einzige Netzpfad uebergibt host UND port aus settings an build_http_app(cors, settings.host, settings.port) und an uvicorn.run(host=settings.host, port=settings.port); build_http_app ruft build_transport_security(host, port) (server.py:3565) — keine fremde Bedingung (Auth/CORS) entscheidet ueber die Haertung.",
+  "Laufzeit am echten Einstieg: MCP_TRANSPORT=http MCP_PORT=8765 python -m swiss_cultural_heritage_mcp.server --port 9999 -> POST /mcp Host=127.0.0.1:8765 -> 200, Host=evil.example.com -> 421, Host=127.0.0.1:9999 -> 421; curl :9999/health -> 000 (kein Listener); GET /sse -> 404.",
+  "Laufzeit ASGI (scratchpad/probe_get.py): GET /mcp und DELETE /mcp mit Host=evil.example.com -> 421, mit 127.0.0.1:8000 -> 400; app.routes = ['/mcp','/health'] — auch die Legacy-GET/DELETE-Wege tragen dieselbe Host-Pruefung.",
+  "tests/test_transport_security.py:115-144 und tests/test_cors.py:45 rufen build_http_app direkt mit explizitem host/port; grep '__main__|runpy|subprocess|uvicorn' tests/*.py trifft keinen Test des Einstiegs (nur Hook-/Gate-Tests nutzen subprocess)."
+ ],
+ "gaps": [
+  "Kein Test an der Naht: Die Verdrahtung __main__ -> build_http_app(settings.host, settings.port) ist ungeprueft; alle Transport-Tests rufen den Builder mit allen Parametern (Common Failure 'Test ruft den Builder direkt'). Eine Gegenprobe (Port aus dem __main__-Aufruf entfernen) wuerde keinen Test faerben — nicht ausgefuehrt, weil das Repo nicht veraendert werden darf; aus dem Testinventar geschlossen.",
+  "Das CLI-Flag --port wird nirgends geparst (server.py:3592 prueft nur '--http' in sys.argv); gemessen: --port 9999 bleibt wirkungslos, Listener und App folgen MCP_PORT. Dockerfile:63 und README (Quickstart Z. 99, Render Z. 154) reichen --port 8000 weiter, das nur zufaellig dem Default entspricht.",
+  "README (HEAD) Z. 146-157 dokumentiert einen Render-Weg mit Endpunkt '/sse' — den der Server nicht bedient (GET /sse -> 404) — und eine Startzeile ohne MCP_HOST, mit der der Listener auf 127.0.0.1 bindet (Settings.host-Default, server.py:140). Ein dokumentierter Pfad, der weder erreichbar ist noch der realen Route entspricht.",
+  "Konsolen-Skript ignoriert MCP_TRANSPORT=http (mcp.run ohne Argumente, kein Settings-Zugriff) — kein Sicherheitsdefekt, aber eine zweite Einstiegslogik neben __main__."
+ ],
+ "evaluator_notes": "Es gibt genau einen Netzweg (python -m ... --http bzw. MCP_TRANSPORT=http), Dockerfile nutzt ihn, kein SSE, keine Factory; Host und Port reisen vollstaendig, die Host-Allow-List greift laufzeitbelegt auf POST/GET/DELETE. Die Verdrahtung selbst ist korrekt. Es fehlt der Test an der Naht samt Gegenprobe, und die Doku nennt einen /sse-Weg und ein --port-Flag, die es nicht gibt. Prozess nach der Messung beendet (kill)."
+}

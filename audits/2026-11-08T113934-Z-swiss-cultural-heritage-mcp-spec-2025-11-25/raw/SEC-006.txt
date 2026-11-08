@@ -1,0 +1,18 @@
+{
+  "id": "SEC-006",
+  "status": "pass",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:139 — Settings.transport: Literal['stdio','http'] = 'stdio' (default without env)",
+    "src/swiss_cultural_heritage_mcp/server.py:3592-3607 — HTTP only when MCP_TRANSPORT=http or the --http flag is set, otherwise mcp.run()",
+    "pyproject.toml [project.scripts] swiss-cultural-heritage-mcp = 'swiss_cultural_heritage_mcp.server:mcp.run'; venv python -I -c 'inspect.signature(MCPServer.run)' -> (self, transport: Literal['stdio','sse','streamable-http'] = 'stdio', **kwargs). The console script / uvx path is always stdio",
+    "git show HEAD:README.md lines 93-147 — the quickstart puts stdio first; Claude Desktop config with python -m and uvx; Cloud Deployment is a separate section (lines 149-159) that points to docs/security.md",
+    "Runtime, HTTP path as a positive control: 'venv python -I -m swiss_cultural_heritage_mcp.server --http' -> 'Uvicorn running on http://127.0.0.1:8000'. A port opens only with the explicit flag"
+  ],
+  "gaps": [
+    "The runtime check 'default start opens no TCP port' was not settled cleanly: netstat in German Windows prints no 'LISTENING' (negative control had 0 hits), and a Get-NetTCPConnection run caught no stdio process (severity: low; the code path is unambiguous)",
+    "README cloud section names the endpoint '/sse' (README.md:155, README.de.md:156), but the app serves Streamable HTTP under /mcp (tests post to /mcp). The cloud security note is only a reference to docs/security.md (severity: low)"
+  ],
+  "evaluator_notes": "Default stdio is established on three paths (Settings default, the __main__ else branch, the console-script entry point via the MCPServer.run signature). HTTP needs the explicit MCP_TRANSPORT=http or --http. Note: MCP_TRANSPORT=http has no effect on the console script (mcp.run ignores settings.transport). That is not a security problem; it is a usability observation for ARCH/DRIFT."
+}

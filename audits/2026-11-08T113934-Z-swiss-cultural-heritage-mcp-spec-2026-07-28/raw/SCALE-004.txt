@@ -1,0 +1,16 @@
+{
+  "id": "SCALE-004",
+  "status": "partial",
+  "category": "SCALE",
+  "severity": "medium",
+  "evidence": [
+    "Dockerfile:19 `FROM python:3.14-slim AS builder`, Dockerfile:33 `FROM python:3.14-slim AS runtime` — grep -cE '^FROM ' Dockerfile = 2, beide Stages benannt, beide -slim",
+    "Dockerfile:30 `pip install --no-cache-dir --prefix=/install .` im Builder; Dockerfile:42 `COPY --from=builder /install /usr/local` — Runtime-Stage traegt nur die installierten Pakete, keine Build-Toolchain, kein Quellbaum",
+    "Dockerfile:44-45 `useradd --uid 10001 ... app` / `USER 10001` — non-root",
+    "Dockerfile:50-51 `HEALTHCHECK --interval=30s ... CMD python -c \"...urlopen('http://127.0.0.1:8000/health'...)\"` gegen die In-App-Route src/swiss_cultural_heritage_mcp/server.py:3466 `@mcp.custom_route('/health')`; Runtime: GET /health -> 200 {\"status\":\"ok\",...}"
+  ],
+  "gaps": [
+    "medium (unverifiziert): Final-Image-Groesse < 200 MB nicht gemessen — `docker images` scheitert: 'failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine' (Daemon nicht gestartet)"
+  ],
+  "evaluator_notes": "5 von 6 Kriterien am Dockerfile belegt. Das Groessenkriterium ist das einzige offene und ohne laufenden Docker-Daemon nicht messbar; bei `docker build` + `docker images` < 200 MB waere der Check pass. Kein Befund am Dockerfile selbst."
+}

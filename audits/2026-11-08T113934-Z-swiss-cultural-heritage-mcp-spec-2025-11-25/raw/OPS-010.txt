@@ -1,0 +1,20 @@
+{
+ "id": "OPS-010",
+ "status": "partial",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  "Mutationslauf scratchpad/probe/mutate.py auf einer Kopie aus git archive HEAD (Subset test_server, test_retry_policy, test_response_shape, test_helveticat_zugaenge, test_recorded_fixtures; Baseline '13 failed, 211 passed' = Windows-Altlast): M3 Jitter entfernt -> neu rot test_backoff_is_jittered; M4 Raise bei Totalausfall entfernt -> neu rot test_search_all_sources_down_raises, test_search_timeout_is_handled; M5 Fuzzy-Marker -> 2 neu rot; M6 Datumsfilter -> 1 neu rot (die Methode hat Zähne)",
+  "Nicht anschlagend: M1 'async with asyncio.timeout(remaining):' (server.py:888, Wanduhr-Budget in _fetch_with_retry) durch 'if True:' ersetzt -> 0 neu rot; grep 'retry_total_budget|monotonic|_retry_sleep' tests/ trifft nur tests/test_session_start_hook.py — kein Test unter echter Zeit für das Gesamtbudget",
+  "Nicht anschlagend: M2 _assert_allowed(url) in _http_post (server.py:771) entfernt -> 0 neu rot; die Egress-Tests (tests/test_server.py:534-557) decken nur _http_get, der POST-Pfad (Dodis) ist ungeprüft",
+  "grep -rnE 'monkeypatch.setattr\\(\\s*[A-Za-z_.]+\\.(asyncio|time|random|os|httpx)\\s*,' tests/ -> keine Treffer (negative Kontrolle mit 'monkeypatch.setattr(mod.asyncio, \"sleep\", f)': 1); eigene Naht _retry_sleep (server.py:778), Tests schalten den Backoff über settings.retry_backoff_base=0.0 ab (tests/test_server.py:1669)",
+  "grep -rniE 'gegenprobe|mutation' CONTRIBUTING*.md -> keine Treffer; die Regel steht in CLAUDE.md:37 'Gegenprobe ist Pflicht', gefahrene Gegenproben sind im CHANGELOG [0.7.0] notiert (16 Mutationen test_helveticat_zugaenge)"
+ ],
+ "gaps": [
+  "Die Wanduhr-Zusicherung (asyncio.timeout als Gesamtbudget, der ARCH-014-Fall) hat keinen Test; ihr Entfernen bleibt grün (high)",
+  "Die Egress-Allow-List im POST-Pfad (_http_post) ist ungeprüft; ihr Entfernen bleibt grün (high)",
+  "Kein Test bewacht die Naht (echtes asyncio.sleep wirkt nach den Fixtures) (low)",
+  "Der Weg, eine Gegenprobe zu fahren, steht nicht in CONTRIBUTING (low)"
+ ],
+ "evaluator_notes": "Am 2026-11-08 sechs Mutationen gefahren, vier schlagen an, zwei nicht. Die zwei nicht anschlagenden sind das Ergebnis: Wanduhr-Budget und POST-Egress sind ungeprüfte Zusicherungen. Die Mutationen liefen nur auf der Kopie im Scratchpad, das Repo blieb unberührt (Datei danach byte-gleich wiederhergestellt: 'restored identical: True'). Advisory."
+}

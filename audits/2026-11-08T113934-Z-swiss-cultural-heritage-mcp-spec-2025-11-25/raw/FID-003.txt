@@ -1,0 +1,26 @@
+{
+  "id": "FID-003",
+  "status": "partial",
+  "category": "FID",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:643-654 — _no_match liefert im JSON-Modus ResultEnvelope(count=0, total=0, results=[], match_type='none') OHNE Hinweisfeld; der Hinweistext existiert nur im Markdown-Modus, und das Envelope (src/swiss_cultural_heritage_mcp/server.py:563-579) hat kein hint-/next_step-Feld. Live 2026-11-08: heritage_search_artists, heritage_search_museum_datasets und heritage_search_helveticat mit 'zzqxjv…' im JSON-Modus liefern keinen Hinweis.",
+    "Live, Markdown: SIKART -> 'Keine Künstler·innen gefunden für die angegebenen Suchkriterien.' (kein naechster Schritt); search_heritage -> '*Keine Treffer für die angegebenen Kriterien.*' (src/swiss_cultural_heritage_mcp/server.py:2939-2941); heritage_cross_search -> '*Keine Treffer*' je Quelle (src/swiss_cultural_heritage_mcp/server.py:2514-2516). Nur Helveticat sagt konkret, was gesucht wurde und wohin man weitergehen kann (src/swiss_cultural_heritage_mcp/server.py:2040-2054).",
+    "src/swiss_cultural_heritage_mcp/server.py:1973-1982 + Live: heritage_search_helveticat ohne query und set_spec (JSON) -> {count: 0, total: 0, match_type: 'none', results: []}. Eine Anfrage, bei der gar nicht gesucht wurde, ist im JSON nicht von einem Null-Treffer zu unterscheiden.",
+    "src/swiss_cultural_heritage_mcp/server.py:990-1012 + Live: set_spec='xrara', from_date='2099-01-01' -> der Upstream antwortet 'noRecordsMatch: ... results in an empty list' (eine echte Leermenge). Das Tool meldet sie als ToolError mit 'Das ist KEIN leeres Ergebnis — es wurde nichts durchsucht.' Die Leermenge ist damit als isError maskiert, und die Aussage ist falsch.",
+    "src/swiss_cultural_heritage_mcp/server.py:922-961, :1483-1484 — Transport- und HTTP-Fehler gehen in den Fehlerkanal (ToolError -> isError) mit eigener Meldung, nicht als Leermenge; src/swiss_cultural_heritage_mcp/server.py:2903-2905: fallen alle Quellen aus -> isError; ein Teilausfall steht in meta.errors bzw. im Warnblock (src/swiss_cultural_heritage_mcp/server.py:2507-2509, :2936).",
+    "rg -n -i -U 'usually\\s+means|bedeutet\\s+meist|wahrscheinlich\\s+nicht|out\\s+of\\s+scope|not\\s+that\\s+it\\s+is\\s+wrong' src/swiss_cultural_heritage_mcp/server.py -> 0 Treffer (rc=1); Kontrolle: 'usually means' trifft FID-003.md 5-mal. Keine Description enthaelt eine entschuldigende Formulierung.",
+    "rg -n -i 'nicht raten|keine geratene|erfund|guess' src/swiss_cultural_heritage_mcp/server.py -> 0 Treffer: Keine Description sagt, dass keine geratene Antwort an die Stelle eines fehlenden Treffers treten darf.",
+    "Live: heritage_cross_search JSON mit 0 Treffern in allen Quellen -> match_type='exact', count=0, meta=None (src/swiss_cultural_heritage_mcp/server.py:2493-2497 setzt match_type nicht)."
+  ],
+  "gaps": [
+    "Der JSON-Modus (der Modus mit outputSchema) traegt bei einer Leermenge keinen maschinenlesbaren Hinweis, nur match_type='none' (Severity high).",
+    "Die Markdown-Hinweise bei SIKART, SNM, search_heritage und cross_search sind generisch und nennen keinen konkreten naechsten Versuch (Severity medium).",
+    "OAI-noRecordsMatch auf einem Zeitfenster wird als Fehler gemeldet, mit der falschen Aussage 'es wurde nichts durchsucht' (Severity medium).",
+    "Die Validierungs-Waechter in heritage_search_helveticat liefern im JSON-Modus eine Leermenge statt eines Fehlers (Severity medium).",
+    "heritage_cross_search meldet bei 0 Treffern match_type='exact' (Severity low).",
+    "Keine Description verbietet, einen fehlenden Treffer durch eine Vermutung zu ersetzen (Severity medium).",
+    "Im Repo gibt es weder einen Konfabulations-Test (Modus 2) noch einen Test, der einen Fehlschlag am laufenden Server gegen eine Leermenge haelt (Modus 3)."
+  ],
+  "evaluator_notes": "Der Fehlerkanal ist sauber getrennt, und es gibt keine Ausreden-Formulierungen. Die Leermenge selbst ist im strukturierten Modus aber stumm, und an zwei Stellen sind die Kanaele vertauscht (Waechter -> Leermenge, echte Leermenge -> Fehler). MRTR/input_required wird nicht genutzt (rg 'input_required|inputRequests|elicit' -> 0), die Disjunktheits-Kriterien fuer 2026-07-28 entfallen daher fuer beide Protokollstaende."
+}

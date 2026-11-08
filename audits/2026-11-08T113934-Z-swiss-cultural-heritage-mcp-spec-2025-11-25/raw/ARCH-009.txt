@@ -1,0 +1,18 @@
+{
+  "id": "ARCH-009",
+  "status": "pass",
+  "category": "ARCH",
+  "severity": "high",
+  "evidence": [
+    "Laufzeit `mcp.list_tools()` -> alle 11 Tools tragen alle vier Hints explizit (read_only_hint True, destructive_hint False, idempotent_hint True, open_world_hint True/False) plus title; kein Tool ohne annotations",
+    "src/swiss_cultural_heritage_mcp/server.py:3220 — list_heritage_collections openWorldHint=False, Handler ohne Netzaufruf; die zehn übrigen Tools rufen Upstreams und tragen openWorldHint=True (src/swiss_cultural_heritage_mcp/server.py:1371,1507,1611,1768,1925,2156,2225,2361,2804,3097); die Unterscheidung stimmt mit dem Verhalten",
+    "src/swiss_cultural_heritage_mcp/server.py:762-773 — das einzige POST (_http_post) ist die Dodis-Solr-Suche (src/swiss_cultural_heritage_mcp/server.py:2724), ein lesender Query; kein Tool schreibt oder löscht, kein Name mit delete_/create_/update_/remove_ -> readOnlyHint True / destructiveHint False konsistent",
+    "README.md:60 / README.de.md:61 und docs/roadmap.md:7 (HEAD) — Annotations-Policy: 'Every tool is annotated readOnlyHint: true ... destructiveHint: false'"
+  ],
+  "gaps": [
+    "low: keine Pro-Tool-Übersicht der vier Hints (insb. openWorldHint False bei list_heritage_collections) in README/docs",
+    "low: docs/roadmap.md:7 behauptet 'only HTTP GET requests', die Dodis-Suche geht per POST (src/swiss_cultural_heritage_mcp/server.py:2724); die Annotation bleibt korrekt, die Doku nicht",
+    "low: kein Test hält die Annotationen gegen Drift (die Tool-Pins in _toolpins.py hashen Name, Beschreibung und Schema)"
+  ],
+  "evaluator_notes": "Kriterien 1 bis 5 am Code und an der Laufzeit-Toolliste belegt; Kriterium 6 als Policy-Satz erfüllt, ohne Tabelle. Keine Lücke auf Severity high."
+}

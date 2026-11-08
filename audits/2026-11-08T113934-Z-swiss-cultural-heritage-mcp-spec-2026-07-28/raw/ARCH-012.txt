@@ -1,0 +1,22 @@
+{
+ "id": "ARCH-012",
+ "status": "partial",
+ "category": "ARCH",
+ "severity": "medium",
+ "evidence": [
+  "grep -rnE 'protocolVersion|protocol_version|PROTOCOL_VERSION|SUPPORTED_PROTOCOL' src/ -> nur Kommentare (server.py:395,403,453,464); kein protocol_version= am MCPServer(...) (server.py:470-479). Die Version kommt aus dem SDK, nicht aus Server-Code.",
+  "tests/test_protocol_version.py:56-57,67-82,166-183 — DOCUMENTED_HANDSHAKE_VERSION='2025-11-25' und DOCUMENTED_MODERN_VERSION='2026-07-28' gegen mcp.types.version (LATEST_HANDSHAKE_VERSION / LATEST_MODERN_VERSION) gebunden, dazu echter initialize durch den ASGI-Stack (2024-11-05..2025-11-25 behalten ihre Revision, 2026-07-28 im Handshake wird auf 2025-11-25 gedeckelt).",
+  "Laufzeit 2026-07-28 (scratchpad/probe_modern.py, ASGI-Stack aus build_http_app): tools/list mit _meta protocolVersion '2099-01-01' -> HTTP 400, error.code -32022, data.supported=['2026-07-28'], requested='2099-01-01'; server/discover -> supportedVersions=['2026-07-28'] (dieselbe Liste).",
+  "Laufzeit stdio (scratchpad/probe_stdio2.py, python -m swiss_cultural_heritage_mcp.server): auf DERSELBEN Verbindung erst tools/list mit '2099-01-01' -> -32022, danach server/discover mit '2026-07-28' -> resultType complete, supportedVersions ['2026-07-28'] — die Version wird pro Request aus _meta gelesen (SDK mcp/shared/inbound.py:374-386 classify_inbound_request, mcp/server/runner.py:755-790).",
+  "CHANGELOG.md:1-8 Keep-a-Changelog 1.0.0 + SemVer, [Unreleased] vorhanden; CHANGELOG.md:389-400 nennt beide Revisionen beim Protokoll-Gate, :740-742 den SDK-2.x-Wechsel; letzte Aenderung git log -1 CHANGELOG.md = 2026-11-08 12:33 +0100.",
+  "git show HEAD:README.md Zeilen 325-340 — Abschnitt '## MCP Protocol Version' mit Tabelle (Handshake 2024-11-05..2025-11-25, Envelope 2026-07-28) und Zeile 'Update policy' (Dependabot monatlich, Bumps im CHANGELOG).",
+  ".github/dependabot.yml:4-13 — package-ecosystem pip, interval monthly, open-pull-requests-limit 5, Gruppe python-deps '*' (deckt mcp ab).",
+  "pyproject.toml:39 — 'mcp[cli]>=2.0.0,<3' (Spanne, kein exakter Pin); installiert gemessen: mcp 2.3.0, mcp-types==2.3.0 (importlib.metadata.requires('mcp'))."
+ ],
+ "gaps": [
+  "Kein Pin im Server-Code: auf 2025-11-25 gilt der SDK-Default (Fail-Pattern 'keine explizite Version'). Gebunden ist er nur durch tests/test_protocol_version.py in der CI — eine Neuinstallation mit einem spaeteren mcp 2.x (pyproject.toml:39 erlaubt <3) kann die Handshake-Obergrenze im Betrieb verschieben, ohne dass ein Test laeuft. Das SDK bietet laut Test-Docstring keinen setzbaren Pin; die Abhilfe waere eine engere Spanne oder ein Laufzeit-Assert.",
+  "README-Update-Policy nennt keine Breaking-Change-Regel (Major-Release bei Bruch) und kein Kompatibilitaetsfenster fuer alte Spec-Versionen (Pass-Pattern Modus 3).",
+  "Beobachtung (SDK-Verhalten, kein Server-Code): ein Envelope mit protocolVersion '2025-11-25' und gleichlautendem MCP-Protocol-Version-Header ergibt ueber HTTP -32600 'Bad Request: Missing session ID' statt -32022 (scratchpad/probe_modern.out, 'handshake version in envelope')."
+ ],
+ "evaluator_notes": "Beide Baselines gemessen. 2026-07-28: Pro-Request-Pruefung gegen _meta, -32022 mit supported-Liste und dieselbe Liste in server/discover sind am Draht belegt, ueber HTTP und stdio; die Mechanik stammt vollstaendig aus dem SDK. 2025-11-25: die Version ist nicht im Server gepinnt, sondern per CI-Test an das installierte SDK gebunden; das verfehlt das woertliche Kriterium und laesst die Betriebsinstallation frei. CHANGELOG, README-Abschnitt und Dependabot vorhanden. Mehr als die Haelfte erfuellt, die Pin-Luecke ist medium -> partial."
+}

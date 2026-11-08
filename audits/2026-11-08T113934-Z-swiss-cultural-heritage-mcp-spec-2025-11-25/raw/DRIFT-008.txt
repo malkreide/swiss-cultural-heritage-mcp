@@ -1,0 +1,16 @@
+{
+ "id": "DRIFT-008",
+ "status": "fail",
+ "category": "DRIFT",
+ "severity": "high",
+ "evidence": [
+  "grep -rn -A12 'autouse=True' tests/*.py — nur zwei autouse-Fixtures: tests/conftest.py:14-20 (_reset_http_client, schliesst nach jedem Test den Client und ersetzt nichts) und tests/test_transport_security.py:45-49 (patcht settings.inbound_allowed_hosts/cors_origins, die Datei hat keinen Live-Test). grep 'getaddrinfo|create_connection|freeze_time|AsyncHTTPTransport' tests/ ohne Treffer; alle Live-Tests liegen in tests/test_server.py:1956-2081",
+  "gh run view 39233988544 --log (2026-10-19) — httpx.ReadTimeout aus echtem Netzverkehr in test_live_search_hodler; Lauf 42475229230 (2026-11-08): 11 Live-Tests PASSED, je 1-2 s; lokale Probe am 2026-11-08: socket.getaddrinfo('beta.dodis.ch') -> 83.228.234.53, die Antwort trägt einen echten Datensatz (Bundesratsprotokoll vom 12.8.1921)",
+  "grep -rn 'request.keywords|item.keywords|pytest_runtest' tests/*.py — keine Treffer: kein suiteweiter Wächter-Hook, keine Live-Ausnahme in Fixtures, keine Gegenprobe"
+ ],
+ "gaps": [
+  "Kein suiteweiter Wächter (pytest_runtest_call-Hook mit einem beim Import festgehaltenen Referenzwert), der Live-Tests mit ersetzter Aussenwelt abbricht (medium, derzeit latent)",
+  "Keine Gegenprobe in beide Richtungen (synthetischer Live-Test mit stubbender autouse-Fixture) (medium)"
+ ],
+ "evaluator_notes": "Die Kernfrage, ob die Live-Suite die Quelle erreicht, ist heute positiv belegt: kein Stub im Geltungsbereich, dazu Spuren echten Netzverkehrs. Erfüllt ist Kriterium 1 von 6; die übrigen verlangen den vorbeugenden Wächter samt Gegenprobe, und den gibt es nicht. Nach der 50-%-Regel daher fail, bei derzeit null Exposition. Advisory."
+}

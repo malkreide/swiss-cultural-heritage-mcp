@@ -1,0 +1,18 @@
+{
+  "id": "SCALE-009",
+  "status": "partial",
+  "category": "SCALE",
+  "severity": "high",
+  "evidence": [
+    "grep -rnE 'sse_app|SseServerTransport|/sse|text/event-stream|EventSourceResponse' src/ --include=*.py -> 0 Treffer (rc=1); Routen-Grep 'mount|add_route|@app.(get|post)|router.|custom_route' -> nur src/swiss_cultural_heritage_mcp/server.py:3466 `@mcp.custom_route('/health')`",
+    "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): GET /sse (Accept: text/event-stream) -> HTTP 404 Not Found; GET /messages/ -> 404",
+    "Gegenprobe: Kontrollserver `MCPServer('sse-control').sse_app()` via uvicorn auf 127.0.0.1:8766 -> GET /sse -> HTTP 200, content-type text/event-stream; charset=utf-8. Derselbe curl-Aufruf erkennt einen offenen Legacy-Pfad, das 404 oben ist also kein URL-Tippfehler",
+    "MCP_TRANSPORT=sse -> pydantic literal_error 'Input should be stdio or http' — Legacy-Transport ist auch per Umgebung nicht einschaltbar; Konsolen-Skript ruft mcp.run() ohne Argument (stdio)",
+    "git show HEAD:README.md:146 '### Cloud Deployment (SSE for browser access)', :155 Client-URL `https://your-app.onrender.com/sse`, :157 '\"stdio for the developer laptop, SSE for the browser.\"', :223 Diagramm 'Stdio | SSE'; README.de.md:147,156,160,224 gleichlautend"
+  ],
+  "gaps": [
+    "medium: README EN/DE fuehrt SSE als den Cloud-Transport und schickt Clients an /sse, das der Server nicht bedient (404) — Kriterium 'README nennt Streamable HTTP ohne SSE als Alternative' verfehlt; Folge ist eine fehlschlagende Client-Konfiguration",
+    "not_verified-Teil: ausgelieferte Render-Instanz nicht geprueft — keine Instanz-URL im Repo"
+  ],
+  "evaluator_notes": "Der Legacy-Pfad ist im Code geschlossen und an der Laufzeit mit Gegenprobe belegt (404 hier, 200 am SSE-Kontrollserver). Offen sind die Doku (SSE als empfohlener Browser-Transport, falsche URL) und die Pruefung an der ausgelieferten Instanz, die der Check ausdruecklich verlangt. Kein Abschaltdatum noetig, da kein Pfad offen ist."
+}

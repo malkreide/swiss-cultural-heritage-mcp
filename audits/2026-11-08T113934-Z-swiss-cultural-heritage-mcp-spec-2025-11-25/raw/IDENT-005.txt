@@ -1,0 +1,15 @@
+{
+  "id": "IDENT-005",
+  "status": "partial",
+  "category": "IDENT",
+  "severity": "medium",
+  "evidence": [
+    "grep -rn -A3 'except PackageNotFoundError' src/ → src/swiss_cultural_heritage_mcp/__init__.py:28-29 '__version__ = \"0.0.0+local\"' (lokales Segment nach '+'); src/swiss_cultural_heritage_mcp/server.py:221-222 svc_version-Fallback ebenfalls '0.0.0+local'",
+    "scripts/check_version_sync.py:find_hardcoded — Fallback-Erkennung strukturell ('if any(\"+\" not in v for v in values)'), nicht am konkreten String"
+  ],
+  "gaps": [
+    "low: Marker '0.0.0+local' weicht von der Portfolio-Konvention '0.0.0+source' ab (Kriterium 2); das Gate-Docstring nennt selbst '0.0.0+source'",
+    "low: Kommentar am Fallback ('# not installed (running from source tree)') erklaert nicht, warum kein plausibler Platzhalter gewaehlt wurde (Kriterium 3)"
+  ],
+  "evaluator_notes": "Kein Coverage-Gate (ci.yml ohne --cov) → pragma-Kriterium n/a. Form und strukturelle Erkennung korrekt, Einheitlichkeit und Begruendung fehlen."
+}

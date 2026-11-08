@@ -1,0 +1,19 @@
+{
+  "id": "IDENT-006",
+  "status": "partial",
+  "category": "IDENT",
+  "severity": "high",
+  "evidence": [
+    "GET https://pypi.org/pypi/swiss-cultural-heritage-mcp/json → info.version 0.6.0 (Upload 2026-09-19T10:11, nicht yanked); git ls-remote origin: refs/tags/v0.6.0 (→5feed72), kein v0.7.0-Tag; letzter Tag = Index-Version, kein Tag ohne Index-Release",
+    "git show HEAD:pyproject.toml version = '0.7.0' — gebumpt auf Branch claude/release-0.7.0 (HEAD 9b3a1b4, nicht auf origin), nicht getaggt: Release in Vorbereitung, keine Drift",
+    "git log v0.6.0..HEAD --no-merges → 17 Commits, darunter nutzerwirksame und aelter als 7 Tage: 2026-09-20 'Helveticat: marc21 statt oai_dc, und SRU fuer die Volltextsuche', 2026-09-20 'serverInfo.name traegt jetzt den Bezeichner des Portfolios (H3)', 2026-10-28 2x feat (Hooks, Dev-Tooling). Index-Artefakt 0.6.0 meldet tatsaechlich noch serverInfo.name 'swiss_cultural_heritage_mcp' (stdio-initialize am installierten 0.6.0)",
+    "git show HEAD:CHANGELOG.md:8-10 — '## [Unreleased]' leer, darunter '## [0.7.0] - 2026-11-08'",
+    "publish.yml:3-5 — Trigger 'release: published' (manueller Schritt: GitHub-Release erstellen)",
+    "grep -niE 'release|publish|tag|pypi' README.md README.de.md CONTRIBUTING.md CONTRIBUTING.de.md docs/roadmap.md (HEAD) → kein beschriebener Release-Prozess"
+  ],
+  "gaps": [
+    "high: nutzerwirksame Aenderungen (Helveticat-Fix, serverInfo.name) liegen seit 2026-09-20 (49 Tage) unveroeffentlicht; PyPI liefert sie nicht aus. Wird durch das Release 0.7.0 geschlossen — nach dem Publish am Index erneut messen",
+    "medium: Release-Prozess inkl. manuellem Schritt (GitHub-Release erstellen loest publish.yml aus) weder in README noch CONTRIBUTING dokumentiert"
+  ],
+  "evaluator_notes": "Kein fehlgeschlagener Publish, kein Tag ohne Index-Release, [Unreleased] leer. Der Gap ist der Abstand, den 0.7.0 schliessen soll — 'noch nicht released' ist hier korrekt der Zustand vor dem Release, nicht Versions-Drift. shipped_probe.py nicht verfuegbar, von Hand gemessen. IDENT-007 separat beantwortet."
+}

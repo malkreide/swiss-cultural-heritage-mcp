@@ -31,13 +31,19 @@ path, no authentication, and no personal data.
 
 ## Audit status
 
-This server has been audited against the internal MCP best-practice catalogue
-(v0.5.0, 68 checks) using the `mcp-audit` methodology. The audit runs — including
-the pass/partial/fail scorecards and the tracked open findings — live under
-[`audits/`](audits/); the latest run is
-`audits/2026-06-02T041532-Z-swiss-cultural-heritage-mcp/`. Consult those reports
-for the current finding set and remediation status; this document is the
-vulnerability-reporting policy and posture summary, not the scorecard.
+This server is audited against the internal MCP best-practice catalogue using
+the `mcp-audit` methodology. The audit runs — including the pass/partial/fail
+scorecards and the tracked open findings — live under [`audits/`](audits/).
+The latest audit (2026-11-08, mcp-audit 2.3.0) consists of two runs against the
+same revision, one per protocol baseline the server speaks:
+
+- `audits/2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2025-11-25/`
+- `audits/2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2026-07-28/`
+
+Neither run reached production readiness. Each run's `summary.json` is the
+source for its numbers and blocking findings, and `00-RUN-NOTE.md` explains how
+the two runs relate. This document is the vulnerability-reporting policy and
+posture summary, not the scorecard.
 
 ## Re-evaluation triggers
 

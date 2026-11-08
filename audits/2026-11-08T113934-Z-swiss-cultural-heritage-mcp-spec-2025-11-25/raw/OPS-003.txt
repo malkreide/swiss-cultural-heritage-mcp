@@ -1,0 +1,17 @@
+{
+ "id": "OPS-003",
+ "status": "partial",
+ "category": "OPS",
+ "severity": "high",
+ "evidence": [
+  "git show HEAD:README.md:60 und README.de.md:61 — 'Project phase: Phase 1 — read-only. Every tool is annotated readOnlyHint: true'",
+  "Laufzeit scratchpad/probe/annot.py (mcp.list_tools()): alle 11 Tools mit read_only_hint=True, destructive_hint=False; grep '\"destructiveHint\": (True|False)' in server.py: 11x False, 0x True (das Muster schlägt an einer Testzeile '\"destructiveHint\": True' an: 1 Treffer)",
+  "docs/roadmap.md:1-40 — Roadmap mit Phase-1-Scope und Checkliste für 1 -> 2 (Audit ohne offene critical/high, ISDS, revDSG-Verzeichnis, Idempotenz, HITL, Trifecta-Neubewertung); Übergänge im CHANGELOG (CHANGELOG.md:765, :834)",
+  "docs/roadmap.md:14 und :24 — 'Phase 2 — write-capable', 'Phase 3 — multi-agent / semantic layer'. Das kehrt das Katalogmodell um (Phase 2 = Anreicherung/Semantic Layer ohne Write, Phase 3 = Write); das Roadmap-Gate erlaubt Schreibzugriff vor Semantic Layer und Identity Resolution"
+ ],
+ "gaps": [
+  "Die Phasenreihenfolge in docs/roadmap.md weicht vom Katalog ab: Write (Phase 2) vor Semantic Layer (Phase 3); die Voraussetzungen Semantic Layer, Identity Resolution sowie GL- und DSB-Sign-off hängen am falschen Übergang (medium)",
+  "docs/roadmap.md:7 begründet Phase 1 mit 'only HTTP GET', die Dodis-Suche nutzt POST (low, siehe DRIFT-006)"
+ ],
+ "evaluator_notes": "Die Phase ist deklariert und durch die Laufzeit-Annotationen gedeckt, eine Roadmap mit Gates gibt es. Abzug für das abweichende Phasenmodell. Folgen hat es derzeit keine (keine Write-Tools), es lenkt aber die nächste Erweiterung."
+}

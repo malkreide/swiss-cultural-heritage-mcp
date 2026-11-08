@@ -1,0 +1,21 @@
+{
+  "id": "SEC-028",
+  "status": "partial",
+  "category": "SEC",
+  "severity": "high",
+  "evidence": [
+    "src/swiss_cultural_heritage_mcp/server.py:726-730 — policy violation (scheme/host) as a plain ValueError; the guard does not resolve DNS itself, so a resolution failure surfaces as httpx.ConnectError (RequestError): two different types",
+    "src/swiss_cultural_heritage_mcp/server.py:883-901 — _fetch_with_retry retries only TimeoutException/RequestError/5xx/429; ValueError propagates without retry. src/swiss_cultural_heritage_mcp/server.py:944-947 _handle_error: ValueError -> 'Fehler: <Policy-Text>', RequestError -> 'Fehler: Netzwerkfehler (...)'",
+    "Runtime (respx, scratch probe taxonomy.py): (a) memobase ConnectError then 200 -> 2 calls, success; (b) emptied ALLOWED_HOSTS via _fetch_with_retry -> 1 attempt, 'Fehler: Host nicht in Allow-List: api.memobase.ch'; (c2) heritage_search_artists with a policy violation -> 'Host nicht in Allow-List: ckan.opendata.swiss'",
+    "Runtime (c): policy violation on both sources, search_heritage -> 'Fehler: Alle angefragten Quellen sind derzeit nicht erreichbar.' (src/swiss_cultural_heritage_mcp/server.py:2903-2905); (a2) persistent ConnectError -> the same message. Both situations collapse into ONE transient-sounding message",
+    "Runtime (d): heritage_search_artists with ConnectError then 200 -> 1 call, ToolError 'Netzwerkfehler (ConnectError): [Errno 11001] getaddrinfo failed': SIKART/SNM/NB tools call _http_get without _fetch_with_retry and never retry resolution failures",
+    "grep -rnE 'ConnectError|gaierror|_fetch_with_retry' tests/*.py -> no match: no test pair for transient vs. deterministic"
+  ],
+  "gaps": [
+    "search_heritage folds policy violation and outage into 'nicht erreichbar' at the output; a deterministic block reads as a transient outage (severity: high)",
+    "Resolution failures are not retried in 8 of 11 tools (direct _http_get) (severity: medium, overlaps ARCH-014)",
+    "The policy violation is a generic ValueError (shared with UpstreamSchemaError/OaiError/SruError), with no dedicated type or retryable attribute (severity: low)",
+    "No test pair (transient with retry / policy without) and no mutation evidence (severity: medium)"
+  ],
+  "evaluator_notes": "Where _fetch_with_retry is used, the distinction at the throw site and in the retry works (measured), and single-source messages are distinguishable. It breaks in the aggregation of search_heritage and through the missing retry layer in the CKAN/NB tools. About half the criteria are met, so partial."
+}

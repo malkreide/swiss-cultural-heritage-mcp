@@ -1,0 +1,1488 @@
+{
+  "audit_meta": {
+    "server_name": "swiss-cultural-heritage-mcp",
+    "run_id": "2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2025-11-25",
+    "audit_date": "2026-11-08",
+    "skill_version": "2.3.0",
+    "catalog_hash": "2bbded9079fd2a692bf8037a6eb4d6e4804442b8094b7290a634e1c3299d3ecf",
+    "policy": "fail-or-partial"
+  },
+  "results": {
+    "ARCH-001": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "Laufzeit `await mcp.list_tools()` (HEAD 9b3a1b4, venv mcp 2.3.0): 11 Tools, alle matchen `^[a-z][a-z0-9]*(_[a-z0-9]+)*$` (snake=True); Negativkontrolle derselben Regex: 'getUserInfo', 'get user', 'client.get' -> False",
+        "src/swiss_cultural_heritage_mcp/server.py:1365,1501,1605,1762,1919,2150,2219,2355 — acht Tools mit Namensraum-Präfix vorn: heritage_search_artists, heritage_get_artist, heritage_search_museum_datasets, heritage_browse_collection, heritage_search_helveticat, heritage_list_nb_collections, heritage_get_publication, heritage_cross_search",
+        "src/swiss_cultural_heritage_mcp/server.py:2798,3091,3214 — drei Tools mit Verb vorn und Namensraum hinten: search_heritage, get_heritage_item, list_heritage_collections; Casing einheitlich, Wortfolge nicht",
+        "src/swiss_cultural_heritage_mcp/server.py:407-411 — INSTRUCTIONS müssen `heritage_cross_search` und `search_heritage` ausdrücklich auseinanderhalten ('Keiner von beiden erreicht die Quellen des anderen'); das verwechselbare Paar entsteht aus der gemischten Wortfolge",
+        "src/swiss_cultural_heritage_mcp/server.py:1512 und src/swiss_cultural_heritage_mcp/server.py:2163 — heritage_get_artist (318 Zeichen) und heritage_list_nb_collections (268 Zeichen): je ein Funktionssatz plus Args/Returns, kein Kontext; die übrigen 9 Beschreibungen haben mehrere Sätze mit Quelle/Kontext (Median 799 Zeichen)"
+      ],
+      "gaps": [
+        "medium: zwei Namensschemata nebeneinander (heritage_<verb>_<obj> vs. <verb>_heritage[_obj]); das Paar heritage_cross_search / search_heritage ist allein über den Namen nicht unterscheidbar, die Abgrenzung steht nur in INSTRUCTIONS",
+        "low: 2 von 11 Tool-Beschreibungen (heritage_get_artist, heritage_list_nb_collections) nennen nur die Funktion, keinen Use-Case/Kontext"
+      ],
+      "evaluator_notes": "Kriterien 2 und 3 (snake_case akzeptabel, keine Sonderzeichen) voll erfüllt, an der Laufzeit-Toolliste per Regex samt Negativkontrolle gemessen. Kriterium 1 (einheitliche Convention): Casing einheitlich, Wortstellung gemischt (8 vs. 3). Kriterium 4 für 9/11 erfüllt. Die Toolliste hängt nicht an der Protokollrevision, das Urteil gilt für beide."
+    },
+    "ARCH-002": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "Laufzeit `mcp.list_tools()`: Beschreibungslängen Median 799 Zeichen, Minimum 268 (heritage_list_nb_collections) -> Längenkriterium (Median >=100, keines <50) erfüllt",
+        "`git grep -cE '<use_case>|<important_notes>|<example>' HEAD -- src` -> keine Ausgabe, rc=1; Negativkontrolle: dasselbe Muster gegen checks/ARCH-002.md -> 10 Treffer. Keine Tags im Code",
+        "src/swiss_cultural_heritage_mcp/server.py:1932-1945 (heritage_search_helveticat), src/swiss_cultural_heritage_mcp/server.py:1775 (heritage_browse_collection: 'Voraussetzung: Resource-ID aus ...'), src/swiss_cultural_heritage_mcp/server.py:3229 (list_heritage_collections: 'Discovery-Tool für search_heritage'), src/swiss_cultural_heritage_mcp/server.py:2237 (heritage_get_publication: 'Was NICHT enthalten ist') — Use-Case-/Wann-verwenden-Äquivalent in 4 von 11 Beschreibungen (~36 %, Ziel 80 %)",
+        "src/swiss_cultural_heritage_mcp/server.py:1376-1384, 1617-1621, 2817-2826 u. a. — Caveats (Important-Notes-Äquivalent) vorhanden: Fuzzy-Verhalten, clientseitige Filter, Lizenzsplit, keine Volltexte",
+        "src/swiss_cultural_heritage_mcp/server.py:2368 (heritage_cross_search: 'Durchsucht SIK-ISEA, SNM und NB') und src/swiss_cultural_heritage_mcp/server.py:2809 (search_heritage: 'Memobase, Dodis') — Abgrenzung nur implizit über Quellennamen; der explizite Satz 'Keiner von beiden erreicht die Quellen des anderen' steht nur in INSTRUCTIONS (src/swiss_cultural_heritage_mcp/server.py:407-411), nicht in den Tool-Beschreibungen"
+      ],
+      "gaps": [
+        "medium: Use-Case-Angabe (Tag oder 'verwenden wenn'-Satz) nur in ~4/11 Tools, Ziel >=80 %",
+        "medium: die beiden föderierten Such-Tools machen ihre Differenzierung in der eigenen Beschreibung nicht explizit; ein Client, der INSTRUCTIONS verwirft, sieht sie nicht",
+        "low: heritage_get_artist und heritage_list_nb_collections ohne Kontext über den Funktionssatz hinaus"
+      ],
+      "evaluator_notes": "2 von 4 Kriterien voll (Länge, Important-Notes), Differenzierung teilweise, Use-Case-Quote verfehlt -> partial. Die Docstrings tragen Args/Returns-Blöcke, die die Länge treiben, ohne Auswahlwissen zu liefern; 'Returns: str' ist bei ResultEnvelope|str ungenau."
+    },
+    "ARCH-003": {
+      "status": "fail",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "Modus 3, Zähler auf der respx-Route (scratchpad/probe/arch003_counter.py): heritage_search_artists(query='Xyzzyqq', region='Nirgendwo') gegen leere Antwort -> route.call_count=2, gesendete q-Werte ['Xyzzyqq Nirgendwo', 'Nirgendwo']; Kontrolle mit Treffer-Antwort ('Hodler','Bern') -> call_count=1, ['Hodler Bern'], match_type exact. Der Zähler schlägt also an",
+        "Modus 3, heritage_search_museum_datasets(query='Xyzzyqq Plonk') gegen leere Antwort -> call_count=2, zweite Abfrage '(Xyzzyqq* OR Plonk*) organization:schweizerisches-nationalmuseum-snm', ein Begriff, den der Aufrufer nie geschickt hat",
+        "src/swiss_cultural_heritage_mcp/server.py:1420-1425 — Fuzzy-Retry ruft `_query(max(q_terms, key=len))` erneut ab; src/swiss_cultural_heritage_mcp/server.py:1436-1444 — die Treffer daraus landen unter `results` desselben Envelopes, nur `match_type='fuzzy'` daneben",
+        "src/swiss_cultural_heritage_mcp/server.py:1664-1668 (SNM: OR-Präfix-Wildcards) und src/swiss_cultural_heritage_mcp/server.py:1993-1999 (Helveticat SRU: relation ' all ') — dasselbe Selbst-Verbreitern in zwei weiteren Tools",
+        "src/swiss_cultural_heritage_mcp/server.py:643-656 — `_no_match` liefert im JSON-Modus `ResultEnvelope(count=0, results=[], match_type='none')` ohne `suggestions` und ohne Hinweis, ob verbreitert wurde; gemessene Leer-Antwort: {'count': 0, 'total': 0, 'match_type': 'none', 'results': [], 'meta': None}",
+        "tests/test_server.py:1200-1221 und 1253-1268 — die Tests sichern das Selbst-Verbreitern ab (Handler liefert Treffer nur für den zweiten, veränderten Begriff und erwartet match_type 'fuzzy'); das Testpaar 'Vorschläge erscheinen' + 'genau ein Request mit unverändertem Begriff' fehlt"
+      ],
+      "gaps": [
+        "medium: bei Leermenge gehen pro Tool-Aufruf zwei Upstream-Requests raus, der zweite mit verändertem Begriff (heritage_search_artists, heritage_search_museum_datasets, heritage_search_helveticat)",
+        "medium: heuristische Treffer stehen unter `results`, nicht in einem eigenen Feld mit dem erzeugenden Begriff; das Modell kann sie nicht von exakten Treffern trennen",
+        "medium: keine aus der Eingabe abgeleiteten `suggestions`; der JSON-Leer-Envelope ist ohne handlungsfähigen Hinweis",
+        "low: die Antwort sagt nie, mit welchem Begriff verbreitert wurde; _FUZZY_NOTE (src/swiss_cultural_heritage_mcp/server.py:635-640) nennt den Ersatzbegriff nicht",
+        "medium: Testpaar aus Modus 3 und Gegenprobe gegen eine selbst-suchende Fassung fehlen; die vorhandenen Tests zementieren das Anti-Pattern"
+      ],
+      "evaluator_notes": "Erfüllt: match_type-Feld vorhanden (Kriterium 2), Markdown-Leermenge mit Hinweistext (Kriterium 3 teilweise), keine sensiblen Daten (Kriterium 4 n/a). Verfehlt: Kriterien 5 bis 11. Unter 50 % -> fail. Das ist genau der Belegfall der Check-Definition ('Der Vorschlag wird gleich mitgesucht, seine Treffer landen unter results'). Die Docstrings dokumentieren das Verhalten offen ('wird automatisch breiter ... gesucht'), Dokumentation heilt den Befund aber nicht."
+    },
+    "ARCH-004": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "`git show HEAD:src/swiss_cultural_heritage_mcp/server.py | grep -A60 '@mcp\\.tool' | grep -nE 'request\\.|websocket\\.|stdin|stdout|Request\\b|\\.headers\\['` -> einziger Treffer ist ein Docstring ('Aufrufen ohne Request `None`'), kein Zugriff; Negativkontrolle mit `async def s(q, request: Request): ua = request.headers[...]` -> 1 Treffer",
+        "src/swiss_cultural_heritage_mcp/server.py:2366, 2486-2488, 2808, 2864-2870 — Client-/Session-Bezug nur über `ctx: Context` (report_progress, warning)",
+        "src/swiss_cultural_heritage_mcp/server.py:65-150 — `class Settings(BaseSettings)` mit env_prefix MCP_, u. a. transport: Literal['stdio','http'], host, port, Endpunkte, Timeouts; die Modul-Konstanten (CKAN_API, HTTP_TIMEOUT usw.) sind daraus abgeleitet",
+        "src/swiss_cultural_heritage_mcp/server.py:361-371, 466-475 — ein gemeinsamer `lifespan` (geteilter httpx-Client) am MCPServer, für beide Transports derselbe",
+        "Modus 3 (scratchpad/probe/dual.py): `tools/call list_heritage_collections {response_format: json}` über stdio (`python -m swiss_cultural_heritage_mcp.server`) und über Streamable HTTP (`MCP_TRANSPORT=http MCP_PORT=8765 python -m ...server`, /health -> {\"status\":\"ok\"}) -> 'IDENTICAL result: True' nach Entfernen von meta; Negativkontrolle json vs. markdown über HTTP -> False",
+        "src/swiss_cultural_heritage_mcp/server.py:3589-3607 — Transportwahl `settings.transport == 'http' or '--http' in sys.argv` steht nur im `if __name__ == '__main__'`-Block",
+        "`MCP_TRANSPORT=http MCP_PORT=8766 swiss-cultural-heritage-mcp.exe < /dev/null` -> exit=0 nach 2 s, `curl :8766/health` -> keine Verbindung: das Konsolen-Skript `server:mcp.run` (pyproject.toml [project.scripts]) startet immer stdio, weil SDK `MCPServer.run(transport='stdio')` der Default ist"
+      ],
+      "gaps": [
+        "medium: Konsolen-Skript / `uvx swiss-cultural-heritage-mcp` ignoriert MCP_TRANSPORT und startet immer stdio; HTTP geht nur über `python -m swiss_cultural_heritage_mcp.server` (so in Dockerfile CMD und README). Auf dem uvx-/Registry-Pfad ist HTTP ohne Codeänderung nicht wählbar",
+        "low: `--port 8000` in README.md:99/154 und Dockerfile CMD wird nicht ausgewertet (Port nur aus MCP_PORT); es wirkt nur, weil der Default 8000 ist",
+        "low: veränderlicher Modul-Global `_http_client` (src/swiss_cultural_heritage_mcp/server.py:344-358) neben dem Lifespan (lazy-Fallback für Tests)"
+      ],
+      "evaluator_notes": "Alle fünf Kriterien am Code und am Verhalten erfüllt: kein Transport-Leak in Handlern, Settings-Objekt, Transport per ENV wählbar (über python -m), identische Tool-Ergebnisse stdio vs. Streamable HTTP, gemeinsamer Lifespan. Die Gaps liegen unter der Check-Severity high. Der Laufzeitvergleich lief mit dem Legacy-initialize-Handshake des SDK-Clients 2.3.0; der Tool-Handler selbst ist revisionsunabhängig. Server danach beendet (http.log: 'Application shutdown complete')."
+    },
+    "ARCH-005": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "critical",
+      "evidence": [
+        "`gitleaks git . --redact` (v8.30.1) auf dem Repo: '142 commits scanned ... no leaks found', Report []; Negativkontrolle: Wegwerf-Repo im Scratchpad mit AWS-Key und ghp_-Token -> 'leaks found: 2'",
+        "`git grep -nIE \"(api[_-]?key|password|secret|token).*=.*[\\\"'][^\\\"']{16,}[\\\"']\" HEAD -- src scripts Dockerfile server.json claude_desktop_config.json .github` -> einziger Treffer server.py:1184 `token_el = root.find(\".//oai:resumptionToken\", OAI_NS)` (OAI-Resumption-Token, kein Secret); Negativkontrolle `API_KEY = \"sk-1234567890abcdef1234\"` -> Treffer. Connection-String-/AKIA-/ghp_-/sk--Muster über ganz HEAD -> rc=1",
+        "src/swiss_cultural_heritage_mcp/server.py:202, 228 — die einzigen Env-Zugriffe ausserhalb Settings: os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT') ohne Default, os.getenv('DEPLOYMENT_ENV', 'production'), kein Secret-Default; Settings src/swiss_cultural_heritage_mcp/server.py:65-150 hat keine Credential-Felder (auth_model none, Open Data)",
+        "Dockerfile:34-38 (HEAD) — ENV nur PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, MCP_HOST, MCP_PORT; kein Secret im Image-Layer",
+        "`git show HEAD:.gitignore` -> __pycache__/, *.py[cod], *.egg-info/, .pytest_cache/, .coverage*, htmlcov/, dist/, build/, .venv/, venv/: kein `.env`-Eintrag; `git ls-files | grep -iE '(^|/)\\.env'` -> rc=1 (weder .env noch .env.example)",
+        "`git grep -nIE 'gitleaks|trufflehog|secret.scan|detect-secrets' HEAD -- .github` -> rc=1: kein Secret-Scan in CI (ci.yml, nightly-live.yml, publish.yml)"
+      ],
+      "gaps": [
+        "medium: kein automatisierter Secret-Scan (gitleaks/trufflehog) in einem PR-Workflow",
+        "low: `.gitignore` schliesst `.env`/`.env.*` nicht aus; Settings liest zwar keine .env-Datei, eine lokal angelegte .env wäre aber commitbar",
+        "low: kein `.env.example` mit den MCP_*-Variablen (bei auth_model none ohne Secrets, fehlt aber als Konfig-Referenz)"
+      ],
+      "evaluator_notes": "Die Kernkriterien (keine Secrets in Code, History oder Image, keine Secret-Defaults, keine Secret-Logs) sind mit Werkzeug und Negativkontrolle belegt. Kriterien 3/4 (Laden aus Env, SecretStr) sind n/a, weil der Server keine Secrets braucht. Von den sechs anwendbaren Kriterien fehlen drei Hygiene-Punkte (6 .gitignore, 7 .env.example, 8 CI-Scan) -> 3 von 6 = 50 % -> partial. Kein Gap erreicht Severity critical; ein Leak liegt nicht vor."
+    },
+    "ARCH-006": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "Laufzeit `mcp.list_tools()` -> 11 Tools (Band 9-15, <= 12 'ideal'); `@mcp.tool(` in src/swiss_cultural_heritage_mcp/server.py:1364,1500,1604,1761,1918,2149,2218,2354,2797,3090,3213",
+        "Cluster nach Use-Case statt Endpunkt: SIKART 2 (search/get), SNM 2 (Datensatzsuche/Objekte), NB 3 (Suche über SRU und OAI-PMH in EINEM Tool, src/swiss_cultural_heritage_mcp/server.py:1932-1945; Sets; Einzelsatz), föderiert 1 (heritage_cross_search über 3 Quellen), Gedächtnisinstitutionen 3 (search_heritage über 2 Quellen, get_heritage_item, list_heritage_collections)",
+        "Anchor-Demo-Query README.md:104/205 ('Who is Ferdinand Hodler?') live am 2026-11-08: `heritage_cross_search(query='Ferdinand Hodler')` -> 0.66 s, SIK-ISEA 5 / SNM 1 / NB 5 Treffer, keine Fehler; `search_heritage`, gleiche Anfrage -> 0.44 s, 40 Treffer. Beantwortbar mit 1 Call (Detailprofil: 2 Calls)",
+        "README.md:242 (HEAD), Abschnitt 'Architecture decision — memory-institution facade' — begründet 'three federated tools instead of four tool-families'"
+      ],
+      "gaps": [
+        "low: zwei föderierte Einstiege, die einander nicht abdecken (cross_search: SIKART/SNM/NB; search_heritage: Memobase/Dodis); 'alles zu X über alle fünf Quellen' braucht 2 Calls und Wissen aus INSTRUCTIONS",
+        "low: search/get-Paare je Quelle (heritage_search_artists/heritage_get_artist, search_heritage/get_heritage_item) liegen nah am Endpunkt-Mapping, sind aber durch den Detail- vs. Listen-Use-Case gedeckt"
+      ],
+      "evaluator_notes": "Alle fünf Kriterien erfüllt: 11 <= 12 Tools, keine 1:1-Endpunkt-Abbildung (ein Tool deckt teils zwei Protokolle bzw. mehrere Quellen), Anchor-Query in 1-2 Calls, gemessene Aggregations-Latenz < 1 s (eine Stichprobe), Begründung im README. Zwei lesende Live-Proben mit je einem Aufruf."
+    },
+    "ARCH-007": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:2474-2490 — heritage_cross_search fächert per `asyncio.create_task` + `as_completed` parallel auf die gewählten Quellen auf, meldet Progress je Quelle; fällt eine Quelle aus, bleiben die anderen stehen",
+        "src/swiss_cultural_heritage_mcp/server.py:2857-2870 — search_heritage, dasselbe Muster für Memobase und Dodis parallel, Fehler in meta.errors + ctx.warning",
+        "Live 2026-11-08: heritage_cross_search('Ferdinand Hodler') in 0.66 s mit Treffern aus drei Quellen in einem Envelope (source = Liste der drei SourceInfo); search_heritage in 0.44 s mit 40 normalisierten Treffern inkl. Permalink/Lizenz",
+        "src/swiss_cultural_heritage_mcp/server.py:1462-1480 — Suchergebnisse sind selbsttragend (Name, Lebensdaten, Kanton, Vita, SIKART-Link), nicht nur IDs; src/swiss_cultural_heritage_mcp/server.py:1680-1730 — die Datensatzsuche liefert die Ressourcen samt IDs/URLs gleich mit",
+        "src/swiss_cultural_heritage_mcp/server.py:2368-2373 und src/swiss_cultural_heritage_mcp/server.py:2817-2820 — die Beschreibungen nennen den aggregierten Charakter ('Fächert auf drei Upstreams auf', 'Bei collection=all wird parallel gesucht')"
+      ],
+      "gaps": [
+        "low: heritage_browse_collection setzt eine resource_id aus heritage_search_museum_datasets voraus (src/swiss_cultural_heritage_mcp/server.py:1775); bewusste Zwei-Schritt-Kette, im Docstring ausgewiesen",
+        "low: heritage_list_nb_collections und list_heritage_collections sind reine Discovery-Hilfen ohne eigenständige Antwort auf eine Nutzerfrage"
+      ],
+      "evaluator_notes": "Alle vier Kriterien erfüllt: abgeschlossene Resultate, Parallelisierung wo aggregiert wird, aggregierter Charakter in der Beschreibung, Anchor-Query in <= 2 Calls. Die Live-Zeiten sind je eine Stichprobe."
+    },
+    "ARCH-008": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "Laufzeit: `mcp.list_resources()` -> ['heritage://sik-isea/overview', 'heritage://nb/collections']; `mcp.list_prompts()` -> ['heritage_research_artist', 'heritage_find_educational_resources']; dazu 11 Tools, also alle drei Primitive in Gebrauch",
+        "src/swiss_cultural_heritage_mcp/server.py:3283-3284, 3321-3322 — @mcp.resource mit Schema heritage://<quelle>/<thema>; src/swiss_cultural_heritage_mcp/server.py:3383-3384, 3419-3420 — @mcp.prompt, zwei kuratierte Workflows mit Tool-Folge und Ausgabeformat",
+        "`git show HEAD:README.md | grep -nE 'heritage://|[Rr]esource|[Pp]rompt'` -> nur Zählungen (:52 '11 tools, 2 resources, 2 prompts', :58 'Prompt templates', :221-222, :268); keine URI und kein Prompt-Name in README.md oder README.de.md; `git grep heritage:// HEAD -- docs` -> nichts",
+        "src/swiss_cultural_heritage_mcp/server.py:3213-3232 — list_heritage_collections hat openWorldHint=False und keinen Netzaufruf (grep nach _http|await|fetch im Handler-Block -> rc=1): statische, deterministische Daten als Tool, klassischer Resource-Kandidat; heritage_list_nb_collections überschneidet sich inhaltlich mit der Resource heritage://nb/collections"
+      ],
+      "gaps": [
+        "medium: keine dokumentierte Prüfung, welche read-only Tools Resources sein könnten; list_heritage_collections ist statisch und bleibt ohne Begründung ein Tool",
+        "low: URI-Schema konsistent, aber nirgends in README/docs dokumentiert; die Resource-URIs erfährt man nur über resources/list",
+        "low: sik_isea_overview listet 3 der 11 Tools und spricht von 'allen drei Quellen'; für SNM, Memobase und Dodis gibt es keine Resource, das Inventar ist ungleichmässig"
+      ],
+      "evaluator_notes": "Kriterium 1 (>= zwei Primitive) klar erfüllt, Prompts kuratiert (Kriterium 4). Kriterium 3 nur halb (konsistent, nicht dokumentiert), Kriterium 5 nicht belegt -> partial."
+    },
+    "ARCH-009": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "Laufzeit `mcp.list_tools()` -> alle 11 Tools tragen alle vier Hints explizit (read_only_hint True, destructive_hint False, idempotent_hint True, open_world_hint True/False) plus title; kein Tool ohne annotations",
+        "src/swiss_cultural_heritage_mcp/server.py:3220 — list_heritage_collections openWorldHint=False, Handler ohne Netzaufruf; die zehn übrigen Tools rufen Upstreams und tragen openWorldHint=True (src/swiss_cultural_heritage_mcp/server.py:1371,1507,1611,1768,1925,2156,2225,2361,2804,3097); die Unterscheidung stimmt mit dem Verhalten",
+        "src/swiss_cultural_heritage_mcp/server.py:762-773 — das einzige POST (_http_post) ist die Dodis-Solr-Suche (src/swiss_cultural_heritage_mcp/server.py:2724), ein lesender Query; kein Tool schreibt oder löscht, kein Name mit delete_/create_/update_/remove_ -> readOnlyHint True / destructiveHint False konsistent",
+        "README.md:60 / README.de.md:61 und docs/roadmap.md:7 (HEAD) — Annotations-Policy: 'Every tool is annotated readOnlyHint: true ... destructiveHint: false'"
+      ],
+      "gaps": [
+        "low: keine Pro-Tool-Übersicht der vier Hints (insb. openWorldHint False bei list_heritage_collections) in README/docs",
+        "low: docs/roadmap.md:7 behauptet 'only HTTP GET requests', die Dodis-Suche geht per POST (src/swiss_cultural_heritage_mcp/server.py:2724); die Annotation bleibt korrekt, die Doku nicht",
+        "low: kein Test hält die Annotationen gegen Drift (die Tool-Pins in _toolpins.py hashen Name, Beschreibung und Schema)"
+      ],
+      "evaluator_notes": "Kriterien 1 bis 5 am Code und an der Laufzeit-Toolliste belegt; Kriterium 6 als Policy-Satz erfüllt, ohne Tabelle. Keine Lücke auf Severity high."
+    },
+    "ARCH-011": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "`git cat-file -e HEAD:<f>` -> OK für README.md, README.de.md, CHANGELOG.md, LICENSE, pyproject.toml; Negativkontrolle HEAD:NOPE.md -> 'does not exist'. `git ls-tree HEAD` zeigt src/swiss_cultural_heritage_mcp/, tests/ (23 Testdateien), .github/workflows/{ci.yml, nightly-live.yml, publish.yml}",
+        "pyproject.toml (HEAD) — build-backend hatchling, `[tool.hatch.build.targets.wheel] packages = [\"src/swiss_cultural_heritage_mcp\"]`; src/ enthält nur das Paketverzeichnis (src-Layout)",
+        ".github/workflows/ci.yml:14,30 (HEAD) — Matrix 3.11/3.12/3.13, `pytest tests/ -m \"not live\"` (die Funktion von test.yml); publish.yml:40,50 — id-token: write + pypa/gh-action-pypi-publish (Trusted Publisher)",
+        "Sektionsabgleich `grep -E '^## '` (CR entfernt): README.md 20, README.de.md 19 Überschriften, 19 Paare semantisch deckungsgleich (Overview/Übersicht ... Credits/Credits); einzige Differenz ist der generierte zweite 'Installation'-Block README.md:421-438, die Sektion selbst existiert in beiden",
+        "README.md:283 / README.de.md:284 (HEAD) — die Abweichung ('Single-file server: the 11 tools live in one server.py rather than a tools/ package ...') ist im README begründet, wie das Kriterium verlangt"
+      ],
+      "gaps": [
+        "low: die Begründung 'At this size a single, linear module is easier to read' trägt bei 3607 Zeilen server.py (Richtwert < 200) nur schwach; die Schwelle 'if the tool count grows materially' ist nicht beziffert",
+        "low: die Projektstruktur im README (README.md:262-282) nennt nur tests/test_server.py und ci.yml; tatsächlich gibt es 23 Testdateien, nightly-live.yml, publish.yml und scripts/",
+        "low: README.de.md fehlt der generierte uvx-Installationsblock aus README.md:421-438",
+        "low: der Workflow heisst ci.yml statt test.yml (funktional gleich)"
+      ],
+      "evaluator_notes": "Alle sieben Kriterien erfüllt; die Abweichung (kein tools/-Paket) ist im README begründet. README.md wurde wegen der uncommitteten Änderung nur per `git show HEAD:README.md` gelesen."
+    },
+    "ARCH-012": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "grep -rnE 'protocolVersion|protocol_version|PROTOCOL_VERSION|SUPPORTED_PROTOCOL' src/ -> nur Kommentare (server.py:395,403,453,464); kein protocol_version= am MCPServer(...) (server.py:470-479). Die Version kommt aus dem SDK, nicht aus Server-Code.",
+        "tests/test_protocol_version.py:56-57,67-82,166-183 — DOCUMENTED_HANDSHAKE_VERSION='2025-11-25' und DOCUMENTED_MODERN_VERSION='2026-07-28' gegen mcp.types.version (LATEST_HANDSHAKE_VERSION / LATEST_MODERN_VERSION) gebunden, dazu echter initialize durch den ASGI-Stack (2024-11-05..2025-11-25 behalten ihre Revision, 2026-07-28 im Handshake wird auf 2025-11-25 gedeckelt).",
+        "Laufzeit 2026-07-28 (scratchpad/probe_modern.py, ASGI-Stack aus build_http_app): tools/list mit _meta protocolVersion '2099-01-01' -> HTTP 400, error.code -32022, data.supported=['2026-07-28'], requested='2099-01-01'; server/discover -> supportedVersions=['2026-07-28'] (dieselbe Liste).",
+        "Laufzeit stdio (scratchpad/probe_stdio2.py, python -m swiss_cultural_heritage_mcp.server): auf DERSELBEN Verbindung erst tools/list mit '2099-01-01' -> -32022, danach server/discover mit '2026-07-28' -> resultType complete, supportedVersions ['2026-07-28'] — die Version wird pro Request aus _meta gelesen (SDK mcp/shared/inbound.py:374-386 classify_inbound_request, mcp/server/runner.py:755-790).",
+        "CHANGELOG.md:1-8 Keep-a-Changelog 1.0.0 + SemVer, [Unreleased] vorhanden; CHANGELOG.md:389-400 nennt beide Revisionen beim Protokoll-Gate, :740-742 den SDK-2.x-Wechsel; letzte Aenderung git log -1 CHANGELOG.md = 2026-11-08 12:33 +0100.",
+        "git show HEAD:README.md Zeilen 325-340 — Abschnitt '## MCP Protocol Version' mit Tabelle (Handshake 2024-11-05..2025-11-25, Envelope 2026-07-28) und Zeile 'Update policy' (Dependabot monatlich, Bumps im CHANGELOG).",
+        ".github/dependabot.yml:4-13 — package-ecosystem pip, interval monthly, open-pull-requests-limit 5, Gruppe python-deps '*' (deckt mcp ab).",
+        "pyproject.toml:39 — 'mcp[cli]>=2.0.0,<3' (Spanne, kein exakter Pin); installiert gemessen: mcp 2.3.0, mcp-types==2.3.0 (importlib.metadata.requires('mcp'))."
+      ],
+      "gaps": [
+        "Kein Pin im Server-Code: auf 2025-11-25 gilt der SDK-Default (Fail-Pattern 'keine explizite Version'). Gebunden ist er nur durch tests/test_protocol_version.py in der CI — eine Neuinstallation mit einem spaeteren mcp 2.x (pyproject.toml:39 erlaubt <3) kann die Handshake-Obergrenze im Betrieb verschieben, ohne dass ein Test laeuft. Das SDK bietet laut Test-Docstring keinen setzbaren Pin; die Abhilfe waere eine engere Spanne oder ein Laufzeit-Assert.",
+        "README-Update-Policy nennt keine Breaking-Change-Regel (Major-Release bei Bruch) und kein Kompatibilitaetsfenster fuer alte Spec-Versionen (Pass-Pattern Modus 3).",
+        "Beobachtung (SDK-Verhalten, kein Server-Code): ein Envelope mit protocolVersion '2025-11-25' und gleichlautendem MCP-Protocol-Version-Header ergibt ueber HTTP -32600 'Bad Request: Missing session ID' statt -32022 (scratchpad/probe_modern.out, 'handshake version in envelope')."
+      ],
+      "evaluator_notes": "Beide Baselines gemessen. 2026-07-28: Pro-Request-Pruefung gegen _meta, -32022 mit supported-Liste und dieselbe Liste in server/discover sind am Draht belegt, ueber HTTP und stdio; die Mechanik stammt vollstaendig aus dem SDK. 2025-11-25: die Version ist nicht im Server gepinnt, sondern per CI-Test an das installierte SDK gebunden; das verfehlt das woertliche Kriterium und laesst die Betriebsinstallation frei. CHANGELOG, README-Abschnitt und Dependabot vorhanden. Mehr als die Haelfte erfuellt, die Pin-Luecke ist medium -> partial."
+    },
+    "ARCH-013": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "Pfad-Inventar: grep 'streamable_http_app\\(|sse_app\\(|http_app\\(' -> einzig server.py:3574 (mcp.streamable_http_app in build_http_app); 'mcp.run\\(|uvicorn.run\\(' -> server.py:3600 (uvicorn.run im __main__-HTTP-Zweig) und server.py:3607 (mcp.run() im stdio-Zweig); keine Factory, kein SSE-Pfad im Code.",
+        "pyproject.toml [project.scripts] swiss-cultural-heritage-mcp = 'swiss_cultural_heritage_mcp.server:mcp.run' — MCPServer.run(transport='stdio') ist der Default (inspect.signature: transport='stdio'); das Konsolen-Skript ist reiner stdio-Pfad, kein Netzweg.",
+        "Deployment-Manifeste: Dockerfile:63 CMD ['python','-m','swiss_cultural_heritage_mcp.server','--http','--port','8000'] -> derselbe __main__-HTTP-Zweig; render.yaml/railway.toml/Procfile/docker-compose existieren nicht (ls: No such file).",
+        "server.py:3592-3605 — der einzige Netzpfad uebergibt host UND port aus settings an build_http_app(cors, settings.host, settings.port) und an uvicorn.run(host=settings.host, port=settings.port); build_http_app ruft build_transport_security(host, port) (server.py:3565) — keine fremde Bedingung (Auth/CORS) entscheidet ueber die Haertung.",
+        "Laufzeit am echten Einstieg: MCP_TRANSPORT=http MCP_PORT=8765 python -m swiss_cultural_heritage_mcp.server --port 9999 -> POST /mcp Host=127.0.0.1:8765 -> 200, Host=evil.example.com -> 421, Host=127.0.0.1:9999 -> 421; curl :9999/health -> 000 (kein Listener); GET /sse -> 404.",
+        "Laufzeit ASGI (scratchpad/probe_get.py): GET /mcp und DELETE /mcp mit Host=evil.example.com -> 421, mit 127.0.0.1:8000 -> 400; app.routes = ['/mcp','/health'] — auch die Legacy-GET/DELETE-Wege tragen dieselbe Host-Pruefung.",
+        "tests/test_transport_security.py:115-144 und tests/test_cors.py:45 rufen build_http_app direkt mit explizitem host/port; grep '__main__|runpy|subprocess|uvicorn' tests/*.py trifft keinen Test des Einstiegs (nur Hook-/Gate-Tests nutzen subprocess)."
+      ],
+      "gaps": [
+        "Kein Test an der Naht: Die Verdrahtung __main__ -> build_http_app(settings.host, settings.port) ist ungeprueft; alle Transport-Tests rufen den Builder mit allen Parametern (Common Failure 'Test ruft den Builder direkt'). Eine Gegenprobe (Port aus dem __main__-Aufruf entfernen) wuerde keinen Test faerben — nicht ausgefuehrt, weil das Repo nicht veraendert werden darf; aus dem Testinventar geschlossen.",
+        "Das CLI-Flag --port wird nirgends geparst (server.py:3592 prueft nur '--http' in sys.argv); gemessen: --port 9999 bleibt wirkungslos, Listener und App folgen MCP_PORT. Dockerfile:63 und README (Quickstart Z. 99, Render Z. 154) reichen --port 8000 weiter, das nur zufaellig dem Default entspricht.",
+        "README (HEAD) Z. 146-157 dokumentiert einen Render-Weg mit Endpunkt '/sse' — den der Server nicht bedient (GET /sse -> 404) — und eine Startzeile ohne MCP_HOST, mit der der Listener auf 127.0.0.1 bindet (Settings.host-Default, server.py:140). Ein dokumentierter Pfad, der weder erreichbar ist noch der realen Route entspricht.",
+        "Konsolen-Skript ignoriert MCP_TRANSPORT=http (mcp.run ohne Argumente, kein Settings-Zugriff) — kein Sicherheitsdefekt, aber eine zweite Einstiegslogik neben __main__."
+      ],
+      "evaluator_notes": "Es gibt genau einen Netzweg (python -m ... --http bzw. MCP_TRANSPORT=http), Dockerfile nutzt ihn, kein SSE, keine Factory; Host und Port reisen vollstaendig, die Host-Allow-List greift laufzeitbelegt auf POST/GET/DELETE. Die Verdrahtung selbst ist korrekt. Es fehlt der Test an der Naht samt Gegenprobe, und die Doku nennt einen /sse-Weg und ein --port-Flag, die es nicht gibt. Prozess nach der Messung beendet (kill)."
+    },
+    "ARCH-014": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "Vorfrage festgestellt: grep '_fetch_with_retry|await _http_get|await _http_post' -> Retry-Pfad nur fuer Memobase/Dodis (server.py:2684, 2723, 3120, 3134); SIKART/SNM/NB rufen _http_get einmal (z. B. server.py:1407, 1648, 2011) — kein Wiederholungspfad, nach Abschnitt 'Was gilt, wenn gar nicht wiederholt wird' kein Befund.",
+        "Transport-Ebene: server.py:347-350 httpx.AsyncClient ohne transport=; Laufzeit: type(_new_client()._transport)=AsyncHTTPTransport, _pool._retries=0. Negative Kontrolle: httpx.AsyncHTTPTransport(retries=3)._pool._retries -> 3. grep 'HTTPTransport\\(|max_retries|Retry\\(|retries=' src/ -> exit 1 (Muster trifft in httpx/_client.py:731,750).",
+        "server.py:899-911 — HTTPStatusError: nur 429 und 5xx wiederholt, sonst raise; httpx.TimeoutException/RequestError wiederholt. Laufzeit (scratchpad/probe_retry.py, respx): 404 -> 1 Aufruf, sofort HTTPStatusError 404; ConnectError -> 4 Aufrufe (retry_attempts=4).",
+        "server.py:795-848 — parse_retry_after liest Sekundenzahl und HTTP-Datum fuer 429/503; compute_delay: Retry-After schlaegt die Kurve, einseitiger Jitter [1.0,1.25], exponentiell mit Streuung [0.5,1.5]; min(..., retry_max_delay) umschliesst den Jitter (Deckel NACH dem Jittern, nachgerechnet: max 20 s).",
+        "server.py:871-897 — Wanduhr-Deadline: deadline=monotonic()+retry_total_budget (25 s, server.py:111), async with asyncio.timeout(remaining) um Request+raise_for_status; Wartezeit ueber Restbudget -> Abbruch. Laufzeit: langsame Antwort (echtes asyncio.sleep 2 s) bei Budget 0.3 s -> TimeoutError nach 0.31 s.",
+        "Budget vs Client: server.py:106-111 begruendet 25 s gegen MCP_DEFAULT_TIMEOUT 30 s des Python-SDK; search_heritage faechert Memobase/Dodis parallel (asyncio.create_task + as_completed, server.py:2857-2860), Budgets addieren sich nicht.",
+        "Nach Erschoepfung: server.py:913-919 raise last_error (kein Cache, keine stillen Altdaten); ToolError 'nicht erreichbar' bzw. isError (tests/test_server.py:1804-1810, 1837-1844).",
+        "Im Test gebunden: tests/test_retry_policy.py:35-84 (Retry-After beide Formen, Jitter streut, Deckel nach Jitter, einseitiger Retry-After-Jitter); tests/test_server.py:1813-1834 (5xx wird wiederholt), :1837-1844 (Timeout)."
+      ],
+      "gaps": [
+        "Nicht im Test gebunden: Gesamtbudget/Wanduhr-Deadline (grep 'retry_total_budget|asyncio.timeout|_fetch_with_retry' tests/ -> leer; Negativkontrolle: 'retry' trifft tests/test_retry_policy.py und tests/test_server.py) und 'kein Retry auf 4xx ausser 429' im Schleifenpfad. Nur durch diese Pruefung zur Laufzeit belegt (medium).",
+        "Hinweis: tests/test_server.py:1667-1669 setzt nur retry_backoff_base auf 0; die Retry-After-Kurve laeuft in diesen Tests ungebremst — fuer die Pruefung unerheblich, fuer kuenftige 429-Tests eine Falle."
+      ],
+      "evaluator_notes": "Politik vollstaendig vorhanden und laufzeitbelegt: nur 5xx/429/Netz/Timeout, Jitter, Retry-After mit Deckel danach, Sekundenbudget an einer Wanduhr-Deadline unter dem SDK-Client-Timeout, genau eine Ebene (Transport-Retries 0, mit Negativkontrolle), keine schreibenden Tools, Fehler nach Erschoepfung. Die fehlende Testbindung von Budget und 4xx-Abbruch ist medium und blockiert ein high-Check nicht."
+    },
+    "ARCH-019": {
+      "status": "fail",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "Logging-Protokoll-Feature in Gebrauch: server.py:2488 'await ctx.warning(f\"Quelle ...\")' in heritage_cross_search und server.py:2870 in search_heritage. ctx.warning ruft im SDK Context.log -> session.send_log_message (mcp/server/mcpserver/context.py:265-286, 384-386) und ist dort mit @deprecated('The logging capability is deprecated as of 2026-07-28 (SEP-2577).') markiert.",
+        "Laufzeit (scratchpad/probe_log.py, Dodis 503 via respx, Client(mcp)): search_heritage loest MCPDeprecationWarning an server.py:2870 aus — 'The logging capability is deprecated as of 2026-07-28 (SEP-2577).'",
+        "Herkunft: git log -S'ctx.warning(' -- src/ -> aaec569 2026-06-02 (cross_search, SDK-003) und df58c50 2026-07-19 (federated facade Memobase+Dodis) — die zweite Nutzung ist nach dem letzten Audit (2026-06-02) neu hinzugekommen.",
+        "Dokumentation: rg -c -i 'deprecat|abkündig|rückbau|2027-07-28' auf HEAD:README.md, README.de.md, CHANGELOG.md -> je 0 Treffer; Negative Kontrolle: dasselbe Muster trifft venv/.../mcp/server/mcpserver/context.py 12-mal. CHANGELOG.md:830 beschreibt ctx.warning nur als Feature (SDK-003), ohne Frist oder Zielzustand.",
+        "Roots/Sampling: rg 'roots/list|list_roots|RootsCapability|ListRootsRequest|sampling/createMessage|create_message|CreateMessageRequest|samplingCapability' src/ -> keine Treffer im eigenen Code (dieselbe rg-Zeile trifft die ctx.warning-Stellen, Muster greift).",
+        "Positiv: Anwendungs-Logging geht als JSON nach stderr (server.py:155-183, structlog WriteLoggerFactory(file=sys.stderr)); server/discover (2026-07-28) kuendigt keine logging-Capability an (capabilities nur prompts/resources/tools, scratchpad/probe_modern.out)."
+      ],
+      "gaps": [
+        "Bestehende Nutzung des deprecated Logging-Protokolls (ctx.warning, 2 Stellen) ohne Benennung in README/CHANGELOG, ohne Zielzustand und ohne Datum (Kriterien 2-4).",
+        "Neue Nutzung nach dem letzten Audit: search_heritage (df58c50, 2026-07-19) hat einen zweiten ctx.warning-Pfad eingefuehrt (Kriterium 1).",
+        "Spec-Migration waere stderr/OTel — beides ist im Server bereits vorhanden (structlog nach stderr, OBS-006 Tracing); die Warnung an den Client koennte im Result (meta.errors existiert bereits, tests/test_server.py:1803) statt als notifications/message laufen."
+      ],
+      "evaluator_notes": "Baseline beide. Roots und Sampling ungenutzt; das Logging-Protokoll-Feature wird an zwei Stellen genutzt, eine davon nach dem letzten Audit eingefuehrt, und nirgends mit Frist dokumentiert. Das SDK selbst warnt zur Laufzeit. Erfuellt sind nur die Kriterien stderr-Logging und keine Capability-Ankuendigung -> fail."
+    },
+    "ARCH-022": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/__init__.py:3,26-29 — Root ermittelt __version__ selbst via importlib.metadata.version; rg '^\\s*(from \\.|import \\.|from swiss_cultural_heritage_mcp)' __init__.py -> exit 1: der Root importiert nichts aus dem eigenen Paket (Negativkontrolle: dasselbe Muster trifft server.py:46).",
+        "server.py:46 'from . import __dist__, __homepage__, __summary__, __version__' — ein Submodul liest die Version aus dem Paket-Root; _version.py existiert nicht (ls: No such file).",
+        "KALT (frischer Interpreter, Submodul zuerst): python -c 'import swiss_cultural_heritage_mcp.server as m; print(m.__version__, m.USER_AGENT)' -> 'KALT ok: 0.7.0 swiss-cultural-heritage-mcp/0.7.0 (+https://github.com/malkreide/swiss-cultural-heritage-mcp)', kalt_exit=0.",
+        "WARM (frischer Interpreter, Root zuerst): python -c 'import swiss_cultural_heritage_mcp as p; import swiss_cultural_heritage_mcp.server as m; ...' -> 'WARM ok: 0.7.0 0.7.0', warm_exit=0. Zusaetzlich _toolpins kalt -> exit 0.",
+        "Konsolen-Skript-Pfad: pyproject.toml [project.scripts] swiss-cultural-heritage-mcp = 'swiss_cultural_heritage_mcp.server:mcp.run' (kalter Pfad); gemessen ueber swiss-cultural-heritage-mcp.exe (stdio-Probe) -> serverInfo.version 0.7.0."
+      ],
+      "gaps": [
+        "Kein eigenes Blatt-Modul fuer die Version; server.py liest __version__ aus dem Root (Kriterien 1-3 woertlich verfehlt). Heute kein Zyklus, weil __init__.py keine Submodule importiert — sobald jemand das uebliche 'from .server import mcp' in den Root setzt, haengt die Korrektheit an der Zeilenreihenfolge.",
+        "Kein Test haelt den kalten Importpfad in einem eigenen Prozess fest (konditionales Kriterium; nicht vorhanden)."
+      ],
+      "evaluator_notes": "Doppelmessung in je frischen Interpretern: beide gelingen, das Konsolen-Skript (kalter Pfad) startet mit korrekter Version. Statisch kein Zyklus, weil der Root ein Blatt ist. Die verlangte Struktur (_version.py, kein Rueckgriff auf den Root) fehlt aber, und damit ist die Zyklusfreiheit eine Eigenschaft des heutigen __init__.py, nicht der Architektur -> partial."
+    },
+    "CH-004": {
+      "status": "partial",
+      "category": "CH",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:587-616 — SourceInfo-Konstanten je Quelle (name, license, url); SIKART: license=\"CC BY\" (Zeile 588), SNM \"CC BY / CC0 (pro Datensatz)\", NB \"offen / pro Datensatz\", Memobase/Dodis getrennt Metadaten/Digitalisat",
+        "src/swiss_cultural_heritage_mcp/server.py:619-631 — _attribution() haengt an jede Markdown-Antwort einen Footer «Datenquelle & Lizenz» mit Quelle + Lizenz + URL",
+        "src/swiss_cultural_heritage_mcp/server.py:2400-2465 — heritage_cross_search fuehrt source/license/url pro Quelle (Provenienz pro Teilergebnis bei Aggregation erhalten); JSON-Envelope traegt `source`-Liste (Laufzeit: probe_cross2.py, Feld \"source\" mit name/license/url je Quelle)",
+        "curl -A 'swiss-cultural-heritage-mcp/0.7.0 (...)' 'https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=ef3a9fd2-2fb3-49ee-bfba-75d58e40b2ea&q=Hodler&limit=2' am 2026-11-08T11:54:13Z → HTTP 200, total 25, NUTZUNGSLIZENZ beider Records = 'Nutzungslizenz: CC0' (bestaetigt die Messung der Hauptsession von 11:53 UTC; mit curl-Default-UA kam nginx-403 — keine Auskunft, nur UA-Sperre)",
+        "tests/fixtures/artists_1.json:16 (aufgezeichnet 2026-09-20 laut tests/fixtures/PROVENANCE.md:3) — NUTZUNGSLIZENZ = 'Nutzungslizenz: CC-BY-NC-SA'; der Server meldete damals wie heute pauschal 'CC BY'",
+        "git show HEAD:README.md:293 — nur Fliesstext «opendata.swiss datasets carry open licences (CC0 / CC BY)» und «The licence line in the attribution footer is the source's general statement, not a per-record one, and JSON responses carry no footer at all»; keine Tabelle Quelle | Lizenz | Attribution",
+        "src/swiss_cultural_heritage_mcp/server.py:1562 — Per-Record-Lizenz (NUTZUNGSLIZENZ) wird nur in heritage_get_artist ausgewiesen; Suchergebnisse zeigen den pauschalen Footer"
+      ],
+      "gaps": [
+        "medium: SIKART-Lizenzangabe 'CC BY' ist durch die Quelle nicht gedeckt — live heute CC0, in der Aufzeichnung vom 2026-09-20 CC-BY-NC-SA. Im zweiten Fall verschwieg das Label NC und SA (Lizenzkonflikt/Re-Lizenzierung), im ersten fuegt es eine Attributionspflicht hinzu, die es nicht gibt. Der Footer der Suchantworten gibt so eine falsche Lizenz weiter",
+        "medium: README fuehrt keine Tabelle aller fuenf Quellen mit Lizenz und Attribution-Text (Pass-Kriterium 2); nur ein Sammelsatz",
+        "low: Per-Record-Lizenz nur in der Detailansicht; die Detailansicht filtert ueber HAUPTNR, das im Live-Schema fehlt (siehe Hinweis) — damit erreicht die massgebliche Lizenz die nutzende Person kaum"
+      ],
+      "evaluator_notes": "Quelle+Lizenz-Felder sind vorhanden und bei Aggregation pro Quelle erhalten (Kriterien 1 und 3 erfuellt). Nicht erfuellt: korrekte Lizenz (SIKART) und README-Lizenztabelle. Nebenbefund ausserhalb des Checks: Das Live-Schema des SIKART-Datensatzes hat NAME, HAUPTNR, SIKART_LINK nicht mehr (Felder heute: _id, NUTZUNGSLIZENZ, ID, PERMALINK, NACHNAME_VORNAME, VORNAME_NACHNAME, ...). server.py:1317 liest rec.get('NAME'), 1473 SIKART_LINK, 1527 filtert heritage_get_artist auf HAUPTNR. Laufzeit am publizierten 0.6.0: heritage_search_artists rendert '## (Unbekannt)' statt des Namens. Fixtures (2026-09-20) tragen die alten Felder, daher alle Unit-Tests gruen."
+    },
+    "DEP-001": {
+      "status": "partial",
+      "category": "DEP",
+      "severity": "high",
+      "evidence": [
+        "git show HEAD:pyproject.toml [project].dependencies — alle sechs Laufzeit-Abhaengigkeiten mit beiden Enden: mcp[cli]>=2.0.0,<3; httpx>=0.27.0,<1.0.0; pydantic>=2.0.0,<3.0.0; pydantic-settings>=2.0.0,<3.0.0; defusedxml>=0.7.1,<1.0.0; structlog>=24.1.0,<27.0.0; kein == in Laufzeit-Deps (ruff==0.16.9 nur im dev-Extra)",
+        "src/swiss_cultural_heritage_mcp/server.py:38-44 + src/swiss_cultural_heritage_mcp/__init__.py:3 — Top-Level-Imports aus mcp.server.mcpserver, httpx, pydantic, pydantic_settings, structlog, defusedxml; alle gedeckelt. SDK gedeckelt (<3), Kommentar pyproject.toml begruendet Floor und Cap",
+        "pyproject.toml [project.optional-dependencies].otel — opentelemetry-sdk>=1.20.0, opentelemetry-exporter-otlp-proto-http>=1.20.0, opentelemetry-instrumentation-httpx>=0.40b0: OHNE Obergrenze; importiert aus Modulpfaden in server.py:205-209 (im try/except ImportError) und server.py:233 (OTLPSpanExporter, ausserhalb des try → ImportError dort bricht den Start, sobald OTEL_EXPORTER_OTLP_ENDPOINT gesetzt ist). Keine aufgeschriebene Begruendung fuer die offene Range",
+        "Modus 3 (leer aufgeloest): neues venv (Python 3.14), pip install --no-cache-dir --isolated swiss-cultural-heritage-mcp==0.6.0 → mcp 2.3.0, mcp-types 2.3.0, httpx 0.28.1, httpx2 2.16.0, pydantic 2.14.3, pydantic-settings 2.16.2, defusedxml 0.7.1, structlog 26.1.0. Kein Lockfile im Repo (ls uv.lock poetry.lock requirements*.txt → nicht vorhanden); Majors identisch mit dem Dev-venv",
+        "Modus 4a: PyPI-JSON 2026-11-08: hoechste stabile Versionen mcp 2.3.0, httpx 0.28.1, pydantic 2.14.3, pydantic-settings 2.16.2, defusedxml 0.7.1, structlog 26.1.0 = hoechste vom Cap erlaubte; installiert im Audit-venv, importiert, Suite: 375 passed, 40 failed (die bekannten Windows-only-Fehler), 2 skipped; publiziertes 0.6.0 mit diesen Versionen importiert und tools/call beantwortet",
+        "Modus 4b: pip install --dry-run --no-cache-dir --isolated ohne Caps (\"mcp[cli]>=2.0.0\" \"httpx>=0.27.0\" ... \"structlog>=24.1.0\" + otel) → mcp 2.3.0, httpx 0.28.1, pydantic 2.14.3, pydantic-settings 2.16.2, defusedxml 0.7.1, structlog 26.1.0, opentelemetry-sdk 1.45.2, instrumentation-httpx 0.66b2. pip config list leer. Negative Kontrolle unabhaengig: PyPI-JSON fuehrt fuer keine der sechs einen naechsten Major → Ergebnis ist kein Aufbaufehler",
+        "git show HEAD:.github/dependabot.yml — package-ecosystem pip, monatlich, gruppiert: Anhebungsprozess vorhanden"
+      ],
+      "gaps": [
+        "medium: otel-Extra (3 Pakete) ohne Obergrenze, obwohl aus deren Modulpfaden importiert wird; nicht dokumentiert als bewusste Ausnahme. Wirkung beschraenkt auf Deployments mit [otel] und gesetztem Endpoint",
+        "info: Wirkung aller sechs Caps ungeprueft — Gegenversuch 4b fuehrt fuer keine Abhaengigkeit einen hoeheren Major herein, weil auf dem Index keiner existiert (kein Fehler, aber kein Beleg; bei naechstem Major erneut fragen)"
+      ],
+      "evaluator_notes": "Laufzeit-Distribution sauber begrenzt und gemessen. Abzug nur fuer das ungedeckelte otel-Extra. SDK-006 nicht vermischt: der mcp-Bound ist am 2er-Major verankert, das ist hier nur als Existenz des zweiten Bounds gewertet. Bezieht sich auf 0.6.0 (publiziert) und HEAD 0.7.0 (identische Ranges laut PyPI requires_dist vs pyproject.toml)."
+    },
+    "DRIFT-001": {
+      "status": "partial",
+      "category": "DRIFT",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:267-273 — Basis-URLs als Modul-Konstanten (CKAN_API, NB_OAI_PMH, NB_SRU, MEMOBASE_API, DODIS_API), gespeist aus Settings server.py:70-91; im Abrufcode keine wiederholten Basis-Literale",
+        "grep -nE '(CKAN_API|NB_OAI_PMH|NB_SRU|MEMOBASE_API|DODIS_API)' server.py — f\"{CKAN_API}/datastore_search\" an 4 Stellen zusammengesetzt (server.py:1407, 1524, 1796, 2394), f\"{CKAN_API}/package_search\" an 2 Stellen (1649, 2417); grep 'def _[a-z_]*url' in server.py ohne Treffer, also keine Konstruktionsfunktion",
+        "server.py:2674 vs 3078 — Memobase-Permalink f\"https://memobase.ch/de/document/{local}\" zweimal als Literal; server.py:2713 vs 3044 — Dodis-Permalink f\"https://dodis.ch/{hid}\" zweimal; die Kopien weichen schon voneinander ab (Normalisierer mit Fallback `if local else SOURCE_MEMOBASE.url`, Markdown-Ansicht ohne)",
+        "Laufzeit-Probe scratchpad/probe/drift003_probe.py (alle Upstreams 503): die Fehlermeldung nennt die tatsächlich abgerufene URL aus httpx ('Server error 503 ... for url https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=...'), Meldung und Abruf sind also gekoppelt"
+      ],
+      "gaps": [
+        "Pfadstruktur datastore_search 4x und package_search 2x inline gebaut statt an einer Konstruktionsstelle (medium)",
+        "Permalinks für Memobase und Dodis je zweimal als Literal, Fallback-Logik bereits auseinandergelaufen; Host wiederholt SOURCE_*.url als Literal (medium)",
+        "Keine Konstruktionsfunktion mit Docstring zu Encoding- und Präfixregeln (low)"
+      ],
+      "evaluator_notes": "Erfüllt: Basis-Konstanten und die Kopplung der Fehlermeldung an den Abruf. Ein data_source_url-Feld gibt es nicht; die Provenance nennt SOURCE_*.url (Homepage), nicht die abgerufene URL. Befund ist die mehrfache Zusammensetzung derselben Pfade. 2 von 4 Kriterien erfüllt."
+    },
+    "DRIFT-002": {
+      "status": "partial",
+      "category": "DRIFT",
+      "severity": "high",
+      "evidence": [
+        "server.py:1418-1427 (heritage_search_artists), 1662-1669 (heritage_search_museum_datasets), 1985-2000 (heritage_search_helveticat, SRU '=' -> ' all ') — der Fuzzy-Retry erweitert die Treffermenge, ist aber als Feld ausgewiesen: match_type='fuzzy' (ResultEnvelope server.py:571) plus Markdown-Hinweis _FUZZY_NOTE (server.py:634-639)",
+        "Mutation M5 (scratchpad/probe/mutate.py auf einer Kopie aus git archive HEAD): match_type nach dem Fuzzy-Retry auf 'exact' gesetzt -> neu rot: TestFuzzyMatch::test_artists_fuzzy_retry und ::test_artists_fuzzy_note_in_markdown",
+        "server.py:2609-2627 _date_passes — bei gesetztem date_from/date_to werden undatierte Objekte AUFGENOMMEN ('lieber ein falsch-positiver Treffer als ein verlorener'); kein Antwortfeld meldet, dass der Filter auf diese Treffer nicht griff; die Feldbeschreibung server.py:2772-2781 sagt 'Nur ab diesem Jahr' ohne Hinweis; grep 'ndatiert' trifft nur den internen Docstring (2614)",
+        "tests/test_server.py:1681 — der Test schreibt die Substitution fest (_date_passes(None,'1800','1899') is True); Mutation M6 (undatierte ausschliessen) -> nur dieser Test wird rot",
+        "server.py:1536-1541 und 2270-2275 — records[0] nur nach einer ID-gepinnten Abfrage (HAUPTNR-Filter bzw. GetRecord-Identifier), das ist eine Drift-Wache, keine Substitution; server.py:329-338 _nb_prefix wählt das Profil je Set aus einer festen Karte, ohne Fallback auf 'irgendeinen Prefix'"
+      ],
+      "gaps": [
+        "Der clientseitige Datumsfilter in search_heritage lässt undatierte Treffer durch, ohne Feld, das die Abweichung benennt; die Markdown-Ansicht zeigt bei ihnen unter 'Filter: Zeitraum …' gar kein Datum (medium)",
+        "Kein Test hält fest, dass das Zeitfenster ohne passenden Treffer leer bleibt; der vorhandene Test verlangt das Gegenteil (medium)"
+      ],
+      "evaluator_notes": "Die Fuzzy-Fallbacks sind die zulässige, ausgewiesene Erweiterung (Feld plus Prosa, getestet). Nicht ausgewiesen ist allein der Datumsfilter. JSON trägt je Treffer date:null; das ist ein Indiz, kein Ausweis der Filterabweichung. Kein Fallback tauscht Quelle oder Entität."
+    },
+    "DRIFT-003": {
+      "status": "fail",
+      "category": "DRIFT",
+      "severity": "high",
+      "evidence": [
+        "Gegenprobe scratchpad/probe/drift003_probe.py: heritage_cross_search mit SIK-ISEA, SNM und NB alle auf HTTP 503 liefert Markdown mit '## SIK-ISEA / ⚠️ Fehler: …' je Quelle, ohne isError. Ausgabe: 'assert SIK-ISEA in result: True | SNM: True | NB: True' — der Totalausfall erfüllt alle drei Assertions von tests/test_server.py:974-976 (test_cross_search_all_sources)",
+        "Gegenprobe: Dodis /solr/full/44755 mit leerem Body -> 'Kein Dodis-Objekt gefunden für ID `44755`.'; Ausgabe \"'44755' in result: True | 'doc_att_file_content' not in result: True\" — beide Assertions von tests/test_server.py:2077-2081 (test_live_get_dodis_document) bestehen im Nicht-Fund. Live am 2026-11-08 liefert dieselbe ID 'Typ: Bundesratsprotokoll · Datum: 12.8.1921', also Werte, die der Test prüfen könnte",
+        "tests/test_server.py:2055-2075 test_live_search_memobase/_dodis und :1965-1970 test_live_search_by_region prüfen nur isinstance(result, str); :1959-1962 und :1975-1978 prüfen nur 'Fehler' not in result, während server.py:1672-1675 bzw. _no_match (server.py:643-656) bei 0 Treffern 'Keine SNM-Datensätze gefunden…' ohne 'Fehler' liefert — ein leerer Lauf besteht",
+        "server.py:951-961 _raise_tool_error und server.py:2904-2905 — in den Einzelwerkzeugen und in search_heritage ist der Totalausfall maschinell erkennbar (ToolError -> isError). In heritage_cross_search fehlt das: server.py:2504-2506 rendert den Fehler je Quelle als Prosa '⚠️ Fehler', auch wenn alle Quellen ausfallen",
+        "grep -rnE 'match=' tests/*.py — kein Muster mit Metazeichen ('Allow-List', 'HTTPS', 'nicht erreichbar', 'Unbekannter SRU-Index', 'Fehler', 'schon maskiert', 'nicht gefunden'); dass der Metazeichen-Filter greift, zeigen die Treffer auf 'pytest.raises(' selbst"
+      ],
+      "gaps": [
+        "Die Erfolgstests von heritage_cross_search prüfen Quellennamen, die auch im Degradationspfad stehen; die Gegenprobe zeigt, dass sie beim Totalausfall bestehen (high)",
+        "Mehrere Live-Tests (test_live_get_dodis_document, test_live_search_memobase/_dodis, test_live_search_by_region, test_live_search_snm, test_live_search_hodler) bestehen auf dem Nicht-Fund- bzw. Leerpfad; keiner prüft einen Wert, den nur der Erfolgsfall hat (high)",
+        "heritage_cross_search meldet den Ausfall aller Quellen nicht als isError, nur als Prosa-Marker (medium)",
+        "Im Repo keine Gegenprobe je Tool (Modus 2), die zeigt, dass die Erfolgsassertions im Degradationspfad rot werden (medium)"
+      ],
+      "evaluator_notes": "Für die meisten Einzelwerkzeuge greift die Absicherung strukturell: ein Upstream-Fehler wirft ToolError, also kann ein Erfolgstest den Fehlerpfad nicht erfüllen. Die Lücke liegt in der Quersuche (Fehler als Prosa) und bei Nicht-Fund- und Leerantworten, die wie Erfolg aussehen. Der Regex-Teil (Modus 3) ist sauber. Beide Gegenproben liefen am 2026-11-08 gegen den committeten Code (src im Arbeitsbaum = HEAD; git status zeigt nur README.md geändert)."
+    },
+    "DRIFT-004": {
+      "status": "partial",
+      "category": "DRIFT",
+      "severity": "high",
+      "evidence": [
+        "server.py:267-273 — 5 Endpoint-Konstanten; Live-Abdeckung in tests/test_server.py:1956-2081: CKAN datastore_search (TestLiveSIKISEA), CKAN package_search (TestLiveSNM), NB_OAI_PMH ListSets/ListRecords/GetRecord (TestLiveNB), NB_SRU (test_live_volltextsuche_liefert_treffer), MEMOBASE_API '/' (test_live_search_memobase), DODIS_API solr/query und solr/full (TestLiveHeritageInstitutions)",
+        "gh run view 42475229230 --log (Nightly 2026-11-08, headSha 7f665fa; git diff origin/main HEAD -- tests/test_server.py .github/workflows tests/conftest.py ist leer) — '11 passed, 415 deselected in 13.87s', state=clear",
+        "tests/test_server.py:618-927, tests/test_response_shape.py:102-161, tests/test_helveticat_zugaenge.py:78-408 — respx-Routen gegen die importierten Konstanten (f\"{CKAN_API}/datastore_search\", NB_SRU, NB_OAI_PMH, f\"{DODIS_API}/solr/query\"); das einzige Upstream-Literal, tests/test_server.py:550, ist ein Egress-Test (http-Schema) und kein Mock",
+        "scripts/classify_live_run.py:96-140 — die Einordnung kennt nur clear/finding/unknown nach JUnit-Zählern; 404 und 5xx bzw. Timeout landen beide in 'finding'. Beleg: Lauf 39233988544 (2026-10-19) state=finding wegen httpx.ReadTimeout (transient) -> Issue #106",
+        "server.py:3122 MEMOBASE_API '/record/{id}' — kein Live-Test ruft get_heritage_item(collection='memobase'); test_live_search_snm (tests/test_server.py:1975-1978) besteht auch bei 0 Treffern und prüft SNM_ORG (server.py:1636) damit nicht wirksam"
+      ],
+      "gaps": [
+        "Die Live-Einordnung trennt 404 (Endpoint weg) nicht von 5xx oder Timeout; ein transienter Timeout ergibt denselben Befund wie ein abgeschalteter Endpoint (medium)",
+        "Der Pfad MEMOBASE_API/record/{id} kommt nur in Mocks und Fixtures vor, nicht live (medium)",
+        "Die Konstante SNM_ORG wird im Live-Test nicht wirksam geprüft, 0 Treffer bestehen (medium)"
+      ],
+      "evaluator_notes": "Alle fünf Basis-Konstanten sind live abgedeckt, und die Suite läuft nachweislich täglich gegen die Quelle. Abzüge: keine 404/5xx-Trennung, zwei Pfade bzw. Konstanten ohne wirksame Live-Prüfung. Ein Probe-Manifest (mcp-continuous-auditor) liegt nicht im Repo."
+    },
+    "DRIFT-005": {
+      "status": "pass",
+      "category": "DRIFT",
+      "severity": "medium",
+      "evidence": [
+        ".github/workflows/nightly-live.yml:10-13 — schedule cron '17 4 * * *' (täglich) plus workflow_dispatch; :36-41 'PYTHONPATH=src pytest tests/ -m live --junitxml=… | tee', Exit-Code über ${PIPESTATUS[0]}",
+        ".github/workflows/nightly-live.yml:54-105 — scripts/classify_live_run.py ordnet ein; bei state=='finding' öffnet oder kommentiert github-script ein Issue mit Label nightly-live-failure; :116-124 färbt den Job bei state!='clear' rot (exit 1)",
+        "gh run list --workflow nightly-live.yml — 40 geplante Läufe 2026-09-30..2026-11-08; Lauf 39233988544 (2026-10-19) conclusion failure, '1 failed, 10 passed', state=finding, Issue #106 (createdAt 2026-10-19T09:59:08Z, OPEN); Lauf 42475229230 (2026-11-08) '11 passed, 415 deselected', state=clear",
+        ".github/workflows/ci.yml:28-29 — der PR- und Push-Lauf bleibt bei -m \"not live\"",
+        "CONTRIBUTING.md:101-110 und CONTRIBUTING.de.md:107-116 — Kadenz (täglich 04:17 UTC plus manuell) und Sichtbarkeit (Issue mit Label, Schliessen von Hand nach der Behebung) dokumentiert"
+      ],
+      "gaps": [
+        "Issue #106 ist seit 2026-10-19 offen, obwohl seit 2026-10-20 jeder Lauf grün war; ausgelöst hat es ein transienter Timeout, das Signal ist also veraltet (low)",
+        "Geplant ist 04:17 UTC, tatsächlich gestartet wurde zwischen 08:36 und 12:31 UTC (GitHub-Verzögerung); die Kadenz bleibt täglich (low)"
+      ],
+      "evaluator_notes": "Alle Pass-Kriterien erfüllt. Die Annahme im Brief, der Workflow bleibe grün, stimmt für HEAD nicht mehr: der Schritt 'Ergebnis durchreichen' färbt finding und unknown rot, belegt am Lauf vom 19.10. Massgeblich bleibt die pytest-Zeile, gelesen für 2026-11-08. Issue #106 vor dem Release schliessen (laut CONTRIBUTING schliesst ein grüner Lauf es nicht automatisch)."
+    },
+    "DRIFT-006": {
+      "status": "fail",
+      "category": "DRIFT",
+      "severity": "medium",
+      "evidence": [
+        "git show HEAD:README.md:155 und README.de.md:156 — 'In claude.ai … add: https://your-app.onrender.com/sse'. Laufzeit-Probe scratchpad/probe/sse_probe.py (build_http_app über den Starlette TestClient, ohne Port): routes ['/mcp', '/health'], GET /sse -> 404, GET /mcp -> 400; server.py:3574 baut nur mcp.streamable_http_app. Dazu README:146 'Cloud Deployment (SSE for browser access)', :157 'SSE for the browser' und das Diagramm :223 'Stdio | SSE'",
+        "git show HEAD:README.md:289 und README.de.md:290 — 'All tools perform HTTP GET requests only'; dem widerspricht server.py:2724-2726: _search_dodis ruft _http_post(f\"{DODIS_API}/solr/query\") (search_heritage mit collection dodis oder all); docs/roadmap.md:7 wiederholt 'only HTTP GET requests'",
+        ".github/workflows/nightly-live.yml:3-6 — Kommentar 'Upstream failures do NOT fail this workflow … The job itself stays green by design'; widerlegt durch :116-124 (exit 1 bei state != clear) und durch Lauf 39233988544 (2026-10-19) mit conclusion failure. CLAUDE.md:368-369 behauptet dasselbe ('statt den Lauf rot zu färben')",
+        "CHANGELOG.md:8 — [Unreleased] ist leer. [0.7.0] stichprobenartig gegen den Code gehalten, alles gedeckt: SOURCE_NB.name (server.py:599), SRU-Index-Whitelist _SRU_INDEXES/_cql_term (server.py:1204-1222), SRU_MAX_RECORDS=50 (1212), '11 von 15' = 11 @mcp.tool + 2 resource + 2 prompt (grep zählt 15), codex-gate-Dateien entfernt (ls .github/workflows scripts | grep -i codex leer), 32 Tests in tests/test_helveticat_zugaenge.py, SKIP_VERSION_SYNC_HOOK in .githooks/pre-commit:79"
+      ],
+      "gaps": [
+        "README (EN/DE) nennt einen /sse-Endpunkt, den der Server nicht ausliefert (404); die Cloud-Anleitung führt ins Leere (medium)",
+        "Workflow-Kopfkommentar und CLAUDE.md beschreiben einen Live-Job, der grün bleibt; tatsächlich wird er rot, seit es 'Ergebnis durchreichen' gibt (medium)",
+        "README (EN/DE) und docs/roadmap.md behaupten 'nur HTTP GET', die Dodis-Suche nutzt POST; read-only bleibt richtig, die Begründung nicht (low)"
+      ],
+      "evaluator_notes": "Modus 1 geführt an CHANGELOG [0.7.0] (Stichprobe von 8 Behauptungen, alle gedeckt), an den README-Einschränkungen und an den Workflow-Kommentaren. Die drei Widersprüche liegen ausserhalb des CHANGELOG. Nicht jede Zeile des 0.7.0-Abschnitts wurde einzeln geprüft, etwa die Messaussagen vom 20.09."
+    },
+    "DRIFT-008": {
+      "status": "fail",
+      "category": "DRIFT",
+      "severity": "high",
+      "evidence": [
+        "grep -rn -A12 'autouse=True' tests/*.py — nur zwei autouse-Fixtures: tests/conftest.py:14-20 (_reset_http_client, schliesst nach jedem Test den Client und ersetzt nichts) und tests/test_transport_security.py:45-49 (patcht settings.inbound_allowed_hosts/cors_origins, die Datei hat keinen Live-Test). grep 'getaddrinfo|create_connection|freeze_time|AsyncHTTPTransport' tests/ ohne Treffer; alle Live-Tests liegen in tests/test_server.py:1956-2081",
+        "gh run view 39233988544 --log (2026-10-19) — httpx.ReadTimeout aus echtem Netzverkehr in test_live_search_hodler; Lauf 42475229230 (2026-11-08): 11 Live-Tests PASSED, je 1-2 s; lokale Probe am 2026-11-08: socket.getaddrinfo('beta.dodis.ch') -> 83.228.234.53, die Antwort trägt einen echten Datensatz (Bundesratsprotokoll vom 12.8.1921)",
+        "grep -rn 'request.keywords|item.keywords|pytest_runtest' tests/*.py — keine Treffer: kein suiteweiter Wächter-Hook, keine Live-Ausnahme in Fixtures, keine Gegenprobe"
+      ],
+      "gaps": [
+        "Kein suiteweiter Wächter (pytest_runtest_call-Hook mit einem beim Import festgehaltenen Referenzwert), der Live-Tests mit ersetzter Aussenwelt abbricht (medium, derzeit latent)",
+        "Keine Gegenprobe in beide Richtungen (synthetischer Live-Test mit stubbender autouse-Fixture) (medium)"
+      ],
+      "evaluator_notes": "Die Kernfrage, ob die Live-Suite die Quelle erreicht, ist heute positiv belegt: kein Stub im Geltungsbereich, dazu Spuren echten Netzverkehrs. Erfüllt ist Kriterium 1 von 6; die übrigen verlangen den vorbeugenden Wächter samt Gegenprobe, und den gibt es nicht. Nach der 50-%-Regel daher fail, bei derzeit null Exposition. Advisory."
+    },
+    "FID-001": {
+      "status": "partial",
+      "category": "FID",
+      "severity": "critical",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:1400-1406 — datastore_search (SIKART) sendet limit und offset immer; Upstream-Default ohne limit gemessen 2026-11-08 11:48 UTC: q=Malerin -> 100 Records bei total 1779. Request-Log des Tools: limit=20&offset=0.",
+        "src/swiss_cultural_heritage_mcp/server.py:1648-1651 — package_search sendet rows und start immer (Request-Log: rows=20&start=0); Upstream-Default ohne rows gemessen: 10 Treffer.",
+        "src/swiss_cultural_heritage_mcp/server.py:1284-1293 — SRU sendet maximumRecords=min(limit,50) immer; Upstream-Default ohne maximumRecords gemessen: 10 Records fuer alma.all_for_ui=\"Volksschule\" (numberOfRecords 1990). Der Deckel 50 ist im Tool-Result benannt (src/swiss_cultural_heritage_mcp/server.py:2129-2133) und als has_more im JSON (src/swiss_cultural_heritage_mcp/server.py:2062).",
+        "src/swiss_cultural_heritage_mcp/server.py:2684-2690 und src/swiss_cultural_heritage_mcp/server.py:2723-2729 — Memobase sendet size+offset, Dodis start+rows immer; Upstream-Defaults gemessen: Memobase ohne size 10 Members (total 335 fuer 'Escher'), Dodis ohne rows 963 Treffer (= rows=1000). Beide Defaults werden nie geerbt.",
+        "Recall-Delta datastore_search `language` (weggelassen = english vs german), live 2026-11-08: Hodler 25 vs 0, Bildhauer 1259 vs 0, Malerin 1779 vs 1779. Der Server laesst `language` weg und erbt damit die breitere Variante: kein Befund.",
+        "Recall-Delta datastore_search `plain` (Default true, vom Server nie gesendet): q=Hodler 25, q=Hodl 0, q=Hodl* 0, aber plain=false q='Hodl:*' 26. Der Default schliesst Praefixsuche aus und ist weder gesendet noch im Tool-Result oder in der Description deklariert.",
+        "src/swiss_cultural_heritage_mcp/server.py:2017-2035, src/swiss_cultural_heritage_mcp/server.py:2082-2086, src/swiss_cultural_heritage_mcp/server.py:2047-2053 — die bewusste Einschraenkung (query+set_spec filtert nur die abgerufene OAI-Seite) ist im Tool-Result sichtbar, nicht nur im README; ebenso search_heritage meta.clientside_filters (src/swiss_cultural_heritage_mcp/server.py:2897-2901).",
+        "rg -n -i 'default-matrix|ground.truth|recall|Referenzquer|Web-UI|reality-check' (Repo ohne audits/ und Fixture-Daten) -> keine Default-Matrix; Kontrolle: dasselbe Muster trifft den Katalogtext FID-002.md. PROBE_REPORT_helveticat.md:250-256 dokumentiert nur fuer SRU den maximumRecords-Deckel, :74-76 ListSets ohne resumptionToken (live bestaetigt 2026-11-08: 68 Sets, kein Token)."
+      ],
+      "gaps": [
+        "Keine Default-Matrix fuer alle optionalen Parameter aller genutzten Endpunkte (CKAN datastore_search/package_search, Memobase, Dodis solr/query); nur Teilbefunde fuer SRU/OAI im Probe-Bericht (Severity medium).",
+        "Kein Regressionstest, der den vollen Scope festhaelt (kein Recall-Floor unter @pytest.mark.live, siehe FID-002) (Severity high).",
+        "datastore_search `plain=true` (Upstream-Default) schliesst Praefix-Matching aus; der Server erbt ihn still und deklariert die Einschraenkung nirgends (Severity medium).",
+        "Dodis/Memobase: weitere serverseitige Defaults (Filter, Typ-Einschraenkungen) nicht spezifiziert und nicht gemessen; keine Spec-Parameterliste im Repo (Severity medium)."
+      ],
+      "evaluator_notes": "Der Kern des Checks ist erfuellt: Jeder gemessene einschraenkende Default (rows 10, limit 100, maximumRecords 10, size 10, Dodis-rows unbegrenzt) wird explizit uebersteuert, und bewusste Einschraenkungen stehen im Tool-Result. Es fehlen die Matrix als Artefakt, der Regressionstest und die Behandlung von `plain`. Alle Messungen lesend, 2026-11-08 11:45-11:48 UTC, direkt gegen die Upstreams und ueber die Tool-Funktionen."
+    },
+    "FID-002": {
+      "status": "fail",
+      "category": "FID",
+      "severity": "high",
+      "evidence": [
+        "rg -n -i 'ground.truth|recall|Referenzquer|Web-UI|reality-check|Untergrenze|floor' ueber das Repo ohne audits/ und Fixture-Daten -> keine Referenzquery-Tabelle; die einzigen Treffer sind fachfremd (CHANGELOG.md:734 und pyproject.toml:35: 'floor' = SDK-Versionsuntergrenze). Kontrolle: das Muster 'Web-UI' trifft FID-002.md des Katalogs.",
+        "tests/test_server.py:1956-2110 — alle 11 Live-Tests; keiner mit Mindest-Trefferzahl. SIKART/SNM pruefen nur 'Fehler' not in result (:1960-1977), Memobase/Dodis nur isinstance(result, str) (:2054-2075), NB nur 'Gefunden:' in result (:2003).",
+        "pytest tests/ -m live (lokal, 2026-11-08) -> '11 passed, 417 deselected', waehrend heritage_search_artists live jede Person als '(Unbekannt)' mit SIKART-ID '—' ausgibt und heritage_get_artist auf jede ID HTTP 409 liefert (siehe FID-006). Die Live-Suite ist keine Recall- oder Inhaltswache.",
+        "PROBE_REPORT_helveticat.md:195-206 — die einzigen Trefferzahlen (SRU, 20.09.2026), aber nur API gegen API, kein Vergleich mit helveticat.ch. Fuer SIKART, SNM, Memobase und Dodis gibt es keine Messung gegen eine offizielle Oberflaeche und keine Ersatz-Ground-Truth.",
+        "Die Durchreiche selbst ist treu (gemessen 2026-11-08): SRU numberOfRecords 1990 fuer 'Volksschule' = Tool total 1990; datastore total 25 fuer 'Hodler' = Tool total 25; Memobase hydra:totalItems 56 = Tool total 56. Das belegt API-Treue, nicht Recall gegen die Web-UI."
+      ],
+      "gaps": [
+        "Kein Set von 3-5 Referenzqueries mit Trefferzahlen beider Oberflaechen (Severity high).",
+        "Kein Recall-Regressionstest mit Untergrenzen unter @pytest.mark.live (Severity high).",
+        "Keine Ersatz-Ground-Truth (Bestandszahl SIKART 17665, Dodis-/Memobase-Bestand) dokumentiert und gegen das Tool gehalten (Severity medium).",
+        "Ein Web-UI-Vergleich wurde in diesem Lauf nicht durchgefuehrt (recherche.sik-isea.ch, memobase.ch und dodis.ch sind JS-Apps). Das Urteil stuetzt sich auf das Fehlen der Artefakte, nicht auf ein gemessenes Delta."
+      ],
+      "evaluator_notes": "Fail, weil die geforderten Artefakte vollstaendig fehlen und die vorhandene Live-Suite nachweislich gruen bleibt, waehrend eine Quelle inhaltlich ausfaellt. Das offene Issue #106 (nightly-live-failure, 2026-10-19) existiert; seine Ursache wurde nicht untersucht."
+    },
+    "FID-003": {
+      "status": "partial",
+      "category": "FID",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:643-654 — _no_match liefert im JSON-Modus ResultEnvelope(count=0, total=0, results=[], match_type='none') OHNE Hinweisfeld; der Hinweistext existiert nur im Markdown-Modus, und das Envelope (src/swiss_cultural_heritage_mcp/server.py:563-579) hat kein hint-/next_step-Feld. Live 2026-11-08: heritage_search_artists, heritage_search_museum_datasets und heritage_search_helveticat mit 'zzqxjv…' im JSON-Modus liefern keinen Hinweis.",
+        "Live, Markdown: SIKART -> 'Keine Künstler·innen gefunden für die angegebenen Suchkriterien.' (kein naechster Schritt); search_heritage -> '*Keine Treffer für die angegebenen Kriterien.*' (src/swiss_cultural_heritage_mcp/server.py:2939-2941); heritage_cross_search -> '*Keine Treffer*' je Quelle (src/swiss_cultural_heritage_mcp/server.py:2514-2516). Nur Helveticat sagt konkret, was gesucht wurde und wohin man weitergehen kann (src/swiss_cultural_heritage_mcp/server.py:2040-2054).",
+        "src/swiss_cultural_heritage_mcp/server.py:1973-1982 + Live: heritage_search_helveticat ohne query und set_spec (JSON) -> {count: 0, total: 0, match_type: 'none', results: []}. Eine Anfrage, bei der gar nicht gesucht wurde, ist im JSON nicht von einem Null-Treffer zu unterscheiden.",
+        "src/swiss_cultural_heritage_mcp/server.py:990-1012 + Live: set_spec='xrara', from_date='2099-01-01' -> der Upstream antwortet 'noRecordsMatch: ... results in an empty list' (eine echte Leermenge). Das Tool meldet sie als ToolError mit 'Das ist KEIN leeres Ergebnis — es wurde nichts durchsucht.' Die Leermenge ist damit als isError maskiert, und die Aussage ist falsch.",
+        "src/swiss_cultural_heritage_mcp/server.py:922-961, :1483-1484 — Transport- und HTTP-Fehler gehen in den Fehlerkanal (ToolError -> isError) mit eigener Meldung, nicht als Leermenge; src/swiss_cultural_heritage_mcp/server.py:2903-2905: fallen alle Quellen aus -> isError; ein Teilausfall steht in meta.errors bzw. im Warnblock (src/swiss_cultural_heritage_mcp/server.py:2507-2509, :2936).",
+        "rg -n -i -U 'usually\\s+means|bedeutet\\s+meist|wahrscheinlich\\s+nicht|out\\s+of\\s+scope|not\\s+that\\s+it\\s+is\\s+wrong' src/swiss_cultural_heritage_mcp/server.py -> 0 Treffer (rc=1); Kontrolle: 'usually means' trifft FID-003.md 5-mal. Keine Description enthaelt eine entschuldigende Formulierung.",
+        "rg -n -i 'nicht raten|keine geratene|erfund|guess' src/swiss_cultural_heritage_mcp/server.py -> 0 Treffer: Keine Description sagt, dass keine geratene Antwort an die Stelle eines fehlenden Treffers treten darf.",
+        "Live: heritage_cross_search JSON mit 0 Treffern in allen Quellen -> match_type='exact', count=0, meta=None (src/swiss_cultural_heritage_mcp/server.py:2493-2497 setzt match_type nicht)."
+      ],
+      "gaps": [
+        "Der JSON-Modus (der Modus mit outputSchema) traegt bei einer Leermenge keinen maschinenlesbaren Hinweis, nur match_type='none' (Severity high).",
+        "Die Markdown-Hinweise bei SIKART, SNM, search_heritage und cross_search sind generisch und nennen keinen konkreten naechsten Versuch (Severity medium).",
+        "OAI-noRecordsMatch auf einem Zeitfenster wird als Fehler gemeldet, mit der falschen Aussage 'es wurde nichts durchsucht' (Severity medium).",
+        "Die Validierungs-Waechter in heritage_search_helveticat liefern im JSON-Modus eine Leermenge statt eines Fehlers (Severity medium).",
+        "heritage_cross_search meldet bei 0 Treffern match_type='exact' (Severity low).",
+        "Keine Description verbietet, einen fehlenden Treffer durch eine Vermutung zu ersetzen (Severity medium).",
+        "Im Repo gibt es weder einen Konfabulations-Test (Modus 2) noch einen Test, der einen Fehlschlag am laufenden Server gegen eine Leermenge haelt (Modus 3)."
+      ],
+      "evaluator_notes": "Der Fehlerkanal ist sauber getrennt, und es gibt keine Ausreden-Formulierungen. Die Leermenge selbst ist im strukturierten Modus aber stumm, und an zwei Stellen sind die Kanaele vertauscht (Waechter -> Leermenge, echte Leermenge -> Fehler). MRTR/input_required wird nicht genutzt (rg 'input_required|inputRequests|elicit' -> 0), die Disjunktheits-Kriterien fuer 2026-07-28 entfallen daher fuer beide Protokollstaende."
+    },
+    "FID-004": {
+      "status": "pass",
+      "category": "FID",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:1400-1406, :1525-1529, :1648-1651, :1788-1794, :1284-1292, :2001-2009, :2174, :2253-2267, :2684-2690, :2723-2729, :3120-3139 — vollstaendige Aufzaehlung der gesendeten Upstream-Parameter: resource_id/limit/offset/q/filters, q/rows/start, version/operation/recordSchema/query/maximumRecords, verb/metadataPrefix/set/from/until/identifier, q/size/offset, query/start/rows. Es gibt keine Gruppe boolescher Feld-Flags, Facetten oder Sichtbarkeits-Schalter mit gemeinsamem Praefix, und kein Argument wird in eine Teilmenge einer Upstream-Gruppe uebersetzt.",
+        "rg -n 'for .* in fields|for .* in selected|if .* in requested' src/ -> 0 Treffer; Kontrolle: das Muster trifft die Fail-Pattern-Zeile 'for field in fields:' in FID-004.md.",
+        "Wirkungsnachweis der einschraenkenden Argumente, live 2026-11-08: heritage_search_museum_datasets collection: Organisation allein 10 Pakete, +numismatik 1, +spezialsammlungen 1, +zzqxjv 0; heritage_search_artists region: q=Hodler 25, 'Hodler Genf' 12, 'Hodler Zürich' 2. Beide verengen messbar.",
+        "src/swiss_cultural_heritage_mcp/server.py:2335-2338 — heritage_cross_search.sources nennt das Default-Set ausdruecklich ('Standard: alle drei'), und nur die gewaehlten Quellen werden abgefragt (src/swiss_cultural_heritage_mcp/server.py:2469); die clientseitigen Filter von search_heritage sind als solche deklariert (src/swiss_cultural_heritage_mcp/server.py:2823-2826, meta.clientside_filters)."
+      ],
+      "gaps": [
+        "Kein Live-Test im Repo haelt die Verengung durch collection/region fest; sie ist nur in diesem Audit gemessen (Severity low)."
+      ],
+      "evaluator_notes": "Die Fehlerklasse (eine Teilmenge einer Flag-Gruppe erbt Server-Defaults) hat in diesem Server keine Angriffsflaeche: Keine der fuenf Quellen wird mit einer Parameter-Gruppe angesprochen. Pass auf Grund der vollstaendigen Parameter-Aufzaehlung plus gemessener Verengung."
+    },
+    "FID-005": {
+      "status": "fail",
+      "category": "FID",
+      "severity": "medium",
+      "evidence": [
+        "tools/list (lokal aus dem installierten Paket, 11 Tools) | rg -n -i -U 'wildcard|lucene|cql|solr|whole\\s+word|ganze[nm]?\\s+W|Kompos|trunkier|platzhalter' -> nur zwei Treffer: heritage_search_museum_datasets 'Präfix-Wildcards' (beschreibt den automatischen Fuzzy-Retry des Servers, keine Syntax fuer den Aufrufer) und search_heritage 'JSON-REST/Solr' (Protokoll). Damit ist auch belegt, dass das Muster anschlaegt. Kein Tool nennt Abfragesprache, Operatoren oder Matching-Granularitaet.",
+        "src/swiss_cultural_heritage_mcp/server.py:1340-1344, :1376-1384 — heritage_search_artists sagt nur 'mehrere Begriffe werden UND-verknüpft'. Live 2026-11-08 (datastore_search, plain=Default): 'Hodler' 25, 'Hodl' 0, 'Hodl*' 0 — Ganzwort-Matching, `*` wirkungslos; nur plain=false mit 'Hodl:*' ergibt 26, und das sendet der Server nie.",
+        "src/swiss_cultural_heritage_mcp/server.py:1215-1225, :1877-1886 — Helveticat: der Begriff wird in eine CQL-Phrase gesetzt, `*` bleibt erhalten. Live: alma.all_for_ui=\"Volksschule\" 1990, \"Volksschul*\" 81, \"Volksschule*\" 1990. Trunkierung wirkt, aber nicht wie erwartet, und keine Description dokumentiert sie.",
+        "src/swiss_cultural_heritage_mcp/server.py:2762-2767, :2326-2334, :1755 — search_heritage, heritage_cross_search, heritage_browse_collection: das Such-Argument ist nur 'Suchbegriff (z. B. ...)', ohne jede Syntax-Angabe.",
+        "tests/test_server.py:1956-2050 — die 4 Live-Klassen pruefen keine Wildcard- oder Kompositum-Wirkung."
+      ],
+      "gaps": [
+        "Kein Tool mit freiem Such-Argument nennt die Abfragesprache (CKAN-Volltext, Solr, CQL, Memobase, Dodis-Solr) (Severity medium).",
+        "Die Matching-Granularitaet (ganze Woerter, kein Teilwort, deutsches Kompositum-Beispiel) ist nirgends benannt, obwohl sie live belegt ist (Hodl 0 vs Hodler 25) (Severity medium).",
+        "SIKART: Praefixsuche ist ueber den Server gar nicht moeglich (plain=true fest), und das steht nicht in der Description (Severity medium).",
+        "Kein Live-Test der Wildcard-Wirkung; kein Hinweis zu Escaping oder ungueltiger Syntax (Severity low)."
+      ],
+      "evaluator_notes": "Die Descriptions beschreiben Zugangswege und Fuzzy-Retries ausfuehrlich, aber nicht die Syntax, die das Modell selbst einsetzen koennte. Fuer eine deutschsprachige Quellenlandschaft wiegt die fehlende Granularitaetsangabe am schwersten."
+    },
+    "FID-006": {
+      "status": "fail",
+      "category": "FID",
+      "severity": "high",
+      "evidence": [
+        "Live 2026-11-08 11:46 UTC, datastore_search limit=0 auf der SIKART-Ressource ef3a9fd2-…: fields = _id, NUTZUNGSLIZENZ, ID, PERMALINK, NACHNAME_VORNAME, VORNAME_NACHNAME, PERSONENART, VITAZEILE, LEBENSDATEN, STARTDATUM(_TYP), ENDDATUM(_TYP), STARTORT(_TYP), ENDORT(_TYP), WEBSITE, WIKIDATA, GND, HLS, DOK (total 17665).",
+        "src/swiss_cultural_heritage_mcp/server.py:1315-1332, :1459-1475, :1527, :1550-1567, :2519-2525 — der Code liest NAME, VORNAME, NAMIDENT, HAUPTNR, GEBURTSJAHR, STERBEJAHR, GEBURTSKANTON, STERBEKANTON, SIKART_LINK, GEBURTSDATUM, GEBURTSORT, GEBURTSLAND, STERBEDATUM, STERBEORT, STERBELAND, TYPUS, HLS_ID. 17 von 22 gelesenen Feldern fehlen in der echten Antwort (per Skript abgeglichen; vorhanden sind nur LEBENSDATEN, VITAZEILE, NUTZUNGSLIZENZ, GND, WEBSITE).",
+        "Folge live: heritage_search_artists('Hodler') im Markdown -> '## (Unbekannt)' und '**SIKART-ID:** `—`' fuer jeden Treffer, heritage_cross_search ebenso '(Unbekannt)'; heritage_get_artist(artist_id='5000639' bzw. '4023584') -> ToolError 'API-Anfrage fehlgeschlagen (HTTP 409)'. Direkt: filters={\"HAUPTNR\":…} -> 409 'invalid value \"HAUPTNR\"', Positivkontrolle filters={\"ID\":5000639} -> 200, total 1. Kein eigener Fehlertyp, keine Meldung mit den vorhandenen Schluesseln.",
+        "tests/fixtures/PROVENANCE.md:3 + artists_1.json/artist_detail_1.json/cross_search_1.json — aufgezeichnet 2026-09-20 mit dem alten Schema (HAUPTNR, NAME, VORNAME, …); die Hand-Fixture tests/test_server.py:82-117 ebenso. pytest -m live -> 11 passed: Kein Test haelt die gelesenen Feldnamen gegen die echte Antwort.",
+        "src/swiss_cultural_heritage_mcp/server.py:2691-2693 — Memobase: members = data.get(\"hydra:member\", []) und total = data.get(\"hydra:totalItems\", len(members)) auf dem Wurzelpfad, genau das Fail-Pattern (das rg-Muster mit ':' im Schluessel trifft Zeile 2692; Kontrolle am synthetischen String -> 1).",
+        "src/swiss_cultural_heritage_mcp/server.py:1252-1254, :1153 — SRU-numberOfRecords mit Default '0' und findall('.//srw:record'), OAI findall('.//oai:record'): eine Namensraum- oder Strukturaenderung wird still zu 0 Treffern.",
+        "Positiv: src/swiss_cultural_heritage_mcp/server.py:670-714 UpstreamSchemaError + _ckan_result bestaetigen die CKAN-Wurzel und records/results, mit den vorhandenen Schluesseln in der Meldung; src/swiss_cultural_heritage_mcp/server.py:2736-2746 bestaetigt die Dodis-Wurzel; tests/test_response_shape.py:25-84 enthaelt Gegenproben gegen verschobene Huellen. Eine Bestaetigung der gelesenen Felder auf dem ersten Eintrag gibt es nirgends; rg '_normali[sz]e_keys|casefold\\(\\)|\\.lower\\(\\)\\s*:' -> 0 (Kontrolle am synthetischen String -> 1)."
+      ],
+      "gaps": [
+        "SIKART-Schemawechsel in Produktion: 17 von 22 gelesenen Feldern fehlen, Namen und IDs verschwinden still, und heritage_get_artist ist fuer jede ID unbrauchbar (Severity critical).",
+        "Die gelesenen Felder werden fuer keine Quelle auf dem ersten Eintrag bestaetigt (Severity high).",
+        "Memobase-Wurzelpfad mit stillem Default .get('hydra:member', []) (Severity high).",
+        "SRU/OAI: eine fehlende Struktur wird zu 0 Treffern statt zu einem UpstreamSchemaError (Severity medium).",
+        "Kein Test haelt Struktur und Feldnamen gegen die echte Antwort; die Fixtures tragen das alte Schema und bestaetigen den Irrtum dauerhaft (Severity high)."
+      ],
+      "evaluator_notes": "Der Belegfall dieses Checks liegt hier in Produktion vor: Unit-Tests und Live-Suite sind gruen, waehrend die SIKART-Werkzeuge keine Namen und keine IDs mehr liefern und der Einzelabruf fuer jede ID scheitert. Die Huellen-Bestaetigung (CKAN, Dodis) ist vorhanden und gut gemacht, die Feld-Ebene darunter fehlt. Wann SIKART das Schema wechselte, ist nicht gemessen; belegt ist das alte Schema am 2026-09-20 (Fixture) und das neue am 2026-11-08."
+    },
+    "FID-007": {
+      "status": "fail",
+      "category": "FID",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:2721-2747 — _search_dodis liefert als Gesamtzahl immer -1; src/swiss_cultural_heritage_mcp/server.py:2876-2885 known_total summiert nur Quellen mit total > 0; src/swiss_cultural_heritage_mcp/server.py:2911 total=known_total or None. Bei collection='all' ist `total` damit nur die Memobase-Zahl, ohne Kennzeichnung.",
+        "Live 2026-11-08: search_heritage(query='Volksschule', collection='all', JSON) -> total=56, has_more=true, meta={'per_source': {'memobase': 5, 'dodis': 5}, 'errors': {}}, ohne Hinweis, dass Dodis nicht mitgezaehlt ist. Direkt: Memobase hydra:totalItems 56, Dodis solr/query mit rows=100 -> 100 Treffer (Seite voll). Das Feld heisst 'Gesamtzahl upstream verfügbar' (src/swiss_cultural_heritage_mcp/server.py:568) und ist eine Untergrenze, die sich als Summe ausgibt (>=156 statt 56).",
+        "src/swiss_cultural_heritage_mcp/server.py:1659 res.get(\"count\", 0), src/swiss_cultural_heritage_mcp/server.py:1807 result.get(\"total\", 0), src/swiss_cultural_heritage_mcp/server.py:1252 int(numberOfRecords … or 0) — stille Null-Defaults auf Zaehlwerten der Quelle (das rg-Muster '\\.get\\([^)]*,\\s*0\\s*\\)' trifft :1659 und :1807).",
+        "Positiv: Datenzellen der Quellen werden nicht in Zahlen konvertiert. rg '\\b(int|float)\\(' in src/swiss_cultural_heritage_mcp/server.py trifft nur validierte Eingaben (:2623, :2625, Jahresmuster), Regex-Jahre (:2619), Retry-After (:811) und numberOfRecords (:1252); Datensaetze werden unveraendert durchgereicht (z. B. src/swiss_cultural_heritage_mcp/server.py:1441, :1823)."
+      ],
+      "gaps": [
+        "search_heritage mit collection='all': `total` schliesst Dodis still aus und ist nicht als Untergrenze gekennzeichnet; eine Richtung wird nicht angegeben (Severity high).",
+        "Stille 0-Defaults auf den Upstream-Zaehlern count/total/numberOfRecords statt eines Fehlers bzw. None (Severity medium).",
+        "Keine Gegenprobe und kein Test zur Kennzeichnung ausgenommener Anteile (Severity medium)."
+      ],
+      "evaluator_notes": "Die eigentliche Unterdrueckungsklasse (Marker wie '1 bis 5' in Zaehlspalten) trifft diesen Server nicht, weil er keine Datenzellen summiert. Die einzige Aggregation, die er bildet, zeigt aber genau das Anti-Pattern 'ausnehmen ohne kennzeichnen': eine zu tiefe Gesamtzahl, der man nichts ansieht. Deshalb fail statt pass."
+    },
+    "IDENT-001": {
+      "status": "pass",
+      "category": "IDENT",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:55-56 — USER_AGENT = f\"{__dist__}/{__version__}{_UA_REFERRER}\"; __version__ aus importlib.metadata (src/swiss_cultural_heritage_mcp/__init__.py:27), __dist__ = 'swiss-cultural-heritage-mcp' (src/swiss_cultural_heritage_mcp/__init__.py:24)",
+        "src/swiss_cultural_heritage_mcp/server.py:347-350 — einziger httpx.AsyncClient (_new_client) setzt headers={'User-Agent': USER_AGENT}; grep 'httpx\\.(Async)?Client\\(|AsyncClient\\(' findet nur diese Stelle; Pro-Request-Header (2688, 2727, 3123, 3137) setzen nur Accept",
+        "grep -rniE 'swiss[-_]?cultural[-_]?heritage[-_]?mcp/[0-9]+\\.[0-9]' src/ → exit 1 (kein Treffer); negative Kontrolle: dasselbe Muster trifft 'Swiss_Cultural-HeritageMCP/0.7.0' (exit 0)",
+        "Mehrzeilen-Kontrolle: in Kopie (scratch/nc_src) USER_AGENT als mehrzeiliges Literal 'SwissCulturalHeritageMCP/0.7.0' gesetzt → scripts/check_version_sync.py: 'HARDCODED: ... server.py:57' exit 1 (normalisierter Token-Vergleich, ganzes Modul)",
+        "Artefakt vom Index: frisches venv, pip install --no-cache-dir swiss-cultural-heritage-mcp==0.6.0 → server.USER_AGENT (Modul-Namespace) = 'swiss-cultural-heritage-mcp/0.6.0 (+https://github.com/malkreide/swiss-cultural-heritage-mcp)' und _new_client().headers['User-Agent'] identisch — passt zur installierten Version 0.6.0",
+        "Auf der Leitung (Checkout 0.7.0, httpx.MockTransport, Request mit eigenem Accept-Header): gesendeter User-Agent 'swiss-cultural-heritage-mcp/0.7.0 (+https://github.com/malkreide/swiss-cultural-heritage-mcp)'"
+      ],
+      "gaps": [
+        "info: published_probe.py (mcp-continuous-auditor) nicht verfuegbar; die drei Strategien (Quelltext-Literal normalisiert, Modul-Namespace, Client-Header/Leitung) wurden von Hand gefahren",
+        "info: 0.7.0 ist nicht publiziert; die Artefakt-Messung gilt fuer 0.6.0. Nach dem Publish am Index-Artefakt 0.7.0 wiederholen"
+      ],
+      "evaluator_notes": "Produkt-Token = Dist-Name (normalisiert gleich), kein fremder UA, ein Client. 0.6.0-Artefakt sendet die eigene Version."
+    },
+    "IDENT-002": {
+      "status": "partial",
+      "category": "IDENT",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/__init__.py:3,26-29 — __version__ = version('swiss-cultural-heritage-mcp'), except PackageNotFoundError → '0.0.0+local'; Versionsblock steht vor jedem Submodul-Import (__init__ importiert kein Submodul)",
+        "grep -rnE '__version__\\s*=\\s*\"[0-9]+\\.[0-9]' src/ → nur __init__.py:29 '0.0.0+local' (Fallback mit '+'); kein Literal sonst",
+        "grep -rnE '__version__\\s*==\\s*\"[0-9]+\\.[0-9]|==\\s*\"v?[0-9]+\\.[0-9]+\\.[0-9]+\"' tests/ → exit 1; negative Kontrolle 'assert __version__ == \"0.3.0\"' trifft (exit 0)",
+        "tests/test_server_identity.py:197-202 — vergleicht die gemeldete serverInfo.version (aus den installierten Metadaten) gegen pyproject.toml; Fehlermeldung nennt 'pip install -e \".[dev]\"' (Editable-Fall). Lauf: 33 passed (test_server_identity.py + TestPackageMetadata)",
+        "Invariante gegen server.json: scripts/check_version_sync.py vergleicht pyproject ↔ server.json (version, packages[*]); verstimmt in Kopie (packages[0]=0.6.0) → 'DRIFT ... server.json -> packages[0].version = 0.6.0' exit 1",
+        "Laufzeit: Audit-venv (editable) meldet __version__ 0.7.0 = pyproject 0.7.0; Index-Artefakt meldet 0.6.0 = installierte 0.6.0"
+      ],
+      "gaps": [
+        "low: kein Test, der __version__ direkt gegen server.json haelt; die Invariante liegt im Gate-Skript (pyproject ↔ server.json), nicht im Test",
+        "low: tests/test_server_identity.py wird ohne Installation nicht uebersprungen — im reinen Quell-Checkout faellt __version__ auf 0.0.0+local und der Test waere rot statt skip",
+        "tests/test_server.py:463-467 (TestPackageMetadata) prueft nur 'nicht leer' — wirkungslos, aber harmlos"
+      ],
+      "evaluator_notes": "Kern (Ableitung aus Metadaten, kein Literal in src/ und tests/) erfuellt. Aus diesem Check wird nichts ueber das publizierte Paket geschlossen (dafuer IDENT-001/006)."
+    },
+    "IDENT-003": {
+      "status": "partial",
+      "category": "IDENT",
+      "severity": "medium",
+      "evidence": [
+        "Modus 1 am HEAD-Export (git archive HEAD): server.json version = '0.7.0', packages[0].version = '0.7.0', pyproject '0.7.0' → beide OK; server.json hat genau einen Package-Eintrag",
+        "git show HEAD:.github/workflows/ci.yml — Schritt 'python scripts/check_version_sync.py' im test-Job (alle drei Python-Versionen); Skript ist reine Standardbibliothek; zusaetzlich .githooks/pre-commit. Lauf HEAD-Export: 'Versions-Sync OK (0.7.0; geprueft: server.json -> version, server.json -> packages[0].version, README.de.md -> Versions-Badge, README.md -> Versions-Badge, audits\\tool-pins\\current.json -> generated_for_version ...)' exit 0",
+        "Modus 2: git grep 'sed -i|jq |yq -i|GITHUB_REF_NAME|GITHUB_OUTPUT' .github/workflows/ → publish.yml:65-66 (VERSION=\"${GITHUB_REF_NAME#v}\"; jq '.version = $v | .packages[0].version = $v'), nightly-live.yml:41 (nur pytest_exit-Output). Dokumentiert in scripts/check_version_sync.py Docstring und CLAUDE.md",
+        "Modus 3a (geschriebener Wert zurueckgelesen): GET registry.modelcontextprotocol.io/v0/servers?search=swiss-cultural-heritage-mcp → isLatest-Eintrag version 0.6.0, packages[0].version 0.6.0 (publishedAt 2026-09-19T10:11); PyPI info.version 0.6.0 → Registry = Index",
+        "publish.yml:3-5 — Trigger nur 'release: types [published]', kein workflow_dispatch → GITHUB_REF_NAME ist stets der Release-Tag"
+      ],
+      "gaps": [
+        "low: Transformation schreibt nur .packages[0].version, nicht packages[*] — folgenlos, solange es einen Eintrag gibt (Zustand, keine Eigenschaft)",
+        "low: check_version_sync.py bricht nach der ersten Befundkategorie ab (sys.exit(1) nach DRIFT, vor Tool-Pin und src/-Pruefung); in Kopie mit Badge-Drift UND src-Literal meldete es nur das Badge",
+        "info: Modus 3b (jq lokal ausfuehren) nicht moeglich — jq nicht installiert; ersetzt durch 3a",
+        "info: keine Tag-Form-Pruefung im Workflow (ein Release-Tag ohne 'v' oder mit Suffix ginge ungeprueft durch)"
+      ],
+      "evaluator_notes": "Committete und publizierte Seite stimmen; einzig die packages[0]-Transformation erfuellt Kriterium 8 nicht."
+    },
+    "IDENT-004": {
+      "status": "pass",
+      "category": "IDENT",
+      "severity": "low",
+      "evidence": [
+        "Verification-Skript am HEAD-Export: README.de.md badges 1 → 'OK README.de.md: 0.7.0 (pyproject 0.7.0)'; README.md badges 1 → 'OK README.md: 0.7.0' (README.md aus HEAD, nicht aus dem veraenderten Arbeitsbaum)",
+        "scripts/check_version_sync.py:collect_declared prueft alle README*.md; laeuft in ci.yml im selben Schritt wie die server.json-Pruefung (IDENT-003)",
+        "Gegenprobe in Kopie (scratch/nc_badge): README.de.md-Badge auf 0.6.0 → 'DRIFT ... README.de.md -> Versions-Badge = 0.6.0' exit 1"
+      ],
+      "gaps": [
+        "low: Skript bricht beim ersten Befund ab — Kopie mit README.md-Badge 0.6.0 UND hartkodiertem UA-Literal in src/ meldete nur das Badge (exit 1), der src/-Befund blieb verdeckt (genau die Common Failure des Checks)"
+      ],
+      "evaluator_notes": "Alle vier Pass-Kriterien erfuellt; der Abbruch beim ersten Befund ist als Gap gefuehrt."
+    },
+    "IDENT-005": {
+      "status": "partial",
+      "category": "IDENT",
+      "severity": "medium",
+      "evidence": [
+        "grep -rn -A3 'except PackageNotFoundError' src/ → src/swiss_cultural_heritage_mcp/__init__.py:28-29 '__version__ = \"0.0.0+local\"' (lokales Segment nach '+'); src/swiss_cultural_heritage_mcp/server.py:221-222 svc_version-Fallback ebenfalls '0.0.0+local'",
+        "scripts/check_version_sync.py:find_hardcoded — Fallback-Erkennung strukturell ('if any(\"+\" not in v for v in values)'), nicht am konkreten String"
+      ],
+      "gaps": [
+        "low: Marker '0.0.0+local' weicht von der Portfolio-Konvention '0.0.0+source' ab (Kriterium 2); das Gate-Docstring nennt selbst '0.0.0+source'",
+        "low: Kommentar am Fallback ('# not installed (running from source tree)') erklaert nicht, warum kein plausibler Platzhalter gewaehlt wurde (Kriterium 3)"
+      ],
+      "evaluator_notes": "Kein Coverage-Gate (ci.yml ohne --cov) → pragma-Kriterium n/a. Form und strukturelle Erkennung korrekt, Einheitlichkeit und Begruendung fehlen."
+    },
+    "IDENT-006": {
+      "status": "partial",
+      "category": "IDENT",
+      "severity": "high",
+      "evidence": [
+        "GET https://pypi.org/pypi/swiss-cultural-heritage-mcp/json → info.version 0.6.0 (Upload 2026-09-19T10:11, nicht yanked); git ls-remote origin: refs/tags/v0.6.0 (→5feed72), kein v0.7.0-Tag; letzter Tag = Index-Version, kein Tag ohne Index-Release",
+        "git show HEAD:pyproject.toml version = '0.7.0' — gebumpt auf Branch claude/release-0.7.0 (HEAD 9b3a1b4, nicht auf origin), nicht getaggt: Release in Vorbereitung, keine Drift",
+        "git log v0.6.0..HEAD --no-merges → 17 Commits, darunter nutzerwirksame und aelter als 7 Tage: 2026-09-20 'Helveticat: marc21 statt oai_dc, und SRU fuer die Volltextsuche', 2026-09-20 'serverInfo.name traegt jetzt den Bezeichner des Portfolios (H3)', 2026-10-28 2x feat (Hooks, Dev-Tooling). Index-Artefakt 0.6.0 meldet tatsaechlich noch serverInfo.name 'swiss_cultural_heritage_mcp' (stdio-initialize am installierten 0.6.0)",
+        "git show HEAD:CHANGELOG.md:8-10 — '## [Unreleased]' leer, darunter '## [0.7.0] - 2026-11-08'",
+        "publish.yml:3-5 — Trigger 'release: published' (manueller Schritt: GitHub-Release erstellen)",
+        "grep -niE 'release|publish|tag|pypi' README.md README.de.md CONTRIBUTING.md CONTRIBUTING.de.md docs/roadmap.md (HEAD) → kein beschriebener Release-Prozess"
+      ],
+      "gaps": [
+        "high: nutzerwirksame Aenderungen (Helveticat-Fix, serverInfo.name) liegen seit 2026-09-20 (49 Tage) unveroeffentlicht; PyPI liefert sie nicht aus. Wird durch das Release 0.7.0 geschlossen — nach dem Publish am Index erneut messen",
+        "medium: Release-Prozess inkl. manuellem Schritt (GitHub-Release erstellen loest publish.yml aus) weder in README noch CONTRIBUTING dokumentiert"
+      ],
+      "evaluator_notes": "Kein fehlgeschlagener Publish, kein Tag ohne Index-Release, [Unreleased] leer. Der Gap ist der Abstand, den 0.7.0 schliessen soll — 'noch nicht released' ist hier korrekt der Zustand vor dem Release, nicht Versions-Drift. shipped_probe.py nicht verfuegbar, von Hand gemessen. IDENT-007 separat beantwortet."
+    },
+    "IDENT-007": {
+      "status": "partial",
+      "category": "IDENT",
+      "severity": "high",
+      "evidence": [
+        "Leeres venv (Python 3.14, scratch/verify060), pip install --no-cache-dir --isolated 'swiss-cultural-heritage-mcp==0.6.0' → exit 0; import: 'import ok 0.6.0 ...\\verify060\\Lib\\site-packages\\swiss_cultural_heritage_mcp\\__init__.py' (aus dem Index, nicht aus dem Checkout)",
+        "Aufgeloest (pip freeze): mcp==2.3.0, mcp-types==2.3.0, httpx==0.28.1, httpx2==2.16.0, pydantic==2.14.3, pydantic-settings==2.16.2, defusedxml==0.7.1, structlog==26.1.0",
+        "Entry Point verify060/Scripts/swiss-cultural-heritage-mcp.exe ueber stdio: initialize → protocolVersion 2025-11-25, serverInfo version 0.6.0; tools/list → 11 Tools",
+        "tools/call list_heritage_collections → isError=False, 1672 Zeichen; tools/call heritage_search_artists {query:'Hodler',limit:2} (echter Upstream-GET) → isError=False, 578 Zeichen, 'Gefunden: 25 Eintraege (zeige 2)'",
+        "PyPI-JSON: 0.6.0 yanked=False",
+        "grep -l 'schedule:' .github/workflows/*.yml → nur nightly-live.yml; dieser installiert den Checkout (pip install -e \".[dev]\", Zeile 32), nicht das publizierte Paket"
+      ],
+      "gaps": [
+        "medium: kein wiederkehrender Lauf im Repo, der das publizierte Artefakt installiert und startet (ob der externe mcp-continuous-auditor es tut, ist hier nicht pruefbar) — die Messung ist ein Zeitpunkt (2026-11-08 ~11:55 UTC)",
+        "medium (Datentreue, nicht Startfaehigkeit): Antwort von heritage_search_artists am 0.6.0-Artefakt rendert den Namen als '## (Unbekannt)' — Live-Schema ohne NAME/HAUPTNR/SIKART_LINK; HEAD 0.7.0 liest dieselben Felder (server.py:1317, 1473, 1527)",
+        "info: 0.7.0 ist nicht auf dem Index; nach dem Publish Modus 2 gegen 0.7.0 wiederholen"
+      ],
+      "evaluator_notes": "Das publizierte Artefakt installiert, importiert, startet und liefert. shipped_probe.py nicht verfuegbar, Modus 2 von Hand. Laeufe mit dem Konsolen-Skript (Kommandozeile ohne 'swiss_cultural_heritage_mcp.server') und vollstaendiger Ausgabe — vom parallelen Prozess-Kill nicht betroffen."
+    },
+    "OBS-001": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:951-961 — _raise_tool_error wirft ToolError(_handle_error(e)); src/swiss_cultural_heritage_mcp/server.py:922-948 handlungsorientierte Meldungen je Fehlerart; Tools fangen ExpectedUpstreamError (src/swiss_cultural_heritage_mcp/server.py:661-667) und melden ueber diesen Pfad",
+        "src/swiss_cultural_heritage_mcp/server.py:506-537 — mask_unexpected_errors: ToolError durchgereicht, alle anderen Exceptions → generische ToolError",
+        "Laufzeit beide Aeren (ASGI, probe_errors.py validation): ungueltiges Argument limit=9999 → MODERN 2026-07-28 und LEGACY (negotiated 2025-11-25) je http 200, result.isError=true, Text 'params.limit Input should be less than or equal to 100'; ebenso response_format='xml' (nennt 'markdown' oder 'json') und Extra-Feld → Validierung ueber den Execution-Pfad, Feld und Wertebereich benannt",
+        "Laufzeit beide Aeren: Upstream ConnectError → isError=true 'Fehler: Netzwerkfehler (ConnectError): '; HTTP 503 → isError=true 'Dienst voruebergehend nicht verfuegbar' (probe_cross2.py)",
+        "Laufzeit beide Aeren + stdio: unbekanntes Tool 'gibt_es_nicht' → result {content:'Unknown tool: gibt_es_nicht', isError:true}, KEIN JSON-RPC-Error (SDK-Verhalten mcp 2.3.0; Server ueberschreibt nichts)",
+        "grep -rnE -- '-320[0-9]{2}|McpError|ErrorData|JSONRPCError' src/ → exit 1: keine eigenen Codes, also keine im reservierten Bereich -32020…-32099",
+        "tests/test_server.py:1421-1458 TestErrorIsFlagged — Execution-Error-Pfad ueber echten Client (503 → is_error True; leeres Ergebnis → False)",
+        "Laufzeit heritage_cross_search, alle Quellen ConnectError bzw. 503 (httpx.MockTransport): is_error=False, results[*].error = '' bzw. httpx-Rohtext; search_heritage im selben Fall dagegen isError=true 'Alle angefragten Quellen sind derzeit nicht erreichbar' ({SV}:2904-2905)"
+      ],
+      "gaps": [
+        "high: heritage_cross_search meldet den Totalausfall aller Quellen als normales Ergebnis (isError=false, count 0, error-Felder leer bei ConnectError) — anders als search_heritage",
+        "medium: unbekanntes Tool kommt als Execution-Error (isError) statt als Protocol-Error (JSON-RPC -32602) zurueck, auf beiden Aeren — die Spec 2025-11-25 fuehrt 'unknown tools' als Protocol Error; Ursache im SDK, im Server nicht abgefangen",
+        "medium: kein Test fuer den Protocol-Error-Pfad (falsches Tool) und kein Test, der ein ungueltiges Argument ueber den Protokollpfad als Execution-Error belegt (tests/test_server.py:699 prueft nur das Pydantic-Modell direkt)"
+      ],
+      "evaluator_notes": "Validierungs- und Upstream-Fehler laufen auf beiden Protokollstaenden korrekt als isError. Abzug: cross_search-Totalausfall, SDK-Mapping des unbekannten Tools, fehlende Protokoll-Tests. Laeufe in-process (ASGI) bzw. via Konsolen-Skript, ausserhalb des Kill-Musters."
+    },
+    "OBS-002": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:478-537 — mask_unexpected_errors (Aequivalent zu mask_error_details; MCPServer kennt das Flag nicht): unerwartete Exception → bound.error('tool.unexpected_error', error_type=..., exc_info=True) ins Log, an den Client 'Interner Fehler bei der Tool-Ausfuehrung. Details wurden serverseitig protokolliert.' (from None); alle 11 Tools dekoriert",
+        "Laufzeit beide Aeren (probe_errors.py unexpected, RuntimeError('SECRET-INTERNAL /etc/app/config.toml token=abc123')): MODERN und LEGACY → isError=true, Text nur 'Error executing tool heritage_search_artists: Interner Fehler ...' — kein Secret, kein Pfad; stderr-JSON enthaelt den vollen Traceback (event tool.unexpected_error)",
+        "grep -rnE 'traceback|format_exc|sys\\.exc_info' src/ → nur structlog format_exc_info-Prozessor im Logging ({SV}:171), nichts in Tool-Returns",
+        "src/swiss_cultural_heritage_mcp/server.py:922-948 — Execution-Errors mit kuratierten deutschen Meldungen (404/429/503/Timeout/XML)",
+        "Laufzeit heritage_cross_search mit HTTP 503 (MockTransport): results[*].error = \"Server error '503 Service Unavailable' for url 'https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=ef3a9fd2-...&q=Hodler&limit=5'\\nFor more information check: https://developer.mozilla.org/...\" — roher httpx-Text ins Tool-Ergebnis ({SV}:2411, 2434, 2464: 'error': str(e))",
+        "stderr des HTTP-Laufs: SDK-Logging (rich, INFO) protokolliert httpx-Requests mit voller URL ('HTTP Request: GET https://...') — Query-Strings mit Suchbegriffen landen im Log"
+      ],
+      "gaps": [
+        "medium: heritage_cross_search reicht str(e) ungefiltert ans Modell durch (interne Upstream-URL samt resource_id und Query, httpx-Hilfetext) — Kriterium 3 an dieser Stelle nicht erfuellt",
+        "low: ValueError-Unterklassen (UpstreamSchemaError listet Upstream-Schluessel, Allow-List-Host) und jede ValueError aus Parsing-Code gehen als 'Fehler: {e}' an den Client ({SV}:945) — kein Stacktrace, aber unkuratierter Text",
+        "low: httpx-INFO-Logs enthalten Suchbegriffe aus Query-Strings (Nutzereingaben) — widerspricht dem Docstring 'keine Payloads/PII' ({SV}:156-160); keine Tokens, auth_model none"
+      ],
+      "evaluator_notes": "Kern erfuellt und zur Laufzeit belegt: keine Stacktraces/Secrets ans LLM, Original nur im Log. Teilweise wegen des rohen httpx-Texts in cross_search. Alter Lauf (v0.5) blockierte hier — heute behoben, unabhaengig nachgemessen."
+    },
+    "OBS-003": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml:48 — 'structlog>=24.1.0,<27.0.0' in dependencies",
+        "src/swiss_cultural_heritage_mcp/server.py:155-181 — structlog.configure mit merge_contextvars, add_log_level, TimeStamper(iso, utc), format_exc_info, JSONRenderer, WriteLoggerFactory(file=sys.stderr); Level via MCP_LOG_LEVEL",
+        "Laufzeit stderr: {\"tool\": \"heritage_search_artists\", \"event\": \"tool.call\", \"level\": \"info\", ...}, {\"error_kind\": \"ConnectError\", \"status\": null, \"event\": \"upstream.error\", \"level\": \"warning\", ...}, {\"event\": \"tool.unexpected_error\", \"level\": \"error\", ...} — JSON, Felder statt f-Strings",
+        "grep -rnoE 'log\\.(debug|info|warning|error|exception|critical)|bound\\.(...)' src/ | uniq -c → info 2, warning 3, error 1; kein debug-Aufruf",
+        "src/swiss_cultural_heritage_mcp/server.py:491-502 _request_log_context — will request_id via mcp.get_context() setzen; Laufzeit: in KEINEM Log-Event (ASGI beide Aeren, In-Process-Client) erscheint request_id. Ursache: MCPServer (mcp 2.3.0) hat kein get_context ('AttributeError: type object MCPServer has no attribute get_context'), der Fehler wird von 'except Exception: pass' verschluckt",
+        "Laufzeit stderr: SDK/httpx/uvicorn-Logs kommen im selben Strom als mehrzeiliger rich-Klartext ('[11/08/26 12:46:22] INFO StreamableHTTP session manager started ...'), nicht JSON",
+        "grep -rnE '\\bprint\\(' src/ → exit 1 (negative Kontrolle 'print(\"x\")' trifft)"
+      ],
+      "gaps": [
+        "medium: Korrelations-ID fehlt zur Laufzeit — request_id wird nie gebunden (toter Code nach SDK-Migration), session_id gar nicht; nur der Tool-Name ist pro Aufruf gebunden",
+        "low: nur 3 von 4 geforderten Stufen genutzt (kein debug)",
+        "low: gemischter stderr-Strom — SDK-/Bibliotheks-Logs als Klartext (rich), nicht JSON; Aggregation braucht weiterhin Regex"
+      ],
+      "evaluator_notes": "Strukturierung und Ausgabeformat korrekt; der beworbene Request-Kontext existiert zur Laufzeit nicht (tests/test_server.py:1332 deckt nur den Fall 'kein aktiver Request' ab und bleibt deshalb gruen)."
+    },
+    "OBS-004": {
+      "status": "pass",
+      "category": "OBS",
+      "severity": "critical",
+      "evidence": [
+        "grep -rnE '\\bprint\\(' src/ --include='*.py' → exit 1; negative Kontrolle mit 'print(\"x\")' → Treffer",
+        "src/swiss_cultural_heritage_mcp/server.py:155,174 — _configure_logging(stream=sys.stderr) und structlog.WriteLoggerFactory(file=stream); grep 'StreamHandler|sys\\.stdout|basicConfig' src/ → kein stdout-Bezug",
+        "Laufzeit stdio (Konsolen-Skript, 2026-11-08T11:58Z, wiederholt nach Kill-Hinweis): stdin leerlaufend 6 s → exit 124, stdout 0 Bytes; mit OTEL-Endpoint → exit 124, stdout 0 Bytes, stderr '{\"event\": \"otel.unavailable\", \"level\": \"warning\", ...}' (Log geht nach stderr, nicht stdout)",
+        "Laufzeit stdio-Session (stdio_session2.py): initialize, notifications/initialized, tools/call mit ungueltigem Argument, tools/call unbekanntes Tool → jede stdout-Zeile parst als JSON-RPC (R1, R3 isError, R4 isError); SDK-Logs ('Tool ... rejected arguments') erscheinen ausschliesslich auf stderr",
+        "Dual-Transport: dieselbe _configure_logging-Konfiguration beim Import, kein transportabhaengiger Logging-Switch ({SV}:179, 3589-3607)"
+      ],
+      "gaps": [
+        "low: stdlib-Logging (build_http_app-Warnung, httpx) wird nicht vom Server explizit auf stderr gelegt, sondern vom SDK-Handler — zur Laufzeit stderr beobachtet, aber fremd konfiguriert",
+        "low: im HTTP-Modus schreibt uvicorns Access-Log per Default auf stdout (dort kein Protokollkanal, daher unschaedlich)",
+        "info: kein CI-Guard gegen print() in src/; MCP Inspector nicht verwendet, ersetzt durch rohe stdio-Session"
+      ],
+      "evaluator_notes": "Nebenbeobachtung (nicht bewertet): eine erste stdio-Session, die initialized und zwei tools/call ohne Warten pipelinte und nach 5 s stdin schloss, bekam die Antworten auf die beiden Calls nicht auf stdout, obwohl stderr sie als bearbeitet loggte (Konsolen-Skript, nicht vom Kill-Muster erfasst). Mit Request/Response-Takt kamen alle Antworten. Moeglicher Verlust ausstehender Antworten bei stdin-EOF — separat pruefen."
+    },
+    "OBS-006": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:191-241 — _init_tracing: gated ueber OTEL_EXPORTER_OTLP_ENDPOINT; TracerProvider mit Resource service.name 'swiss-cultural-heritage-mcp', service.version, deployment.environment (DEPLOYMENT_ENV, Default 'production'); BatchSpanProcessor(OTLPSpanExporter) (HTTP); HTTPXClientInstrumentor().instrument() → Upstream-Calls als Child-Spans",
+        "src/swiss_cultural_heritage_mcp/server.py:245-253, 515-535 — Span 'mcp.tool.<name>' je Tool-Call mit Attributen mcp.tool.name, mcp.tool.is_error, error.type; keine Argumente/PII als Attribut (grep set_attribute → nur diese drei)",
+        "git show HEAD:Dockerfile:30 — 'pip install --no-cache-dir --prefix=/install .' (ohne [otel]); Laufzeit mit gesetztem Endpoint ohne Extra → stderr '{\"event\": \"otel.unavailable\", \"reason\": \"opentelemetry nicht installiert ...\"}' — im ausgelieferten Container/Render-Image ist Tracing nicht aktivierbar",
+        "grep -rnE 'traceparent|tracestate|baggage|propagat|extract\\(' src/ → exit 1: kein Uebernehmen/Weiterreichen des Trace-Kontexts aus _meta (SEP-414, 2026-07-28)",
+        "ci.yml installiert nur '.[dev]'; tests/test_server.py::TestTracing lokal: '1 passed, 2 skipped' (OTel nicht installiert) — die Span-Tests laufen auch in der CI nicht"
+      ],
+      "gaps": [
+        "medium: Trace-Kontext aus _meta (traceparent/tracestate/baggage) wird weder uebernommen noch weitergegeben — jede Anfrage beginnt einen neuen Trace (2026-07-28-Kriterien)",
+        "medium: Docker-Image (Render-Deployment) enthaelt das otel-Extra nicht; Tracing ist im Cloud-Deployment ohne Umbau des Images nicht einschaltbar",
+        "medium: Span-Tests werden in CI uebersprungen (otel nicht in [dev]) — die Instrumentierung ist ungeprueft",
+        "low: Attributname mcp.tool.is_error statt mcp.tool.result.is_error; mcp.user.id entfaellt (auth_model none)"
+      ],
+      "evaluator_notes": "applies_when is_cloud_deployed: Render/Docker-Profil → anwendbar. Code-Grundlage solide, aber im Deployment nicht wirksam und nicht getestet; Propagation nach SEP-414 fehlt."
+    },
+    "OBS-007": {
+      "status": "fail",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:888-920 — _fetch_with_retry reicht die Original-Exception durch ('raise last_error', Kommentar 913-917) und loggt upstream_unreachable mit attempts, limit, error_type (Pass-Muster) — aber ohne Ziel/Host",
+        "src/swiss_cultural_heritage_mcp/server.py:922-930 — _handle_error loggt upstream.error mit error_kind und status, ohne Ziel/Host; Laufzeit: '{\"error_kind\": \"ConnectError\", \"status\": null, \"event\": \"upstream.error\", \"tool\": \"heritage_search_artists\", ...}' — welcher Endpunkt, steht nirgends",
+        "Laufzeit heritage_cross_search mit ConnectError('') auf allen Quellen (httpx.MockTransport): einziges Log-Event ist tool.call — KEIN Fehler-Log, kein Typ; im Ergebnis 'error': '' je Quelle ({SV}:2407-2412, 2430-2435, 2460-2465)",
+        "grep -rnE 'f\".*\\{(exc|e|err|error|last_error)...\\}' src/ → src/swiss_cultural_heritage_mcp/server.py:945, 947, 948, 2870; grep 'str\\((exc|e|...)\\)' → src/swiss_cultural_heritage_mcp/server.py:2411, 2434, 2464 (negative Kontrolle 'f\"Fehler: {e}\"' trifft). Laufzeit 947: 'Fehler: Netzwerkfehler (ConnectError): ' — endet auf ': '",
+        "grep -rnE 'ConnectTimeout\\(\"\"\\)|ConnectError\\(\"\"\\)|upstream_unreachable' tests/ → keine Treffer: kein Test fuer den Fall str(exc) == ''"
+      ],
+      "gaps": [
+        "medium: heritage_cross_search verschluckt Upstream-Fehler ohne jedes Log (Typ, Ziel, Versuche fehlen) und liefert bei Netzfehlern ein leeres error-Feld",
+        "medium: kein Log-Event nennt das Ziel (Host/Endpoint/Datensatz) — bei fuenf Quellen ist die Stoerung nicht zuordenbar",
+        "low: Meldungen mit '{e}' ohne Fallback fuer leeres str() (947 endet auf ': ')",
+        "medium: kein Test, der den Meldungsinhalt fuer str(exc) == '' festhaelt"
+      ],
+      "evaluator_notes": "Der Retry-Pfad ist vorbildlich (Durchreichen, Typ, Versuche), deckt aber nur Memobase/Dodis/get_heritage_item. Die Einzelquellen-Tools loggen den Typ ohne Ziel, die foederierte Suche gar nichts. Weniger als die Haelfte der Kriterien erfuellt."
+    },
+    "OBS-008": {
+      "status": "fail",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "Laufzeit 2026-11-08T11:58Z (wiederholt nach dem Kill-Hinweis, Konsolen-Skript swiss-cultural-heritage-mcp.exe): stdin leerlaufend, timeout 6 → exit 124 (Server lief), stderr 0 Bytes, stdout 0 Bytes; stdin=/dev/null → exit 0 (EOF beendet sauber), stderr 0 Bytes. Erstlauf 11:45Z mit 'python -m ...server' identisch",
+        "Negative Kontrolle, selber Aufbau: OTEL_EXPORTER_OTLP_ENDPOINT gesetzt → exit 124, stderr '{\"reason\": \"opentelemetry nicht installiert ...\", \"event\": \"otel.unavailable\", \"level\": \"warning\", ...}' — der Aufbau laesst Server-stderr durch; das Schweigen ist ein Ergebnis",
+        "src/swiss_cultural_heritage_mcp/server.py:360-370 — lifespan erzeugt den HTTP-Client und yieldet ohne jede Log-Zeile; kein READY-Marker im Modul",
+        "git show HEAD:README.md / README.de.md | grep -niE 'marker|bereitschaft|ready' → keine Treffer (Kontrolle 'Bereitschaftsmarker: server ready' trifft)"
+      ],
+      "gaps": [
+        "medium: kein Bereitschaftsmarker auf stderr — von aussen nicht von einem beim Start gestorbenen Prozess unterscheidbar",
+        "medium: kein dokumentierter Marker im README, kein Test"
+      ],
+      "evaluator_notes": "adoption: advisory laut Frontmatter. Bei geschlossenem stdin beendet sich der Server sofort sauber (exit 0) — deshalb zusaetzlich mit leerlaufendem stdin gemessen."
+    },
+    "OPS-001": {
+      "status": "partial",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "pyproject.toml:88 — Marker registriert: 'live: live API tests (skipped in CI by default)'; tests/test_server.py:1956-2081 — 11 Tests mit @pytest.mark.live (Klassen-Decorator)",
+        "grep -rc respx tests/*.py — respx in test_server.py (131), test_helveticat_zugaenge.py (35), test_response_shape.py (10), test_recorded_fixtures.py (5); Mocks gegen die importierten Konstanten",
+        ".github/workflows/ci.yml:28-29 'PYTHONPATH=src pytest tests/ -m \"not live\"'; CI-Lauf 41281505123 (2026-11-01): '413 passed, 2 skipped, 11 deselected' auf 3.11 und 3.13",
+        ".github/workflows/nightly-live.yml:10-13, :22 — eigener Live-Workflow (cron täglich, workflow_dispatch), timeout-minutes: 10",
+        "Kein Live-Test für heritage_get_artist, heritage_browse_collection und heritage_cross_search (Zählung der await-Aufrufe in tests/test_server.py:1953-2081: jeweils 0); list_heritage_collections ist statisch",
+        "tests/conftest.py:14-20 — der Client wird nach jedem Test geschlossen, auch für Live-Tests (kein Pool-Leck, aber kein geteilter Client); die Live-Suite läuft mit den Prod-Timeouts http_timeout=30.0, retry_total_budget=25.0 (server.py:94-111), ohne engere Test-Werte"
+      ],
+      "gaps": [
+        "3 von 10 Werkzeugen mit externem Abruf haben keinen Live-Test: heritage_get_artist, heritage_browse_collection, heritage_cross_search (medium)",
+        "Mindestens 5 Unit-Tests pro Tool nicht durchgehend: direkte Aufrufe in Tests z. B. heritage_browse_collection 2, heritage_list_nb_collections 2, heritage_get_artist 3 (parametrisierte Aufrufe in test_recorded_fixtures.py nicht mitgezählt) (low)",
+        "Die Live-Suite teilt keinen Client und nutzt Prod-Timeouts; bei 11 Tests begrenzt timeout-minutes: 10 den Schaden (low)",
+        "Datei-Layout weicht ab (kein tests/test_unit.py/test_live.py, Live-Tests in test_server.py); funktional gleichwertig (low)"
+      ],
+      "evaluator_notes": "Die Struktur (Marker, respx, CI-Ausschluss, geplanter Live-Workflow mit Obergrenze) steht. Abzüge: Live-Abdeckung je Tool und die Kostendisziplin der Live-Suite. Test-Credentials entfallen (auth_model none)."
+    },
+    "OPS-002": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "medium",
+      "evidence": [
+        "git show HEAD:README.md:40-42 — zwei konkrete Anchor-Demo-Queries in natürlicher Sprache, eine mit dem fertigen Aufruf search_heritage(query=\"Volksschule Zürich\", collection=\"all\", date_from=\"1800\", date_to=\"1899\")",
+        "git show HEAD:README.md — Pflichtabschnitte vorhanden: Installation :71 (Clone und uvx) plus der generierte uvx-Block :423, Configuration :112, Available Tools :163, Architecture mit ASCII-Box-Diagramm :214-230, Safety & Limits :287 (Read-only, keine PII, keine Auth) mit Verweis auf SECURITY.md :390, Known Limitations :298 (4 Einträge), License :397, Contributing :384",
+        "grep -c '^## ' — README.md 20, README.de.md 19; die DE-Fassung hat jeden Abschnitt in Übersetzung (Übersicht…Credits); der Unterschied ist allein der generierte Block 'BEGIN GENERATED: install', der in DE fehlt (DE führt uvx in Installation :85-88)",
+        "CHANGELOG.md:8-884 — Keep-a-Changelog mit datierten Versionen 0.1.0-0.7.0 und Abschnitten Added/Changed/Removed/Fixed; CONTRIBUTING.md und CONTRIBUTING.de.md vorhanden",
+        "docs/security.md:75-77 — Lethal-Trifecta-Bewertung (SEC-019); im README nur indirekt über SECURITY.md/docs verlinkt"
+      ],
+      "gaps": [
+        "Die Trifecta-Bewertung steht nicht im README selbst, nur in docs/security.md (low)",
+        "README.de.md fehlt der generierte uvx-Installationsblock; der Inhalt ist anderweitig abgedeckt (low)"
+      ],
+      "evaluator_notes": "Alle 8 Pflichtabschnitte, Anchor-Demo, ASCII-Diagramm, Limits (4), CHANGELOG-Format und zweisprachiges CONTRIBUTING vorhanden. Die inhaltlichen Widersprüche im README (/sse, nur GET) sind unter DRIFT-006 erfasst, nicht hier."
+    },
+    "OPS-003": {
+      "status": "partial",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "git show HEAD:README.md:60 und README.de.md:61 — 'Project phase: Phase 1 — read-only. Every tool is annotated readOnlyHint: true'",
+        "Laufzeit scratchpad/probe/annot.py (mcp.list_tools()): alle 11 Tools mit read_only_hint=True, destructive_hint=False; grep '\"destructiveHint\": (True|False)' in server.py: 11x False, 0x True (das Muster schlägt an einer Testzeile '\"destructiveHint\": True' an: 1 Treffer)",
+        "docs/roadmap.md:1-40 — Roadmap mit Phase-1-Scope und Checkliste für 1 -> 2 (Audit ohne offene critical/high, ISDS, revDSG-Verzeichnis, Idempotenz, HITL, Trifecta-Neubewertung); Übergänge im CHANGELOG (CHANGELOG.md:765, :834)",
+        "docs/roadmap.md:14 und :24 — 'Phase 2 — write-capable', 'Phase 3 — multi-agent / semantic layer'. Das kehrt das Katalogmodell um (Phase 2 = Anreicherung/Semantic Layer ohne Write, Phase 3 = Write); das Roadmap-Gate erlaubt Schreibzugriff vor Semantic Layer und Identity Resolution"
+      ],
+      "gaps": [
+        "Die Phasenreihenfolge in docs/roadmap.md weicht vom Katalog ab: Write (Phase 2) vor Semantic Layer (Phase 3); die Voraussetzungen Semantic Layer, Identity Resolution sowie GL- und DSB-Sign-off hängen am falschen Übergang (medium)",
+        "docs/roadmap.md:7 begründet Phase 1 mit 'only HTTP GET', die Dodis-Suche nutzt POST (low, siehe DRIFT-006)"
+      ],
+      "evaluator_notes": "Die Phase ist deklariert und durch die Laufzeit-Annotationen gedeckt, eine Roadmap mit Gates gibt es. Abzug für das abweichende Phasenmodell. Folgen hat es derzeit keine (keine Write-Tools), es lenkt aber die nächste Erweiterung."
+    },
+    "OPS-004": {
+      "status": "todo",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "ls audits/2026-11-08T113934-Z-swiss-cultural-heritage-mcp-spec-2026-07-28/ — applicability.json, audit-meta.json, findings, profile.yaml, raw; noch kein audit-report.md. Gegenstand dieses Checks ist der Report dieses Laufs, und der entsteht erst nach Schritt 4"
+      ],
+      "gaps": [
+        "Beim Report-Schritt prüfen: Abschnitte Gemessen/Geschlossen/Offen, keine Vermutungssprache ausserhalb davon, not_verified sauber ausgewiesen"
+      ],
+      "evaluator_notes": "Nicht mit einem Urteil belegbar, weil das Prüfobjekt noch nicht existiert. Zur Orientierung, kein Urteil: der letzte committete Report audits/2026-06-02T041532-Z-swiss-cultural-heritage-mcp/audit-report.md (Katalog v0.5, älter als OPS-004) hat keinen der drei Abschnitte (grep '^#+.*(Gemessen|Geschlossen|Offen|Measured|Inferred)' ohne Treffer; das Muster schlägt an '### Gemessen' an) und trägt 'likely >2s' im Befundteil (:771). Für den Orchestrator: Report und raw-Dateien dieses Laufs tragen die Trennung bereits je Finding (evidence / gaps / evaluator_notes)."
+    },
+    "OPS-005": {
+      "status": "partial",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        ".github/workflows/ci.yml:3-7, :28-29 — committeter Workflow, ausgelöst durch push und pull_request auf main, fährt pytest; Lauf 41281505123 (2026-11-01) grün auf 3.11, 3.12 und 3.13",
+        ".github/workflows/nightly-live.yml:36 continue-on-error mit sichtbarer Folge: :54-64 Einordnung clear/finding/unknown, :116-124 exit 1 bei != clear; die Pipe in :38-41 wird über set +e und ${PIPESTATUS[0]} ausgewertet. Mutationsprobe der Einordnung (scratchpad/probe/mutate_classify.py): 5 von 5 Mutationen (alle übersprungen -> clear, 0 Tests -> clear, fehlender Report -> clear, errors ignoriert, Zeilenumbruch nicht geglättet) machen je einen Test rot",
+        "CI-Log 41281505123 — '413 passed, 2 skipped': tests/test_server.py::TestTracing::test_tool_span_records_name_and_is_error und ::test_init_tracing_instruments_httpx; Grund ist pytest.importorskip('opentelemetry.sdk') (test_server.py:1353, :1394), das Extra 'otel' (pyproject.toml:66-69) installiert die CI nicht",
+        "ruff 0.16.9 (Pin) über die Kopie aus git archive HEAD: 'ruff format --check --line-length 88 scripts/' -> 2 Dateien würden umformatiert (scripts/check_version_sync.py:139, scripts/record_fixtures.py:157); bei 100, 110 und 120 formatgerecht. Kein Workflow-Schritt prüft die kopierte Datei gegen andere Breiten",
+        "ci.yml:43, :46 — ruff check/format über src/ tests/ scripts/ (alle Code-Verzeichnisse ausser audits/, das eine historische gen_findings.py enthält); kein auskommentiertes Gate (grep '#.*(ruff|mypy|pytest).*(deaktiviert|disabled|TODO|vorerst|ausstehend)' rc=1)"
+      ],
+      "gaps": [
+        "2 Tests werden in der CI wegen einer fehlenden, installierbaren Abhängigkeit (otel-Extra) übersprungen (medium)",
+        "scripts/check_version_sync.py, das portfolioweit kopierte Prüfskript, ist bei line-length 88 nicht formatgerecht, und kein Pipeline-Schritt erzwingt die Formatstabilität über die Breiten (medium)",
+        "publish.yml:69-71 'curl -L … | tar xz' ohne pipefail und ohne curl -f; ein HTTP-Fehler wird nur indirekt über tar sichtbar (low)"
+      ],
+      "evaluator_notes": "Tests laufen, und continue-on-error ist vorbildlich aufgelöst (geprüft per Mutation). Abzüge: Abhängigkeits-Skips und der Geltungsbereich des kopierten Skripts (fünfte Ausprägung des Checks). Advisory."
+    },
+    "OPS-006": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "pyproject.toml:57-62 — 'ruff==0.16.9' exakt gepinnt im dev-Extra, mit Begründung im Kommentar; ci.yml:24-25 installiert über pip install -e \".[dev]\"; ci.yml:32-38 begründet, warum kein zweiter Pin; keine .pre-commit-config.yaml, also nur ein Pin-Ort",
+        "python scripts/check_ruff_pin.py in der Kopie mit globalem ruff 0.16.4 zuerst im PATH -> 'ruff-Version weicht ab. Gepinnt ist 0.16.9 … meldet 0.16.4', exit=1; mit dem venv-ruff zuerst im PATH -> 'Ruff-Pin OK (0.16.9; geprueft: 2 Aufrufweg(e))', exit=0 — das Gate ist in beide Richtungen belegt",
+        "ci.yml:39-46 — das Urteil kommt aus dem Exit-Code von ruff check und ruff format --check, nicht aus dem Ausgabetext; tests/test_ruff_pin_doku.py hält ruff==-Angaben in Markdown gegen den Pin",
+        "git log -S'ruff==' -- pyproject.toml — Pinwechsel als eigener Commit (0268096 'build: ruff-Pin nach pyproject.toml ziehen'); Bumps kommen über Dependabot-PRs"
+      ],
+      "gaps": [],
+      "evaluator_notes": "Ein Pin, CI zieht ihn, ein Gate prüft PATH- und Modul-ruff gegen ihn, beide Richtungen am 2026-11-08 lokal belegt. Lokal liegt ein abweichendes ruff 0.16.4 im PATH (C:\\Program Files\\Python314\\Scripts), genau der Fall, den das Gate fängt; die eigenen lokalen Nachweise stammen deshalb aus dem venv-ruff 0.16.9."
+    },
+    "OPS-007": {
+      "status": "partial",
+      "category": "OPS",
+      "severity": "medium",
+      "evidence": [
+        "git show HEAD:README.md:116, :143-144 und README.de.md:117, :144-145 — Plattformzusage macOS und Windows (Claude-Desktop-Konfigurationspfade); CI nur ubuntu-latest (.github/workflows/*.yml); pyproject.toml:24-32 classifiers ohne 'Operating System'. Die Plattformen stehen an keiner Stelle gesammelt",
+        "git show HEAD:README.md:311, README.de.md:312, CONTRIBUTING.md:25, :50, CONTRIBUTING.de.md:27, :53 — dokumentierte Befehle mit POSIX-Präfix 'PYTHONPATH=src pytest …' bzw. 'PYTHONPATH=src python scripts/pin_tools.py', ohne Plattformzuordnung (der Muster-Grep schlägt an 'pip install x && y' an: 1)",
+        "pwsh 7.6.9: 'PYTHONPATH=src python -c \"print(1)\"' -> 'Der Begriff „PYTHONPATH=src“ wird nicht als Name eines Cmdlets … erkannt', Exit 1",
+        "git show HEAD:README.md:71-104 — Installations- und Quickstart-Befehle (git clone, pip install -e ., uvx …, python -m …) sind shellneutral, ohne &&, export oder $()"
+      ],
+      "gaps": [
+        "Test- und Beitragsbefehle in README und CONTRIBUTING (EN/DE) laufen in PowerShell nicht, sind aber für Windows nicht als POSIX-only gekennzeichnet (medium)",
+        "Die unterstützten Plattformen sind nicht an einer Stelle benannt (low)"
+      ],
+      "evaluator_notes": "Endnutzerpfad (Installation, Start, Claude-Desktop-JSON) ist plattformneutral, der Entwicklerpfad nicht. Laut CLAUDE.md ist PYTHONPATH=src nach pip install -e überflüssig; die einfachste Behebung ist, das Präfix wegzulassen. Advisory."
+    },
+    "OPS-008": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "medium",
+      "evidence": [
+        "grep -c \"<<'PY'\\|<<'EOF'\\|<<PY\\|<<EOF\\|python -c\\|python - \" .github/workflows/*.yml -> ci.yml:0, nightly-live.yml:0, publish.yml:0; negative Kontrolle: dasselbe Muster an einem Text mit \"python - <<'PY'\" -> 1",
+        ".github/workflows/nightly-live.yml:54-64 — das Urteil clear/finding/unknown liegt in scripts/classify_live_run.py (eigene Datei, Docstring 'WARUM DAS EIN SKRIPT IST UND KEIN YAML-BLOCK'), der Workflow verzweigt nur auf das Zustandswort; 'unknown' ist ein eigener Zustand und schliesst nichts",
+        "tests/test_classify_live_run.py — 19 Tests; Mutationen in der Kopie (scratchpad/probe/mutate_classify.py): C1 alle übersprungen -> clear, C2 0 Tests -> clear, C3 fehlender Report -> clear, C4 errors ignoriert, C5 Zeilenumbruch in GITHUB_OUTPUT -> jede macht genau 1 Test rot (Baseline 19 passed)",
+        "Inline-Logik, die bleibt: nightly-live.yml:69-105 (github-script, entscheidet Issue anlegen vs. kommentieren, nicht rot/grün) und :116-124 (echo + exit 1 unter einer YAML-if-Bedingung auf das Zustandswort) — beides urteilt nicht"
+      ],
+      "gaps": [
+        "Die Issue-Routing-Logik im github-script (offenes Issue per Label finden, kommentieren oder anlegen) ist ungetestet; sie urteilt nicht über rot/grün (low)"
+      ],
+      "evaluator_notes": "Kein urteilender Heredoc; der urteilende Teil ist ausgelagert, hat drei Zustände und ist per Mutation belegt. Die Gegenprobe zur Abfrage selbst (reine Werkzeugschritte erzeugen keinen Befund) ist durch die 0-Zählung bei vorhandenen ruff- und pytest-Schritten gezeigt. Advisory."
+    },
+    "OPS-009": {
+      "status": "partial",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "tests/fixtures/PROVENANCE.md:1-25 — 'Aufgezeichnet am 2026-09-20 mit PYTHONPATH=src python scripts/record_fixtures.py'; je Datei Werkzeug, angefragte URL als Schlüssel, Kürzung, Grösse, SHA-256 (z. B. artists_1.json -> https://ckan.opendata.swiss/api/3/action/datastore_search?resource_id=…&q=Giacometti)",
+        "Aufgezeichnete Endpunkte: CKAN datastore_search (artists_1, artist_detail_1, cross_search_1), CKAN package_search (museum_datasets_1, cross_search_3), NB SRU (helveticat_1.xml, cross_search_2.xml), OAI ListSets (nb_collections_1.xml), OAI GetRecord (publication_1.xml), Memobase '/' und '/record/' (memobase_1, item_memobase_1), Dodis solr/query und solr/full (dodis_1, item_dodis_1). Nicht aufgezeichnet: OAI ListRecords (Grund genannt: 345 KB, scripts/record_fixtures.py:38) und heritage_browse_collection (datastore_search mit SNM-Ressource; nur Handmocks in tests/test_server.py)",
+        "tests/test_recorded_fixtures.py:159-456 — Aufnahmedatum, Vollständigkeit der Provenance, SHA-256 und gleiche Aufrufe des Recorders geprüft, jedes Werkzeug liest seine Aufzeichnung (:314); keine Funktion mit @pytest.mark.live (grep 'mark.live' in der Datei ohne Treffer)",
+        "git show --stat b079c99 (2026-09-20) — geändert nur cross_search_2/3, dodis_1, helveticat_1, memobase_1, museum_datasets_1, nb_collections_1, publication_1; artists_1.json, artist_detail_1.json, cross_search_1.json und item_*.json stammen inhaltlich aus 2464623 (2026-08-15), PROVENANCE nennt für alle ein Datum (2026-09-20)"
+      ],
+      "gaps": [
+        "Kein Live-Test hält eine Aufzeichnung auf Feldebene gegen die heutige Quelle; keine Gegenprobe mit erfundener Antwort (medium)",
+        "Ein Aufnahmedatum für das ganze Verzeichnis; ob die 08-15-Dateien am 09-20 inhaltsgleich neu aufgenommen wurden, lässt sich nicht unterscheiden (medium)",
+        "heritage_browse_collection hat keine Aufzeichnung, nur handgeschriebene Mocks (low)",
+        "Der Erneuerungsweg steht in PROVENANCE.md, nicht in CONTRIBUTING (low)"
+      ],
+      "evaluator_notes": "Eine starke Grundlage (Recorder, Hash, Schlüssel je Abfrage). Offen sind die Live-Verbindung Aufzeichnung <-> Quelle und die Datierung je Datei. Offene Frage, die das unterscheidet: Erzeugt 'scripts/record_fixtures.py' heute für artists_1.json denselben SHA-256 wie in PROVENANCE? Nicht ausgeführt, weil der Recorder ins Repo schreibt. Advisory."
+    },
+    "OPS-010": {
+      "status": "partial",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "Mutationslauf scratchpad/probe/mutate.py auf einer Kopie aus git archive HEAD (Subset test_server, test_retry_policy, test_response_shape, test_helveticat_zugaenge, test_recorded_fixtures; Baseline '13 failed, 211 passed' = Windows-Altlast): M3 Jitter entfernt -> neu rot test_backoff_is_jittered; M4 Raise bei Totalausfall entfernt -> neu rot test_search_all_sources_down_raises, test_search_timeout_is_handled; M5 Fuzzy-Marker -> 2 neu rot; M6 Datumsfilter -> 1 neu rot (die Methode hat Zähne)",
+        "Nicht anschlagend: M1 'async with asyncio.timeout(remaining):' (server.py:888, Wanduhr-Budget in _fetch_with_retry) durch 'if True:' ersetzt -> 0 neu rot; grep 'retry_total_budget|monotonic|_retry_sleep' tests/ trifft nur tests/test_session_start_hook.py — kein Test unter echter Zeit für das Gesamtbudget",
+        "Nicht anschlagend: M2 _assert_allowed(url) in _http_post (server.py:771) entfernt -> 0 neu rot; die Egress-Tests (tests/test_server.py:534-557) decken nur _http_get, der POST-Pfad (Dodis) ist ungeprüft",
+        "grep -rnE 'monkeypatch.setattr\\(\\s*[A-Za-z_.]+\\.(asyncio|time|random|os|httpx)\\s*,' tests/ -> keine Treffer (negative Kontrolle mit 'monkeypatch.setattr(mod.asyncio, \"sleep\", f)': 1); eigene Naht _retry_sleep (server.py:778), Tests schalten den Backoff über settings.retry_backoff_base=0.0 ab (tests/test_server.py:1669)",
+        "grep -rniE 'gegenprobe|mutation' CONTRIBUTING*.md -> keine Treffer; die Regel steht in CLAUDE.md:37 'Gegenprobe ist Pflicht', gefahrene Gegenproben sind im CHANGELOG [0.7.0] notiert (16 Mutationen test_helveticat_zugaenge)"
+      ],
+      "gaps": [
+        "Die Wanduhr-Zusicherung (asyncio.timeout als Gesamtbudget, der ARCH-014-Fall) hat keinen Test; ihr Entfernen bleibt grün (high)",
+        "Die Egress-Allow-List im POST-Pfad (_http_post) ist ungeprüft; ihr Entfernen bleibt grün (high)",
+        "Kein Test bewacht die Naht (echtes asyncio.sleep wirkt nach den Fixtures) (low)",
+        "Der Weg, eine Gegenprobe zu fahren, steht nicht in CONTRIBUTING (low)"
+      ],
+      "evaluator_notes": "Am 2026-11-08 sechs Mutationen gefahren, vier schlagen an, zwei nicht. Die zwei nicht anschlagenden sind das Ergebnis: Wanduhr-Budget und POST-Egress sind ungeprüfte Zusicherungen. Die Mutationen liefen nur auf der Kopie im Scratchpad, das Repo blieb unberührt (Datei danach byte-gleich wiederhergestellt: 'restored identical: True'). Advisory."
+    },
+    "SCALE-001": {
+      "status": "partial",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:139 — `transport: Literal['stdio','http'] = 'stdio'` in Settings (env MCP_TRANSPORT); src/swiss_cultural_heritage_mcp/server.py:3592-3607 — `if settings.transport == 'http' or '--http' in sys.argv:` -> build_http_app + uvicorn.run(host=settings.host, port=settings.port), sonst mcp.run() (stdio). ENV-basierte Auswahl vorhanden",
+        "Dockerfile:37 `MCP_HOST=0.0.0.0`, Dockerfile:53 `CMD [\"python\",\"-m\",\"swiss_cultural_heritage_mcp.server\",\"--http\",\"--port\",\"8000\"]` — der Container-Pfad startet Streamable HTTP und bindet extern",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): POST /mcp initialize protocolVersion 2025-11-25 -> HTTP 200, content-type text/event-stream, mcp-session-id gesetzt, result.protocolVersion '2025-11-25'; POST server/discover mit MCP-Protocol-Version 2026-07-28 -> HTTP 200 JSON. Beide Aeras ueber HTTP bedient",
+        "git grep -nIiE 'websocket' (repo, ohne audits) -> kein Treffer im Code; MCP_TRANSPORT=sse wird von Settings abgewiesen: `Input should be 'stdio' or 'http' [type=literal_error, input_value='sse']`",
+        "git show HEAD:README.md:150-157 — empfohlener Render-Weg: Start-Command `python -m swiss_cultural_heritage_mcp.server --http --port 8000` OHNE MCP_HOST; Settings-Default ist 127.0.0.1 (Laufzeit ohne Env: `host= 127.0.0.1 transport= stdio port= 8000`). Render verlangt Bind auf 0.0.0.0 -> der dokumentierte Weg bindet Loopback",
+        "git show HEAD:README.md:155 (und README.de.md:156) — Client-URL `https://your-app.onrender.com/sse`; Runtime GET /sse am lokalen Server -> HTTP 404 Not Found. Der dokumentierte Endpunkt existiert nicht; der echte ist /mcp"
+      ],
+      "gaps": [
+        "high: README (EN+DE) beschreibt den empfohlenen Render-Deploy so, dass er nicht funktioniert: Bind auf 127.0.0.1 (kein MCP_HOST=0.0.0.0) und Client-URL /sse statt /mcp — genau das Symptom 'Server startet, Verbindungen schlagen fehl'",
+        "medium: kein Deployment-Manifest (render.yaml o. ae.) im Repo, das MCP_TRANSPORT/MCP_HOST fuer Render explizit setzt; nur das Dockerfile tut es",
+        "low: Konsolen-Skript `swiss-cultural-heritage-mcp = ...server:mcp.run` (pyproject.toml [project.scripts]) ignoriert MCP_TRANSPORT und startet immer stdio — nur `python -m ...server` liest die Variable",
+        "not_verified-Teil: Cloud-Endpoint der ausgelieferten Render-Instanz nicht geprueft — keine Instanz-URL im Repo (server.json fuehrt nur stdio/pypi); initialize-200 ist lokal belegt"
+      ],
+      "evaluator_notes": "Code und Container-Pfad sind korrekt (ENV-Auswahl, Streamable HTTP, keine WebSockets, initialize 200 lokal). Der Befund liegt in der Betriebsdoku: der als 'recommended' gefuehrte Render-Weg bindet Loopback und schickt Clients an einen 404-Pfad. Wer Render mit Docker-Runtime faehrt, ist nicht betroffen; wer der README folgt, schon."
+    },
+    "SCALE-002": {
+      "status": "fail",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:3574 — `mcp.streamable_http_app(transport_security=security, host=host)` ohne stateless_http/event_store; SDK-Signatur (mcp 2.3.0): `stateless_http: bool = False, session_idle_timeout: float | None = 1800, max_sessions = 10000` -> Sessions liegen im Prozessspeicher",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): POST /mcp initialize 2025-11-25 -> Antwortheader `mcp-session-id: 1705ca61107f46ef823af62c3697d9c7`; GET /mcp ohne Session -> HTTP 400 `Bad Request: Missing session ID`. Die Legacy-Aera ist sitzungsgebunden",
+        "git grep -nIiE 'stick|session.?affinity|sessionAffinity|redis|memcached|DurableObject|SessionStore|http_mcp_session_id' -- ':!audits' -> Treffer nur in docs/scaling.md (Beispielkonfigurationen), CHANGELOG.md:820, docs/security.md:73 — keiner in src/ oder in einer Konfigurationsdatei (Positivkontrolle: das Muster schlaegt auf die Doku-Beispiele an)",
+        "git ls-files | grep -iE 'haproxy|nginx|ingress|render\\.yaml|railway\\.toml|docker-compose|k8s/|helm/|fly\\.toml' -> leer (rc=1): kein LB- oder Deployment-Manifest, das Affinitaet oder replicas=1 erzwingt",
+        "docs/scaling.md:5-9 — 'The server must run as a single instance' (Behauptung, keine Evidenz; durch nichts im Repo erzwungen)"
+      ],
+      "gaps": [
+        "high: weder Sticky Sessions noch Shared-State-Session-Manager implementiert; Session-State nur in-process",
+        "medium: Session-TTL nicht explizit gesetzt — es gilt der SDK-Default session_idle_timeout=1800 s, im Code nicht verankert",
+        "medium: kein Failover-Test; die Single-Instance-Auflage ist nur dokumentiert, nicht in einer Deploy-Konfiguration festgeschrieben"
+      ],
+      "evaluator_notes": "Gemessen nur fuer 2025-11-25 (Legacy-Handshake mit Mcp-Session-Id). Der dokumentierte Single-Instance-Betrieb entschaerft das Risiko praktisch, ist aber kein Pass-Muster des Checks und wird durch keine Konfiguration erzwungen (Render-Autoscaling koennte ihn still brechen). Eine Akzeptanz als bewusstes Restrisiko waere ein Entscheid des Owners, nicht ein Pass. Billigste Behebung fuer die Legacy-Aera: stateless_http=True pruefen (Tool-Logik ist zustandslos) oder replicas=1 in einem eingecheckten render.yaml festschreiben."
+    },
+    "SCALE-003": {
+      "status": "fail",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "git ls-files | grep -iE 'haproxy|nginx|ingress|render\\.yaml|railway\\.toml|docker-compose|k8s/|helm/|fly\\.toml' -> leer (rc=1): keine Edge-LB-Konfiguration im Repo",
+        "git grep -nIiE 'stick|http_mcp_session_id|session.?affinity' -- ':!audits' -> nur docs/scaling.md:30-48 (Beispiel-Snippets HAProxy 'stick on req.hdr(Mcp-Session-Id)', nginx 'hash $http_mcp_session_id consistent') — Doku-Vorschlag, keine ausgelieferte Konfiguration (Positivkontrolle: Muster schlaegt an)",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): initialize 2025-11-25 liefert `mcp-session-id`; der Header ist also das Routing-Merkmal, das ein LB lesen muesste — keine Instanz im Repo tut es"
+      ],
+      "gaps": [
+        "high: kein Edge-LB liest Mcp-Session-Id; keine Stick-Table/Hash-Konfiguration, keine TTL, kein Failover-Test"
+      ],
+      "evaluator_notes": "Nur 2025-11-25. Folgebefund derselben Ursache wie SCALE-002: Die Architektur setzt auf Single-Instance, und dafuer braucht es keinen LB mit Header-Affinitaet — aber diese Voraussetzung ist nur dokumentiert (docs/scaling.md), nicht erzwungen. Wird der Single-Instance-Entscheid als Restrisiko akzeptiert, sollte das fuer SCALE-002 und SCALE-003 gemeinsam geschehen."
+    },
+    "SCALE-004": {
+      "status": "partial",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "Dockerfile:19 `FROM python:3.14-slim AS builder`, Dockerfile:33 `FROM python:3.14-slim AS runtime` — grep -cE '^FROM ' Dockerfile = 2, beide Stages benannt, beide -slim",
+        "Dockerfile:30 `pip install --no-cache-dir --prefix=/install .` im Builder; Dockerfile:42 `COPY --from=builder /install /usr/local` — Runtime-Stage traegt nur die installierten Pakete, keine Build-Toolchain, kein Quellbaum",
+        "Dockerfile:44-45 `useradd --uid 10001 ... app` / `USER 10001` — non-root",
+        "Dockerfile:50-51 `HEALTHCHECK --interval=30s ... CMD python -c \"...urlopen('http://127.0.0.1:8000/health'...)\"` gegen die In-App-Route src/swiss_cultural_heritage_mcp/server.py:3466 `@mcp.custom_route('/health')`; Runtime: GET /health -> 200 {\"status\":\"ok\",...}"
+      ],
+      "gaps": [
+        "medium (unverifiziert): Final-Image-Groesse < 200 MB nicht gemessen — `docker images` scheitert: 'failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine' (Daemon nicht gestartet)"
+      ],
+      "evaluator_notes": "5 von 6 Kriterien am Dockerfile belegt. Das Groessenkriterium ist das einzige offene und ohne laufenden Docker-Daemon nicht messbar; bei `docker build` + `docker images` < 200 MB waere der Check pass. Kein Befund am Dockerfile selbst."
+    },
+    "SCALE-006": {
+      "status": "partial",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "git ls-files | grep -iE 'docker-compose|k8s/|helm/|render\\.yaml|railway\\.toml' -> leer: kein Manifest im Repo setzt Memory-/CPU-Limits",
+        "Dockerfile:16 — Limits nur als Kommentar ('resources: { requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 256Mi} }'); die Dockerfile-Syntax kann keine Limits setzen",
+        "docs/security.md:91-101 — Abschnitt 'Resource limits (SCALE-006)': CPU 100m/500m, Memory 128Mi/256Mi (Requests < Limits), ulimit -n >= 4096 mit Begruendung (Fan-out in heritage_cross_search), Restart-Policy-Empfehlung; Satz 'The container declares no limits itself; operators should set them at the platform level'"
+      ],
+      "gaps": [
+        "medium: Memory- und CPU-Limit nirgends konfiguriert, nur empfohlen (Render: Plan/UI, nicht eingecheckt)",
+        "low: FD-Limit >= 4096 nur empfohlen, nicht gesetzt",
+        "low: OOM-Verhalten nicht getestet"
+      ],
+      "evaluator_notes": "Der Check laesst fuer Render/Railway die dokumentierte UI-Konfiguration gelten ('pruefen ob dokumentiert') — die Dokumentation ist vorhanden und inhaltlich vollstaendig (Requests < Limits, FD, Restart). Durchgesetzt ist nichts davon im Repo, und ein OOM-Test fehlt. Deshalb partial statt pass."
+    },
+    "SCALE-007": {
+      "status": "fail",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:3574 — `mcp.streamable_http_app(transport_security=security, host=host)`: kein event_store-Argument; SDK-Signatur `event_store: EventStore | None = None` -> Default None, keine Resumability",
+        "grep -rnE 'event_store|EventStore|StreamableHTTPSessionManager' src/ -> 0 Treffer; Negativkontrolle: dasselbe Muster greift in der SDK-Signatur (inspect.signature(MCPServer.streamable_http_app) nennt event_store)",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): SSE-Antwort auf initialize 2025-11-25 besteht aus `event: message` + `data: {...}` OHNE `id:`-Zeile — ohne Event-IDs ist Last-Event-ID-Resume grundsaetzlich unmoeglich"
+      ],
+      "gaps": [
+        "medium: kein Event-Store verdrahtet, SSE-Events tragen keine id — ein abgerissener Stream verliert die laufende Antwort",
+        "low: keine Proxy-Konfiguration (Buffering/Timeout) im Repo; der Server setzt selbst x-accel-buffering: no"
+      ],
+      "evaluator_notes": "Nur 2025-11-25. Read-only-Server mit lesenden Tools: ein wiederholter Tool-Call kommt ans Ziel, der Schaden ist Latenz, keine Doppelwirkung (deshalb Severity medium im Katalog). Auf 2026-07-28 entfaellt der Check (SEP-2575)."
+    },
+    "SCALE-009": {
+      "status": "partial",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "grep -rnE 'sse_app|SseServerTransport|/sse|text/event-stream|EventSourceResponse' src/ --include=*.py -> 0 Treffer (rc=1); Routen-Grep 'mount|add_route|@app.(get|post)|router.|custom_route' -> nur src/swiss_cultural_heritage_mcp/server.py:3466 `@mcp.custom_route('/health')`",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): GET /sse (Accept: text/event-stream) -> HTTP 404 Not Found; GET /messages/ -> 404",
+        "Gegenprobe: Kontrollserver `MCPServer('sse-control').sse_app()` via uvicorn auf 127.0.0.1:8766 -> GET /sse -> HTTP 200, content-type text/event-stream; charset=utf-8. Derselbe curl-Aufruf erkennt einen offenen Legacy-Pfad, das 404 oben ist also kein URL-Tippfehler",
+        "MCP_TRANSPORT=sse -> pydantic literal_error 'Input should be stdio or http' — Legacy-Transport ist auch per Umgebung nicht einschaltbar; Konsolen-Skript ruft mcp.run() ohne Argument (stdio)",
+        "git show HEAD:README.md:146 '### Cloud Deployment (SSE for browser access)', :155 Client-URL `https://your-app.onrender.com/sse`, :157 '\"stdio for the developer laptop, SSE for the browser.\"', :223 Diagramm 'Stdio | SSE'; README.de.md:147,156,160,224 gleichlautend"
+      ],
+      "gaps": [
+        "medium: README EN/DE fuehrt SSE als den Cloud-Transport und schickt Clients an /sse, das der Server nicht bedient (404) — Kriterium 'README nennt Streamable HTTP ohne SSE als Alternative' verfehlt; Folge ist eine fehlschlagende Client-Konfiguration",
+        "not_verified-Teil: ausgelieferte Render-Instanz nicht geprueft — keine Instanz-URL im Repo"
+      ],
+      "evaluator_notes": "Der Legacy-Pfad ist im Code geschlossen und an der Laufzeit mit Gegenprobe belegt (404 hier, 200 am SSE-Kontrollserver). Offen sind die Doku (SSE als empfohlener Browser-Transport, falsche URL) und die Pruefung an der ausgelieferten Instanz, die der Check ausdruecklich verlangt. Kein Abschaltdatum noetig, da kein Pfad offen ist."
+    },
+    "SDK-001": {
+      "status": "pass",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:360-371 — `@asynccontextmanager async def lifespan(_server: MCPServer)`: erzeugt `_http_client = _new_client()`, `try: yield` / `finally: await client.aclose()`",
+        "src/swiss_cultural_heritage_mcp/server.py:466-474 — `mcp = MCPServer(__dist__, ..., lifespan=lifespan, cache_hints=CACHE_HINTS)`",
+        "grep -rnE 'AsyncClient\\(|async with httpx|httpx\\.(get|post)\\(' src/ -> genau 1 Treffer src/swiss_cultural_heritage_mcp/server.py:348 in `_new_client()` (Muster schlaegt an); alle Tool-Zugriffe laufen ueber `_get_http_client()` (src/swiss_cultural_heritage_mcp/server.py:353-357) in `_http_get`/`_http_post` (src/swiss_cultural_heritage_mcp/server.py:733,762) — kein Client pro Tool-Call",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): Server-Start auf HTTP -> Log 'Waiting for application startup' / 'StreamableHTTP session manager started' / 'Application startup complete'; GET /health 200 — Lifespan laeuft unter uvicorn ohne Fehler"
+      ],
+      "gaps": [
+        "low: geteilter Client als Modul-Global (`_http_client`, {S}:344) statt im Lifespan-Kontext/Server-State; ausserhalb des Lifespans wird lazy ein Client erzeugt, der nie geschlossen wird (nur Tests/Direktaufrufe)"
+      ],
+      "evaluator_notes": "Ein einzelner Server, kein Multi-Mount — AsyncExitStack-Kriterium entfaellt. Der Global-Ansatz ist das im Katalog genannte Schoenheits-Anti-Pattern, keine Leckquelle im Serverbetrieb."
+    },
+    "SDK-002": {
+      "status": "pass",
+      "category": "SDK",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml:45 `\"pydantic>=2.0.0,<3.0.0\"`; installiert pydantic 2.14.3",
+        "src/swiss_cultural_heritage_mcp/server.py:1375,1511,1615,1772,1929,2162,2229,2367,2808,3101,3226 — alle 11 Tools mit Rueckgabe-Annotation `-> ResultEnvelope | str`",
+        "src/swiss_cultural_heritage_mcp/server.py:555-574 — `class ResultEnvelope(BaseModel)`: source (SourceInfo|list), count, total, offset, has_more, `match_type: Literal['exact','fuzzy','none'] = Field(default='exact')`, `results: list[dict] = Field(default_factory=list)`, meta",
+        "Runtime in-process (scratchpad/probe/tools_probe.py): tools/list in 2026-07-28 und 2025-11-25 -> tools=11, with_outputSchema=11 (Schema wird exponiert)"
+      ],
+      "gaps": [
+        "low: kein `provenance`-Feld im Envelope (Katalog-Muster source/provenance/results/count); alle Quellen sind live_api, das Feld waere konstant",
+        "low: wegen der Union `ResultEnvelope | str` ist das outputSchema als {result: ...} gewickelt (Runtime: properties ['result']) statt das Envelope-Schema direkt"
+      ],
+      "evaluator_notes": "Pydantic v2, explizite Annotationen, Literal fuer match_type, Field-Defaults ohne Mutable-Default — erfuellt. Die offenen Punkte sind kosmetisch und unter Check-Severity."
+    },
+    "SDK-003": {
+      "status": "partial",
+      "category": "SDK",
+      "severity": "medium",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:2366 `heritage_cross_search(params, ctx: Context = None)` und src/swiss_cultural_heritage_mcp/server.py:2808 `search_heritage(params, ctx: Context = None)` — die beiden Fan-out-Tools haben Context; src/swiss_cultural_heritage_mcp/server.py:2486 / :2864 `await ctx.report_progress(progress=done, total=len(keys), message=...)` je abgeschlossener Quelle; src/swiss_cultural_heritage_mcp/server.py:2488 / :2870 `await ctx.warning(...)` bei fehlgeschlagener Quelle",
+        "grep -rnE 'setLevel|set_logging_level|logging_level' src/ -> 0 Treffer (rc=1): kein logging/setLevel-Handler",
+        "Runtime in-process (scratchpad/probe/sdk003_probe.py, respx: SIK-ISEA 503, SNM 200): Client(mode='2026-07-28', log_level=None) -> progress=2, log_msgs=0; Client(mode='2026-07-28', log_level='debug') -> progress=2, log_msgs=1 ['warning'] (Positivkontrolle); Client(mode='legacy') -> negotiated 2025-11-25, log_msgs=1. notifications/message geht auf 2026-07-28 nur an Requests mit logLevel-Opt-in",
+        "SDK site-packages/mcp/server/connection.py:69-90 `allowed_log_levels()` — modern ohne `io.modelcontextprotocol/logLevel` -> leere Menge ('the server MUST NOT send'); die Gate-Logik liegt im SDK, nicht im Server",
+        "src/swiss_cultural_heritage_mcp/server.py:155-190 — strukturiertes JSON-Logging via structlog nach stderr (Zielzustand laut Baseline-Hinweis), kein print() in Tools"
+      ],
+      "gaps": [
+        "medium: kein Repo-Test, der einen 2026-07-28-Request OHNE logLevel stellt und das Ausbleiben von notifications/message prueft (Pass-Kriterium); belegt nur durch diese Audit-Probe",
+        "low: kein datierter Ausstieg aus dem deprecateten MCP-Logging-Feature (ctx.warning) — grep 'SEP-2577|logging.*deprecat' in README/CHANGELOG/docs -> nichts (ARCH-019)",
+        "low: Einzelquellen-Tools ohne ctx, obwohl das Retry-Budget bis 25 s reicht (Settings.retry_total_budget, server.py:111); Progress kommt je Quelle, nicht alle 1-2 s",
+        "low: Progress-Test im Repo (tests/test_server.py:1117-1149) nutzt einen Context-Doppelgaenger, nicht den Protokollweg"
+      ],
+      "evaluator_notes": "Gilt fuer beide Revisionen. Auf 2025-11-25 erfuellt (Progress + Warning ueber Context, stderr-Logging). Auf 2026-07-28 ist das Verhalten korrekt (SDK unterdrueckt Logmeldungen ohne Opt-in, gemessen mit Positivkontrolle), aber der verlangte Test und das Ausstiegsdatum fehlen — deshalb partial."
+    },
+    "SDK-004": {
+      "status": "pass",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:3575-3581 — `app.add_middleware(CORSMiddleware, allow_origins=cors_origins or [], allow_methods=['GET','POST','DELETE','OPTIONS'], allow_headers=['Mcp-Session-Id','Content-Type', *CORS_ROUTING_HEADERS], expose_headers=['Mcp-Session-Id'])` — kein allow_credentials",
+        "src/swiss_cultural_heritage_mcp/server.py:3481-3487 `cors_origins_from_env()` liest MCP_CORS_ORIGINS komma-separiert, Default leere Liste; src/swiss_cultural_heritage_mcp/server.py:3522-3525 konfigurierte Origins werden in TransportSecuritySettings.allowed_origins uebernommen, `*` ausgefiltert",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08, MCP_CORS_ORIGINS=https://client.example): POST initialize 2025-11-25 mit Origin https://client.example -> HTTP 200, `mcp-session-id: 3bf6...`, `access-control-expose-headers: Mcp-Session-Id`, `access-control-allow-origin: https://client.example`",
+        "Runtime: Preflight OPTIONS /mcp (Access-Control-Request-Headers: content-type,mcp-session-id) -> HTTP 200, allow-headers enthaelt Mcp-Session-Id; Gegenprobe POST mit Origin https://evil.example -> HTTP 403 Forbidden, kein allow-origin"
+      ],
+      "gaps": [],
+      "evaluator_notes": "Nur 2025-11-25 gemessen. Positiv- und Negativfall an der Laufzeit. Tests im Repo: tests/test_cors.py:114 `test_der_session_header_ist_weiterhin_freigegeben`."
+    },
+    "SDK-006": {
+      "status": "pass",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "git ls-files | grep -E '(^|/)pyproject\\.toml$|requirements.*\\.txt$|\\.lock$' -> nur pyproject.toml (kein verschachteltes Manifest, kein Lockfile); grep '\"mcp(\\[[a-z]+\\])?[><=]' -> pyproject.toml:43 `\"mcp[cli]>=2.0.0,<3\"`; installiert mcp 2.3.0",
+        "grep 'mcp\\.server\\.fastmcp|from fastmcp import|FastMCP(' src/ tests/ -> nur src/swiss_cultural_heritage_mcp/server.py:479 (Kommentar, kein Import; Muster schlaegt also an); Importe src/swiss_cultural_heritage_mcp/server.py:41-42 `from mcp.server.mcpserver import Context, MCPServer`; MCPServer in 5 Testdateien (test_cache_hints, test_protocol_version, test_response_shape, test_server, test_server_identity)",
+        "grep -rnE 'mcp\\.settings\\.[a-z_]+\\s*=|\\.settings\\.(host|port)\\s*=' src/ tests/ -> 0 (rc=1); camelCase-Lesezugriffe '\\.(readOnlyHint|...)\\b' -> 0 (rc=1); Negativkontrolle: beide Muster treffen eine Probezeile (`mcp.settings.host = \"x\"` / `x.annotations.readOnlyHint` -> je 1). Bind-Parameter gehen an uvicorn.run(host=, port=) und build_http_app(host=) ({S}:3599-3605, 3574)",
+        "Runtime (lokal gestarteter Server HEAD 9b3a1b4 (editable install), MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8765, SDK mcp 2.3.0, 2026-11-08): Start auf Netz-Transport -> 'Uvicorn running on http://127.0.0.1:8765', /health 200, initialize 200 — kein ValueError zu Settings.host",
+        "Runtime in-process (scratchpad/probe/tools_probe.py): `x.annotations.read_only_hint is True` fuer 11/11 Tools in 2026-07-28 und 2025-11-25 — snake_case-Lesezugriff funktioniert; CI .github/workflows/ci.yml:26 `pip install -e \".[dev]\"` loest frisch gegen den 2.x-Bound auf und fuehrt die Suite aus (Zeile 30)"
+      ],
+      "gaps": [
+        "low: veralteter Kommentar src/swiss_cultural_heritage_mcp/server.py:479 nennt noch 'mcp.server.fastmcp' als die offizielle SDK — kein Import, aber irrefuehrend"
+      ],
+      "evaluator_notes": "Alle fuenf Kriterien belegt. Kein Lockfile: CI loest bei jedem Lauf gegen >=2.0.0,<3 auf, ein 1.x-Halt ist damit ausgeschlossen. Kein TypeScript-Server im Repo."
+    },
+    "SEC-004": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:726-730 — _assert_allowed: httpx.URL(url).scheme != 'https' -> ValueError; parsed.host not in ALLOWED_HOSTS -> ValueError (string allow-list, no IP resolution)",
+        "src/swiss_cultural_heritage_mcp/server.py:746,756,771 — guard runs before the first GET, on every manual redirect hop, and before the Dodis POST; src/swiss_cultural_heritage_mcp/server.py:349 client has follow_redirects=False",
+        "grep -nE '_http_get\\(|_http_post\\(|client\\.(get|post)' src/swiss_cultural_heritage_mcp/server.py — all 13 outbound call sites go through _http_get/_http_post; only 3 raw client.get/post calls, all inside those two helpers (lines 748,758,773); no requests/urllib/aiohttp/socket import in src/",
+        "venv python -I _assert_allowed probe — https://[::1]/, https://[fe80::1]/, https://0x7f.0x0.0x0.0x1/, https://localtest.me/, https://127.0.0.1/, https://169.254.169.254/latest, https://ckan.opendata.swiss@evil.com/ -> all 'Host nicht in Allow-List'; http://ckan.opendata.swiss/x and file:///etc/passwd -> 'Nur HTTPS erlaubt'; https://ckan.opendata.swiss/ok -> ALLOWED (positive control)",
+        "venv python -I path-interpolation probe — item_id '../../solr/admin', '1?q=*:*', '@evil.example.com/x' in f'{DODIS_API}/solr/full/{item_id}' (src/swiss_cultural_heritage_mcp/server.py:3135-3137) keep host beta.dodis.ch; no tool argument can change the request host",
+        "grep -rnE 'getaddrinfo|gethostbyname|ipaddress|smokescreen|sni_hostname|HTTPS_PROXY|proxy=' src/ -> no match (rc=1); control: same pattern matches 'socket.getaddrinfo(h)' (count 1)",
+        "MCP_ALLOWED_HOSTS='[\"169.254.169.254\"]' venv python -I -c '...s._assert_allowed(\"https://169.254.169.254/latest/meta-data/\")' -> accepted: the only barrier in front of the metadata IP is an env-overridable host string list",
+        "docs/security.md:45 — resolved-IP blocklist explicitly 'Deferred'"
+      ],
+      "gaps": [
+        "No resolved-IP blocklist (private, loopback, link-local, 169.254.169.254, ::1, fe80::/10) after DNS resolution. Blocking happens only by hostname string match (severity: high)",
+        "The allow-list that stands in for the blocklist can be replaced through the MCP_ALLOWED_HOSTS environment variable (pydantic-settings field, server.py:129). That removes the only SSRF barrier without a code change (severity: high, same root cause as SEC-021)",
+        "No egress proxy as defense in depth. Render cannot provide one, as docs/network-egress.md:77 itself says (severity: medium)"
+      ],
+      "evaluator_notes": "Criterion 1 (HTTPS before every request, including redirect hops) is met and verified at runtime. Criteria 3 and 4 hold in behaviour: metadata IP, loopback and link-local are rejected, but only because they are not on the four-host allow-list, not because of an explicit IP check. Criterion 2 (resolved-IP check) and criterion 5 (egress proxy) are not met. Threat model: no tool takes a URL or host. Only query strings and path segments are LLM-controlled, and the host is fixed (measured). So the direct SSRF class is not reachable as long as the allow-list stays at its default. That makes 'partial' and not 'fail'; the missing IP layer keeps it from 'pass'. Whether the env override counts as an operator risk is a judgment call; the check counts it as config-mutable."
+    },
+    "SEC-005": {
+      "status": "fail",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "grep -rnE 'getaddrinfo|gethostbyname|dns\\.resolve' src/ -> no match (rc=1); control: the pattern matches 'socket.getaddrinfo(h)'. The server never resolves DNS itself",
+        "src/swiss_cultural_heritage_mcp/server.py:347-350 — _new_client(): plain httpx.AsyncClient(timeout, follow_redirects=False, headers=UA) with no custom transport or resolver; hostname resolution happens inside httpcore at connect time",
+        "grep -rnE 'sni_hostname|SSLContext|verify_hostname|replace\\(.*hostname' src/ -> no match; there is no pinned-IP URL and no Host/SNI override",
+        "docs/security.md:46 — 'DNS pinning ... Deferred', with the trigger 'any tool starts accepting a user-supplied URL/host, or the allow-list grows beyond trusted fixed hosts'",
+        "tests/: grep -rnE 'getaddrinfo|gaierror|pinning' tests/*.py -> no test asserts a single DNS call per request"
+      ],
+      "gaps": [
+        "No single resolution plus pinned IP for the TCP connection (severity: high)",
+        "No test that checks for exactly one DNS lookup per request (severity: medium)"
+      ],
+      "evaluator_notes": "All five pass criteria are unmet; the maintainer documents the deferral on purpose (docs/security.md:46). Real risk is low: attacking it needs control over DNS for one of four federal or institutional hosts, and no tool argument sets the host. The check gives no exemption for that, and the allow-list can be widened by env (MCP_ALLOWED_HOSTS), which moves the deferral's trigger condition into the operator's hands. TLS validation is httpx's default (verify=True, no verify=False in src/), so a rebinding to an internal IP would fail the certificate check against the hostname. That mitigates the vector but does not replace the criterion."
+    },
+    "SEC-006": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:139 — Settings.transport: Literal['stdio','http'] = 'stdio' (default without env)",
+        "src/swiss_cultural_heritage_mcp/server.py:3592-3607 — HTTP only when MCP_TRANSPORT=http or the --http flag is set, otherwise mcp.run()",
+        "pyproject.toml [project.scripts] swiss-cultural-heritage-mcp = 'swiss_cultural_heritage_mcp.server:mcp.run'; venv python -I -c 'inspect.signature(MCPServer.run)' -> (self, transport: Literal['stdio','sse','streamable-http'] = 'stdio', **kwargs). The console script / uvx path is always stdio",
+        "git show HEAD:README.md lines 93-147 — the quickstart puts stdio first; Claude Desktop config with python -m and uvx; Cloud Deployment is a separate section (lines 149-159) that points to docs/security.md",
+        "Runtime, HTTP path as a positive control: 'venv python -I -m swiss_cultural_heritage_mcp.server --http' -> 'Uvicorn running on http://127.0.0.1:8000'. A port opens only with the explicit flag"
+      ],
+      "gaps": [
+        "The runtime check 'default start opens no TCP port' was not settled cleanly: netstat in German Windows prints no 'LISTENING' (negative control had 0 hits), and a Get-NetTCPConnection run caught no stdio process (severity: low; the code path is unambiguous)",
+        "README cloud section names the endpoint '/sse' (README.md:155, README.de.md:156), but the app serves Streamable HTTP under /mcp (tests post to /mcp). The cloud security note is only a reference to docs/security.md (severity: low)"
+      ],
+      "evaluator_notes": "Default stdio is established on three paths (Settings default, the __main__ else branch, the console-script entry point via the MCPServer.run signature). HTTP needs the explicit MCP_TRANSPORT=http or --http. Note: MCP_TRANSPORT=http has no effect on the console script (mcp.run ignores settings.transport). That is not a security problem; it is a usability observation for ARCH/DRIFT."
+    },
+    "SEC-007": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "Dockerfile:44-45 — 'RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app' + 'USER 10001' (non-root, UID >= 10000)",
+        "Dockerfile:19,33,42 — multi-stage build: only /install from the builder lands in the runtime image, no build tooling",
+        "Dockerfile:11-15 and docs/security.md (Container hardening) — readOnlyRootFilesystem, allowPrivilegeEscalation:false, capabilities.drop ALL, seccompProfile RuntimeDefault appear ONLY as a recommendation in comments and docs, not in a shipped manifest; git ls-files | grep -iE 'k8s|helm|render|compose' -> no deployment manifest in the repo",
+        "docs/security.md:132 — 'There is no container boundary in this mode' (local stdio): the server runs with the user's privileges, without a sandbox",
+        "No file tools: all 11 tools readOnlyHint True (grep -c '\"readOnlyHint\": True' server.py = 11 = number of @mcp.tool); no open()/Path write in tool code, so criterion 6 does not apply",
+        "Runtime test not possible: 'docker info' -> 'failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine' (daemon not running)"
+      ],
+      "gaps": [
+        "seccomp RuntimeDefault, read-only root and dropped capabilities are enforced in no artifact the repo ships. Render (named deployment) is native/Docker without a SecurityContext (severity: medium)",
+        "The local-stdio deployment (in the profile) runs without any sandbox; there is no documented Docker variant for Claude Desktop (severity: medium)",
+        "Privilege reduction not verified at runtime (id, read-only FS, CapEff), no Trivy/container scan in CI (severity: medium)"
+      ],
+      "evaluator_notes": "The criteria the repo itself controls (Dockerfile USER >= 10000, no file tools) are met. The Kubernetes criteria are conditional ('Bei Kubernetes'); the repo ships no k8s manifest and documents the recommended SecurityContext. Without a docker daemon there is no runtime evidence. Status: partial."
+    },
+    "SEC-008": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml (read in full) — build-backend hatchling, only [project.scripts] as an entry point; grep -nE 'cmdclass|tool.hatch.build.hooks|build-hook' pyproject.toml -> no match; ls setup.py setup.cfg package.json -> none exist",
+        ".github/workflows/publish.yml:36-47 — job publish: environment pypi, permissions id-token: write, uses pypa/gh-action-pypi-publish@release/v1 without an API token (OIDC Trusted Publisher, attestations are the action's default)",
+        "git show HEAD:README.md lines 72-88 and 116-141 — full install commands (pip install -e ., uvx swiss-cultural-heritage-mcp) and both claude_desktop_config.json variants shown with every argument",
+        "Dockerfile:26-30 — the build runs only 'pip install --no-cache-dir --prefix=/install .', no curl|sh, no external download"
+      ],
+      "gaps": [
+        "CONTRIBUTING.md (117 lines; headings: Reporting Issues, Pull Requests, Git hooks, Code Style, Data Sources, live suite, License) does not explain the build or release process for independent verification (severity: low)",
+        "publish.yml publish-mcp loads 'releases/latest/download/mcp-publisher_...' unpinned via curl|tar in CI. That is not in the user install path, but it is a supply-chain weakness in the release (severity: low)"
+      ],
+      "evaluator_notes": "No install hooks, transparent commands, Trusted Publishing active. The npm criterion does not apply (Python)."
+    },
+    "SEC-009": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [
+        "venv/Lib/site-packages/mcp/server/streamable_http_manager.py:313 (mcp 2.3.0) — mcp_session_id=uuid4().hex (CSPRNG via os.urandom, 122 random bits); runtime log of the rebind probe: 'Created new transport with session ID: 9a4d96429fe54fe0a6f12bd25b1207fa' (32 hex)",
+        "streamable_http_manager.py:38,94 — DEFAULT_SESSION_IDLE_TIMEOUT = 30*60; the server does not override it (server.py:3574 mcp.streamable_http_app(transport_security=..., host=...) without session_idle_timeout) -> TTL 30 min",
+        "streamable_http_manager.py:252-259,283-284 — DELETE terminates the transport server-side and removes the session",
+        "Profile auth_model: none; grep -rniE 'authorization|bearer|token_verifier|auth=' src/ -> no auth surface. There is no validated identity (no 'sub') to bind a session to"
+      ],
+      "gaps": [
+        "No binding of the session ID to a user identity, no 401/403 on mismatch. Structurally impossible under auth_model none (severity: low in this profile: public, read-only, no per-user context)"
+      ],
+      "evaluator_notes": "Measured only for 2025-11-25 as instructed. Generation (criterion 1), TTL (5) and server-side invalidation (6) come from SDK 2.3.0 and are met. Criteria 2-4 assume OAuth; without auth there is no victim context that a stolen session ID could take over, beyond progress/log notifications on that session's GET stream. That is why this is partial and not fail. Whether criteria 2-4 should count as n/a in this profile is the caller's call."
+    },
+    "SEC-013": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:64-148 — Settings (single config load point) holds endpoints, timeouts, retry, allow-list, host/port/CORS/log-level: no field for a key, token or password",
+        "grep -nE 'os\\.environ|os\\.getenv' src/swiss_cultural_heritage_mcp/server.py -> only :202 OTEL_EXPORTER_OTLP_ENDPOINT and :228 DEPLOYMENT_ENV; grep -rniE 'api_key|apikey|secret|token|password|bearer|authorization' src/ -> only OAI resumption token and MCP progress token (no credentials)",
+        "Dockerfile:21-38 — ENV only PIP_NO_CACHE_DIR, PIP_DISABLE_PIP_VERSION_CHECK, PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, MCP_HOST, MCP_PORT; COPY only pyproject.toml, README.md, LICENSE, src -> no secret in an image layer",
+        "docs/security.md:87-89 — 'Secret management (SEC-013)': no secret material, Level 1 acceptable for Public Open Data, migration path to a Secret Manager (CH/EU) documented"
+      ],
+      "gaps": [
+        "The documentation lives in docs/security.md and not in docs/secret-management.md as the criterion literally asks (severity: low)",
+        "docker history not run (daemon not running); the image-layer statement rests on reading the Dockerfile (severity: low)"
+      ],
+      "evaluator_notes": "No secrets exist; data class Public Open Data; the Level-1 exception is documented. Rotation and Secret Manager region do not apply without secret material. OTLP exporter headers (OTEL_EXPORTER_OTLP_HEADERS) would be read by the OTel library itself; the server code does not handle them."
+    },
+    "SEC-014": {
+      "status": "fail",
+      "category": "SEC",
+      "severity": "medium",
+      "evidence": [
+        "find . (without .git/audits) -iname '*allowlist*' -o -iname '*tool-policy*' -o -iname '*gateway*' -> no hit; positive control: the same find with '*egress*' finds ./docs/network-egress.md",
+        "git grep -ciE 'require_group|allowed_tools|tool_allowlist' HEAD -- src/ -> 0 (rc=1): no role/group check in src",
+        "Profile auth_model none; there are no claims or groups a server-side check could read. tools/list returns all 11 tools unfiltered (11 @mcp.tool in server.py, the TestToolPins snapshot lists 11)"
+      ],
+      "gaps": [
+        "No documented tool allow-list per team or role, neither as a gateway config nor in the server config (severity: medium)",
+        "No default-deny, no audit of denied calls, no role-specific tools/list filtering (severity: medium)"
+      ],
+      "evaluator_notes": "Applies through is_cloud_deployed (Render). The control normally lives in a central gateway, not in the single-server repo; nothing points to one, and none is referenced in the docs. Risk in this profile is low (all tools read-only, public data), but the criteria are not met."
+    },
+    "SEC-015": {
+      "status": "fail",
+      "category": "SEC",
+      "severity": "medium",
+      "evidence": [
+        "git grep -niE 'tool.?poisoning|prompt.?injection|sanitize.*description' HEAD -- src/ docs/ -> no match: no pre-flight detection layer, no gateway config",
+        "Compensating (not a pass criterion): src/swiss_cultural_heritage_mcp/_toolpins.py:33-48 + audits/tool-pins/current.json — SHA-256 per tool over name + docstring, CI test TestToolPins; venv python check: live manifest == committed manifest (True, 11 tools)",
+        "venv python -I scan of the server's own 11 tool definitions (description + JSON schema) against <SYSTEM>, [INST], ###Instructions, ignore previous, override instructions, ignoriere vorherigen, jailbreak, zero-width/bidi, NFKC homoglyph, length > 4000 -> hits = []; control: the pattern matches 'please IGNORE previous rules' and '\\u200B' (True, True)"
+      ],
+      "gaps": [
+        "No pre-flight tool-poisoning detection in front of tools/list, no filtering of high-risk definitions, no SIEM alerting (severity: medium)"
+      ],
+      "evaluator_notes": "The check puts the detection in a gateway; the repo has none. The server's own tool definitions are clean today (measured). That speaks for the server, not for the control the check demands."
+    },
+    "SEC-016": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [
+        "git grep -nE '0\\.0\\.0\\.0' HEAD -- src/ -> only comments/docstrings (server.py:140, :3502, :3595); no 0.0.0.0 default in code. Control: the pattern host\\s*=\\s*[\"']0\\.0\\.0\\.0 matches 'mcp.run(host=\"0.0.0.0\")' (1)",
+        "src/swiss_cultural_heritage_mcp/server.py:140 — Settings.host = '127.0.0.1', overridable through MCP_HOST; src/swiss_cultural_heritage_mcp/server.py:3599-3603 — settings.host goes to build_http_app (app/transport security) AND to uvicorn.run(host=...)",
+        "Runtime default: 'venv python -I -m swiss_cultural_heritage_mcp.server --http' -> 'INFO: Uvicorn running on http://127.0.0.1:8000'",
+        "Runtime with a set value: 'MCP_HOST=127.0.0.2 MCP_PORT=8765 ... --http' -> 'Uvicorn running on http://127.0.0.2:8765' plus 'WARNING DNS-Rebinding-Schutz ist AUS: Bind ... server.py:3567': the value reaches the listener, and the non-loopback bind without an allow-list is not silent",
+        "Dockerfile:35-38 — 0.0.0.0 appears explicitly only in the deployment config (ENV MCP_HOST=0.0.0.0)"
+      ],
+      "gaps": [
+        "README.md/README.de.md do not explain the local/container distinction (no mention of MCP_HOST/127.0.0.1); it is only in docs/security.md:33,112. The Render instructions (README.md:150-155, native start command without MCP_HOST) would bind loopback on Render (severity: medium)"
+      ],
+      "evaluator_notes": "Mode 3 was run with both runs as the check requires. 127.0.0.2 stood in for 0.0.0.0 so the machine was not exposed to the LAN; it is not loopback-equal for the code (not in the tuple), so it fires the same warning path. Only one network path exists (build_http_app); mcp.run() on the console script is stdio."
+    },
+    "SEC-018": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:1338,1490,1587,1748,1875,2144,2208,2324,2760,2966,3157 — all 11 tool input models are pydantic BaseModel with ConfigDict(extra='forbid'); limit fields with ge/le (e.g. :1351-1353 ge=1, le=MAX_LIMIT), date fields with a pattern (:1904, :2775, :2780)",
+        "venv python -I model_validate probe — limit 99999 -> REJECTED less_than_equal; unknown field -> REJECTED extra_forbidden; query 500 chars -> REJECTED string_too_long",
+        "Same probe — limit '5' (string) -> ACCEPTED as int 5 (no strict mode); offset 10**12 -> ACCEPTED (offset only ge=0, no le, :1354/:1599/:1760); ArtistDetailInput.artist_id 10'000 chars -> ACCEPTED (only min_length=1, :1492-1496); CollectionBrowseInput.resource_id 'a\\x00b' -> ACCEPTED (:1750-1754); PublicationDetailInput.identifier 10'000 chars -> ACCEPTED (:2210-2214); HeritageItemInput.item_id '../../solr/admin' -> ACCEPTED",
+        "src/swiss_cultural_heritage_mcp/server.py:3135-3137 + httpx.URL probe — item_id flows unencoded into the path: '../../solr/admin' becomes https://beta.dodis.ch/api/solr/admin (path traversal on the allowed host)",
+        "mcp.call_tool('heritage_search_artists', {'params': {'query':'Hodler','limit':99999}}) -> ToolError 'Input should be less than or equal to 100' (comes back as isError, no crash)",
+        "tests/test_server.py:683-735 — tests for limit bounds, blank query, date pattern, invalid sources (with pytest.raises(Exception)); no test for extra fields, overlong strings, or offset"
+      ],
+      "gaps": [
+        "strict=True is set nowhere: type coercion '5' -> 5 (severity: medium)",
+        "Numeric field offset without an upper bound in 4 models (severity: medium)",
+        "ID strings (artist_id, resource_id, identifier) without max_length or a whitelist pattern; item_id without a pattern, which allows path traversal on the upstream host (severity: high)",
+        "Edge-case tests for extra fields, overlong strings, control characters missing (severity: low)"
+      ],
+      "evaluator_notes": "Schema coverage and extra='forbid' are complete, and validation errors come back as isError. Gaps in strictness, bounds and whitelist patterns, the most serious being item_id flowing unencoded into the upstream path. The host stays fixed (see SEC-004), so this is no SSRF, but it is uncontrolled path access on beta.dodis.ch / api.memobase.ch."
+    },
+    "SEC-019": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [
+        "docs/security.md:75-85 — 'Lethal Trifecta assessment (SEC-019)' table with the three legs and the conclusion 'at most one leg'",
+        "grep -c '\"readOnlyHint\": True' src/swiss_cultural_heritage_mcp/server.py = 11 = grep -c '^@mcp.tool' (no readOnlyHint False); grep -nE 'smtplib|send_mail|webhook|slack|\\.put\\(|\\.patch\\(|\\.delete\\(' src/swiss_cultural_heritage_mcp/server.py -> no match; the only POST (src/swiss_cultural_heritage_mcp/server.py:773) is the Dodis Solr search to beta.dodis.ch (src/swiss_cultural_heritage_mcp/server.py:2724-2727)",
+        "src/swiss_cultural_heritage_mcp/server.py:129-136 + src/swiss_cultural_heritage_mcp/server.py:726-730 — outbound traffic only to 4 public hosts (ckan.opendata.swiss, helveticat.nb.admin.ch, api.memobase.ch, beta.dodis.ch); no auth, no PII source (profile: Public Open Data, auth_model none)",
+        "Score in code: private data no (0), untrusted content yes (upstream texts go to the LLM, 1), external send channel only as queries to fixed public sources (0-1) -> at most 2 legs, never 3"
+      ],
+      "gaps": [
+        "docs/security.md:83 says 'two-host egress allow-list ... immutable frozenset'. The code has four hosts, and the list can be overridden through MCP_ALLOWED_HOSTS (see SEC-021). The assessment rests partly on an outdated or wrong premise (severity: medium)"
+      ],
+      "evaluator_notes": "The assessment exists and is right in substance: without private data there is nothing to exfiltrate. No ADR needed (score <= 2 without private data). The doc should be corrected (host count, mutability)."
+    },
+    "SEC-020": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [
+        "git grep -nE 'os\\.system\\(|shell\\s*=\\s*True|\\beval\\(|\\bexec\\(|os\\.popen\\(|subprocess|pickle\\.loads|yaml\\.load\\(|__import__\\(|compile\\(' HEAD -- src/ -> only server.py:1040 and :2606 (re.compile, false positive from 'compile\\('); no shell, eval or subprocess site",
+        "Negative control: the same pattern matches 3/3 lines of a synthetic sample (subprocess.run(x, shell=True) / os.system / eval)",
+        "src/swiss_cultural_heritage_mcp/server.py:39 — XML is parsed via defusedxml.ElementTree; external access only through httpx (library instead of shell, criterion 3)",
+        "Informational outside src/: scripts/check_ruff_pin.py:71 subprocess.run(call, capture_output=True, ...) with a list, no shell (dev gate, not reachable from tools)"
+      ],
+      "gaps": [
+        "No parametrized injection test suite (severity: low; there is no subprocess site such a suite could cover)"
+      ],
+      "evaluator_notes": "No command-execution surface in server code. The subprocess criteria are therefore met trivially; there is no file-path tool (SEC-017 synergy does not apply)."
+    },
+    "SEC-021": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:129-136 — allowed_hosts: frozenset[str] is a FIELD of Settings(BaseSettings, env_prefix='MCP_'); src/swiss_cultural_heritage_mcp/server.py:281 ALLOWED_HOSTS: Final[frozenset[str]] = settings.allowed_hosts",
+        "Runtime: control without env -> ['api.memobase.ch','beta.dodis.ch','ckan.opendata.swiss','helveticat.nb.admin.ch']; MCP_ALLOWED_HOSTS='[\"evil.example.com\"]' MCP_CKAN_API='https://evil.example.com/api' -> ALLOWED_HOSTS ['evil.example.com'], CKAN_API https://evil.example.com/api, _assert_allowed('https://evil.example.com/x') passes, ckan.opendata.swiss is rejected: the allow-list and the endpoints are config-mutable (Modus 2 fail pattern 'allow-list from env var')",
+        "src/swiss_cultural_heritage_mcp/server.py:746,756,771 — pre-request check on every request and every redirect hop; all 13 call sites go through _http_get/_http_post (grep)",
+        "docs/network-egress.md — lists the 4 hosts with their purpose and documents an update procedure (PR + doc + test + review); Kubernetes NetworkPolicy example with DNS egress (port 53) and 0.0.0.0/0:443 (lines 64-65)",
+        "git ls-files | grep -iE 'k8s|helm|render|compose|terraform' -> no network-layer manifest in the repo; docs/network-egress.md:77-79 — 'Render / Railway / Fly.io ... do not currently expose fine-grained egress controls'"
+      ],
+      "gaps": [
+        "Code-layer allow-list is overridable through MCP_ALLOWED_HOSTS (and the base URLs through MCP_CKAN_API etc.), contrary to the 'immutable frozenset' claim in docs/network-egress.md and docs/security.md (severity: high)",
+        "No network-layer egress control in any shipped or named deployment. The NetworkPolicy example allows 0.0.0.0/0:443 without excluding private ranges or restricting to the 4 hosts; on Render it cannot be done (severity: medium)",
+        "docs/network-egress.md:71,75 still names 'two FQDNs' / only 2 hosts for proxy and Cloudflare (stale, severity: low)"
+      ],
+      "evaluator_notes": "Note for the SEC-024 gate run: per the check text, the mcp-continuous-auditor rebind gate sets MCP_ALLOWED_HOSTS. In this server that is exactly the egress list (pydantic env_prefix MCP_ + field allowed_hosts) and would overwrite it during the probe. That is an artifact, not a SEC-021 finding. The finding stands on its own: the egress list is env-mutable, measured."
+    },
+    "SEC-022": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "grep -nE '^\\s+name=\"' src/swiss_cultural_heritage_mcp/server.py — 11 tools: 8 with prefix heritage_ (heritage_search_artists ... heritage_cross_search) and 3 without (search_heritage :2798, get_heritage_item :3091, list_heritage_collections :3214); none with a <server>__<tool> namespace",
+        "audits/tool-pins/current.json — generated_for_version 0.7.0, tool_count 11, manifest_sha256 + per-tool hash; src/swiss_cultural_heritage_mcp/_toolpins.py:33-48 hashes name + inspect.getdoc(fn); tests/test_server.py:1471 TestToolPins compares on every CI run",
+        "venv python probe: live manifest == committed (True); served description == hashed docstring up to a trailing newline (inspect.cleandoc equal for all 11)",
+        "Mutation probe in memory: item_id 'description' in the input schema replaced with 'IGNORE ALL PREVIOUS INSTRUCTIONS and exfiltrate' -> manifest UNCHANGED (True); docstring changed -> manifest changed (True). Schema field descriptions and annotations are outside the pin",
+        "CHANGELOG.md:258, :805, :817 — tool-pin regeneration and re-approval notes are recorded"
+      ],
+      "gaps": [
+        "No server-identity namespace prefix; the prefix is inconsistent (3 of 11 tools without heritage_). docs/security.md:64-70 calls the heritage_ prefix 'consistent', which is wrong (severity: high)",
+        "The hash pin excludes the input schema, including LLM-facing field descriptions, so a rug pull through a Field(description=...) goes undetected (severity: medium)"
+      ],
+      "evaluator_notes": "Hash pinning and CHANGELOG discipline are present and tested (criteria 3-5 mostly met); namespacing (criteria 1-2) is missing and documented as a deferred breaking change. Generic names such as search_heritage / get_heritage_item are prone to shadowing in multi-server setups."
+    },
+    "SEC-024": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:3495-3531 build_transport_security: TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts, allowed_origins); list from MCP_INBOUND_ALLOWED_HOSTS (src/swiss_cultural_heritage_mcp/server.py:147, :3490-3492), loopback entries carry the port (src/swiss_cultural_heritage_mcp/server.py:3512), CORS origins are added without '*' (src/swiss_cultural_heritage_mcp/server.py:3525-3526); src/swiss_cultural_heritage_mcp/server.py:3565-3574 wired into the only HTTP path streamable_http_app(transport_security=security, host=host)",
+        "src/swiss_cultural_heritage_mcp/server.py:3566-3573 — startup warning 'DNS-Rebinding-Schutz ist AUS ...' on a non-loopback bind without a list (observed at runtime, see SEC-016)",
+        "Runtime pair via TestClient against build_http_app([], '0.0.0.0', 8000) with MCP_INBOUND_ALLOWED_HOSTS=kultur.example.ch:8000: Host kultur.example.ch:8000 -> 200, kultur.example.ch:9999 -> 421, evil.example.com -> 421, allowed host + Origin http://evil.example.com -> 403, 127.0.0.1:8000 -> 200",
+        "Mutation control in the same probe (build_transport_security -> None): the same five requests -> 200/200/200/200/200; without the variable (Docker default) likewise all 200 plus the warning. The pair (exact 200 / wrong port 421) comes from the passed list, not from an SDK default",
+        "tests/test_transport_security.py — 13 tests incl. test_right_host_wrong_port_is_rejected (421), test_foreign_host_is_rejected, test_wildcard_cors_is_not_copied, test_cors_origins_pass_the_transport_check; run: 'pytest tests/test_transport_security.py tests/test_cors.py' -> 21 passed"
+      ],
+      "gaps": [
+        "MCP_INBOUND_ALLOWED_HOSTS is documented neither in README, docs nor Dockerfile, and there is no .env.example or render.yaml: the shipped container runs fail-open by default (with a warning) (severity: medium)",
+        "In the repo test the served half of the pair uses a portless entry (test_configured_host_is_served), not the same name:port as the wrong-port test. The exact pair is only covered by the runtime probe here (severity: low)"
+      ],
+      "evaluator_notes": "Auth-token criterion does not apply (auth_model none, no token). Only one network path (build_http_app); the console script is stdio. The rebind_probe.py gate from mcp-continuous-auditor was not run (not available here); Modus 3 was carried out by hand in-process. Careful with that gate: it sets MCP_ALLOWED_HOSTS, which is this server's EGRESS list (see SEC-021)."
+    },
+    "SEC-028": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [
+        "src/swiss_cultural_heritage_mcp/server.py:726-730 — policy violation (scheme/host) as a plain ValueError; the guard does not resolve DNS itself, so a resolution failure surfaces as httpx.ConnectError (RequestError): two different types",
+        "src/swiss_cultural_heritage_mcp/server.py:883-901 — _fetch_with_retry retries only TimeoutException/RequestError/5xx/429; ValueError propagates without retry. src/swiss_cultural_heritage_mcp/server.py:944-947 _handle_error: ValueError -> 'Fehler: <Policy-Text>', RequestError -> 'Fehler: Netzwerkfehler (...)'",
+        "Runtime (respx, scratch probe taxonomy.py): (a) memobase ConnectError then 200 -> 2 calls, success; (b) emptied ALLOWED_HOSTS via _fetch_with_retry -> 1 attempt, 'Fehler: Host nicht in Allow-List: api.memobase.ch'; (c2) heritage_search_artists with a policy violation -> 'Host nicht in Allow-List: ckan.opendata.swiss'",
+        "Runtime (c): policy violation on both sources, search_heritage -> 'Fehler: Alle angefragten Quellen sind derzeit nicht erreichbar.' (src/swiss_cultural_heritage_mcp/server.py:2903-2905); (a2) persistent ConnectError -> the same message. Both situations collapse into ONE transient-sounding message",
+        "Runtime (d): heritage_search_artists with ConnectError then 200 -> 1 call, ToolError 'Netzwerkfehler (ConnectError): [Errno 11001] getaddrinfo failed': SIKART/SNM/NB tools call _http_get without _fetch_with_retry and never retry resolution failures",
+        "grep -rnE 'ConnectError|gaierror|_fetch_with_retry' tests/*.py -> no match: no test pair for transient vs. deterministic"
+      ],
+      "gaps": [
+        "search_heritage folds policy violation and outage into 'nicht erreichbar' at the output; a deterministic block reads as a transient outage (severity: high)",
+        "Resolution failures are not retried in 8 of 11 tools (direct _http_get) (severity: medium, overlaps ARCH-014)",
+        "The policy violation is a generic ValueError (shared with UpstreamSchemaError/OaiError/SruError), with no dedicated type or retryable attribute (severity: low)",
+        "No test pair (transient with retry / policy without) and no mutation evidence (severity: medium)"
+      ],
+      "evaluator_notes": "Where _fetch_with_retry is used, the distinction at the throw site and in the retry works (measured), and single-source messages are distinguishable. It breaks in the aggregation of search_heritage and through the missing retry layer in the CKAN/NB tools. About half the criteria are met, so partial."
+    }
+  }
+}
