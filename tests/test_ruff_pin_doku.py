@@ -146,8 +146,19 @@ def _markdown() -> list[pathlib.Path]:
     fuehrte `.venv`, aber weder `venv` noch `build` oder `env`. `.gitignore`
     weiss das bereits, und `git ls-files` liest es — eine Quelle statt einer
     Aufzaehlung, die beim naechsten Werkzeug wieder unvollstaendig waere.
+
+    Ausgenommen sind die Audit-Reports unter `audits/`. Das ist keine zweite
+    Ausschlussliste fuer erzeugte Dateien, sondern eine Unterscheidung nach
+    Art: Ein Report ist ein datiertes Messprotokoll und nennt die Version, die
+    am Tag des Audits gepinnt war. Ihn nachzufuehren hiesse, das Protokoll zu
+    faelschen; ihn stehen zu lassen macht die Suite bei jedem Pin-Bump rot.
+    Genau das geschah am 12.11.2026: Dependabot hob den Pin in #110 auf
+    0.17.3, vier Stellen in den Reports vom 08.11. nannten 0.16.9, und `main`
+    war drei Tage rot, ohne dass es jemand sah. Der Test gleicht Doku ab, der
+    jemand folgt -- ein Report ist keine.
     """
-    ruf = ["git", "-C", str(_ROOT), "ls-files", "-z", "--", "*.md"]
+    ausser = ":(exclude)audits/"
+    ruf = ["git", "-C", str(_ROOT), "ls-files", "-z", "--", "*.md", ausser]
     try:
         roh = subprocess.run(ruf, capture_output=True, text=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError) as fehler:
@@ -183,6 +194,14 @@ def test_markdown_wird_wirklich_gelesen() -> None:
     dateien = _markdown()
     assert dateien, "Keine Markdown-Datei gefunden — der Test misst nichts."
     assert _ROOT / "CLAUDE.md" in dateien
+
+
+def test_audit_reports_werden_nicht_gelesen() -> None:
+    """Dritte Positivkontrolle: Der Ausschluss greift -- und er wird geprueft."""
+    reports = sorted((_ROOT / "audits").rglob("*.md"))
+    assert reports, "Kein Audit-Report vorhanden -- der Ausschluss ist ungeprueft."
+    gelesen = [p for p in _markdown() if "audits" in p.relative_to(_ROOT).parts]
+    assert gelesen == []
 
 
 def test_keine_abweichende_ruff_version_in_der_doku() -> None:
