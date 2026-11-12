@@ -43,17 +43,14 @@ def _baum(tmp_path: Path, version: str, pin_version: str, badge: str) -> Path:
     """
     (tmp_path / "scripts").mkdir(parents=True, exist_ok=True)
     shutil.copy2(GATE, tmp_path / "scripts" / "check_version_sync.py")
-    (tmp_path / "pyproject.toml").write_text(
-        f'[project]\nname = "wegwerf-paket"\nversion = "{version}"\n', encoding="utf-8"
-    )
+    projekt = f'[project]\nname = "wegwerf-paket"\nversion = "{version}"\n'
+    (tmp_path / "pyproject.toml").write_text(projekt, encoding="utf-8")
     pin = tmp_path / "audits" / "tool-pins" / "current.json"
     pin.parent.mkdir(parents=True)
-    pin.write_text(
-        json.dumps({"generated_for_version": pin_version, "tools": {}}), encoding="utf-8"
-    )
-    (tmp_path / "README.md").write_text(
-        f"![Version](https://img.shields.io/badge/version-{badge}-blue)\n", encoding="utf-8"
-    )
+    inhalt = json.dumps({"generated_for_version": pin_version, "tools": {}})
+    pin.write_text(inhalt, encoding="utf-8")
+    zeile = f"![Version](https://img.shields.io/badge/version-{badge}-blue)\n"
+    (tmp_path / "README.md").write_text(zeile, encoding="utf-8")
     return tmp_path
 
 

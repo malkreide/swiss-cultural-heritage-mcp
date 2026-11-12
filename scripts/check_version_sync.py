@@ -136,7 +136,8 @@ def find_hardcoded(dist: str) -> list[tuple[str, int, str]]:
     dunder = re.compile(r"""__version__\s*=\s*["']([^"']+)["']""")
 
     for path in sorted(SRC.rglob("*.py")):
-        for lineno, line in enumerate(code_lines(path.read_text(encoding="utf-8")), start=1):
+        text = path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(code_lines(text), start=1):
             values = own_ua_versions(line, dist)
             for m in dunder.finditer(line):
                 if re.match(r"\d+\.\d", m.group(1)):
@@ -154,7 +155,8 @@ def collect_declared(expected: str) -> list[tuple[str, str]]:
         server = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
         found.append(("server.json -> version", server.get("version", "")))
         for i, pkg in enumerate(server.get("packages", [])):
-            found.append((f"server.json -> packages[{i}].version", pkg.get("version", "")))
+            where = f"server.json -> packages[{i}].version"
+            found.append((where, pkg.get("version", "")))
 
     for readme in sorted(ROOT.glob("README*.md")):
         for match in _BADGE.finditer(readme.read_text(encoding="utf-8")):
@@ -178,7 +180,8 @@ def tool_pin_drift(expected: str) -> str | None:
     if not TOOL_PIN.exists():
         return None
     try:
-        recorded = json.loads(TOOL_PIN.read_text(encoding="utf-8")).get("generated_for_version")
+        pin = json.loads(TOOL_PIN.read_text(encoding="utf-8"))
+        recorded = pin.get("generated_for_version")
     except (OSError, ValueError) as fehler:
         # `json.JSONDecodeError` ist eine `ValueError`-Unterklasse; der weitere
         # Fang nimmt auch einen Pin mit, der kein Objekt ist (dann hat er kein
@@ -223,42 +226,37 @@ def main() -> None:
     if version is None:
         # `dynamic = ["version"]`: die Version entsteht beim Bauen, ein
         # Literal in src/ ist dort die Quelle und kein Fehler.
-        print("Versions-Sync uebersprungen: pyproject.toml nutzt eine dynamische Version.")
+        grund = "pyproject.toml nutzt eine dynamische Version."
+        print(f"Versions-Sync uebersprungen: {grund}")
         return
 
     found = collect_declared(version)
     mismatches = [(where, value) for where, value in found if value != version]
     if mismatches:
-        print(
-            f"DRIFT: pyproject.toml steht auf {version!r}, folgende Stellen weichen ab:",
-            file=sys.stderr,
-        )
+        kopf = f"DRIFT: pyproject.toml steht auf {version!r}, "
+        kopf += "folgende Stellen weichen ab:"
+        print(kopf, file=sys.stderr)
         for where, value in mismatches:
             print(f"  {where} = {value!r}", file=sys.stderr)
-        print(
-            "\nAlle Stellen im selben Commit bumpen. Hinweis: publish.yml "
-            "ueberschreibt server.json beim Veroeffentlichen ohnehin aus dem Tag -- "
-            "die committete Version bleibt trotzdem die, die Menschen lesen.",
-            file=sys.stderr,
-        )
+        hinweis = "\nAlle Stellen im selben Commit bumpen. Hinweis: publish.yml "
+        hinweis += "ueberschreibt server.json beim Veroeffentlichen ohnehin aus dem "
+        hinweis += "Tag -- die committete Version bleibt trotzdem die, die Menschen "
+        hinweis += "lesen."
+        print(hinweis, file=sys.stderr)
         sys.exit(1)
 
     drift = tool_pin_drift(version)
     if drift is not None:
         stelle = TOOL_PIN.relative_to(ROOT)
-        print(
-            f"TOOL-PIN: {stelle} {drift}, pyproject.toml steht auf {version!r}.",
-            file=sys.stderr,
-        )
-        print(
-            "\nDas Feld NICHT von Hand nachtragen: Die Hashes daneben "
-            "beschreiben die freigegebene Tool-Oberflaeche, und ein "
-            "nachgeschriebenes `generated_for_version` behauptete eine "
-            "Freigabe fuer eine Version, gegen die nie geprueft wurde. Im "
-            "selben Commit wie den Bump neu erzeugen:\n"
-            "    PYTHONPATH=src python scripts/pin_tools.py",
-            file=sys.stderr,
-        )
+        kopf = f"TOOL-PIN: {stelle} {drift}, pyproject.toml steht auf {version!r}."
+        print(kopf, file=sys.stderr)
+        hinweis = "\nDas Feld NICHT von Hand nachtragen: Die Hashes daneben "
+        hinweis += "beschreiben die freigegebene Tool-Oberflaeche, und ein "
+        hinweis += "nachgeschriebenes `generated_for_version` behauptete eine "
+        hinweis += "Freigabe fuer eine Version, gegen die nie geprueft wurde. Im "
+        hinweis += "selben Commit wie den Bump neu erzeugen:\n"
+        hinweis += "    PYTHONPATH=src python scripts/pin_tools.py"
+        print(hinweis, file=sys.stderr)
         sys.exit(1)
 
     hardcoded = find_hardcoded(dist)
@@ -266,12 +264,10 @@ def main() -> None:
         print("HARDCODED: Versionsnummer in src/ gefunden:", file=sys.stderr)
         for path, lineno, line in hardcoded:
             print(f"  {path}:{lineno}: {line}", file=sys.stderr)
-        print(
-            "\nDie Laufzeit-Version kommt aus den Paket-Metadaten "
-            "(`__version__`, gespeist aus importlib.metadata). Statt eines "
-            "Literals von dort lesen -- sonst beginnt dieselbe Drift von vorn.",
-            file=sys.stderr,
-        )
+        hinweis = "\nDie Laufzeit-Version kommt aus den Paket-Metadaten "
+        hinweis += "(`__version__`, gespeist aus importlib.metadata). Statt eines "
+        hinweis += "Literals von dort lesen -- sonst beginnt dieselbe Drift von vorn."
+        print(hinweis, file=sys.stderr)
         sys.exit(1)
 
     # Die Ausgabe nennt jede geprüfte Stelle. Sonst sieht ein grüner Lauf
@@ -281,7 +277,8 @@ def main() -> None:
     if TOOL_PIN.exists():
         checked.append(f"{TOOL_PIN.relative_to(ROOT)} -> generated_for_version")
     stellen = ", ".join(checked) or "keine weiteren Stellen"
-    print(f"Versions-Sync OK ({version}; geprueft: {stellen}; keine hartkodierte Version in src/)")
+    rest = "keine hartkodierte Version in src/"
+    print(f"Versions-Sync OK ({version}; geprueft: {stellen}; {rest})")
 
 
 if __name__ == "__main__":
