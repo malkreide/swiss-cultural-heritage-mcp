@@ -26,8 +26,10 @@ die Fehlersuche lief also in Dateien, die nichts damit zu tun hatten.
 Die Prüfung kostet eine Sekunde und ersetzt diese Fehlersuche. Das ist der
 ganze Zweck.
 
-Derselbe Ablauf steht als Handgriff auch in [`../../CLAUDE.md`](../../CLAUDE.md)
-(«Vor der Arbeit»). Der Hook ist die Variante, an die niemand denken muss.
+Derselbe Ablauf steht als Handgriff auch in
+[`../../docs/claude/wenn-etwas-rot-ist.md`](../../docs/claude/wenn-etwas-rot-ist.md)
+(«Vor der Arbeit: Standard-Branch ermitteln»). Der Hook ist die Variante, an
+die niemand denken muss.
 
 ## Was er zusichert
 
