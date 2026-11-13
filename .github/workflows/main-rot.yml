@@ -1,0 +1,148 @@
+name: Main rot melden
+
+# Oeffnet ein Issue mit Label `main-rot`, wenn die CI auf dem Standard-Branch
+# rot wird, ergaenzt es bei jedem weiteren roten Lauf und schliesst es, sobald
+# sie wieder gruen ist. Am 08.11.2026 blieb `main` vier Tage rot, ohne dass es
+# jemand sah; dieser Workflow verhindert so etwas nicht, er macht es sichtbar.
+# Verhindern laesst es sich nur in den Repo-Einstellungen («Require branches
+# to be up to date before merging»).
+#
+# Die Entscheidung -- auf, zu oder nichts -- trifft `scripts/main_ci_status.py`,
+# getestet in `tests/test_main_ci_status.py`. Hier steht nur die Ausfuehrung.
+
+on:
+  workflow_run:
+    # Muss der `name:` von ci.yml sein. Stimmt er nicht, feuert dieser Workflow
+    # nie -- und das sieht aus wie ein gruenes `main`. Den Abgleich haelt
+    # `tests/test_main_ci_status.py`.
+    workflows: ["CI"]
+    types: [completed]
+    # Bewusst kein `branches:`-Filter: Der Standard-Branch kommt aus der
+    # Payload, nicht aus einem `main` hier. Siehe das Skript, Abschnitt
+    # «Der Standard-Branch wird nicht angenommen».
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: "Probelauf mit eigenem Label (main-rot-probe): rot oeffnet, gruen schliesst"
+        required: true
+        type: choice
+        options: [rot, gruen]
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+# Zwei CI-Laeufe, die gleichzeitig enden, fanden sonst beide kein offenes Issue
+# und oeffneten zwei. Nacheinander sieht der zweite das Issue des ersten.
+concurrency:
+  group: main-rot
+  cancel-in-progress: false
+
+jobs:
+  melden:
+    # Nur ein grober Vorfilter, damit nicht jeder PR-Lauf einen Runner startet.
+    # Die eigentliche Entscheidung trifft das Skript, auch ueber genau diese
+    # Bedingung -- es prueft sie ein zweites Mal und ist dort getestet.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Die Spitze des Standard-Branches jetzt, nicht beim Start des CI-Laufs.
+      # Scheitert die Abfrage, bleibt sie leer, und das Skript entscheidet
+      # asymmetrisch: rot wird trotzdem gemeldet, gruen schliesst nichts.
+      - name: Spitze des Standard-Branches
+        id: spitze
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          STANDARD_ZWEIG: ${{ github.event.repository.default_branch }}
+        run: |
+          sha="$(gh api "repos/$REPO/branches/$STANDARD_ZWEIG" --jq .commit.sha 2>/dev/null || true)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # Alles ueber `env:`, nichts ueber `${{ }}` in der Shell: `head_branch`
+      # und `conclusion` stammen aus der Event-Payload.
+      - name: Entscheiden
+        id: entscheid
+        env:
+          AUSLOESER: ${{ github.event_name }}
+          LAUF_EREIGNIS: ${{ github.event.workflow_run.event }}
+          ERGEBNIS: ${{ github.event.workflow_run.conclusion }}
+          ZWEIG: ${{ github.event.workflow_run.head_branch }}
+          STANDARD_ZWEIG: ${{ github.event.repository.default_branch }}
+          HERKUNFT: ${{ github.event.workflow_run.head_repository.full_name }}
+          REPO: ${{ github.repository }}
+          KOPF_SHA: ${{ github.event.workflow_run.head_sha }}
+          SPITZE_SHA: ${{ steps.spitze.outputs.sha }}
+          PROBE: ${{ inputs.probe }}
+        run: python3 scripts/main_ci_status.py
+
+      - name: Issue oeffnen, ergaenzen oder schliessen
+        if: steps.entscheid.outputs.aktion != 'nichts'
+        uses: actions/github-script@v9
+        env:
+          AKTION: ${{ steps.entscheid.outputs.aktion }}
+          LABEL: ${{ steps.entscheid.outputs.label }}
+          TITEL: ${{ steps.entscheid.outputs.titel }}
+        with:
+          script: |
+            const { AKTION, LABEL, TITEL } = process.env;
+            const { owner, repo } = context.repo;
+            const lauf = context.payload.workflow_run;
+            const probe = context.eventName === 'workflow_dispatch';
+            const hierUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            // `listForRepo` liefert auch Pull Requests; die zaehlen hier nicht.
+            const offen = (await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: LABEL, per_page: 100,
+            })).filter((i) => !i.pull_request);
+
+            if (AKTION === 'melden') {
+              const zeilen = [];
+              if (probe) {
+                zeilen.push('**Probelauf**, von Hand ausgeloest -- kein echter Befund.', '');
+                zeilen.push(`- Lauf: ${hierUrl}`);
+              } else {
+                const titelZeile = (lauf.head_commit?.message ?? '').split('\n')[0];
+                zeilen.push(`Die CI auf \`${lauf.head_branch}\` ist rot (\`${lauf.conclusion}\`).`, '');
+                zeilen.push(`- Lauf: ${lauf.html_url}`);
+                zeilen.push(`- Commit: ${lauf.head_sha.slice(0, 7)} ${titelZeile}`);
+                const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                  owner, repo, run_id: lauf.id, filter: 'latest', per_page: 100,
+                });
+                const rot = jobs.filter((j) => j.conclusion !== 'success' && j.conclusion !== 'skipped');
+                if (rot.length > 0) {
+                  zeilen.push('', 'Nicht gruen:');
+                  for (const j of rot) {
+                    const schritte = (j.steps ?? [])
+                      .filter((s) => s.conclusion === 'failure')
+                      .map((s) => s.name);
+                    const wo = schritte.length > 0 ? ` -- ${schritte.join(', ')}` : '';
+                    zeilen.push(`- ${j.name} (\`${j.conclusion}\`)${wo}`);
+                  }
+                }
+              }
+              const body = zeilen.join('\n');
+              if (offen.length > 0) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: offen[0].number, body });
+                core.notice(`Issue #${offen[0].number} ergaenzt.`);
+              } else {
+                const neu = await github.rest.issues.create({ owner, repo, title: TITEL, body, labels: [LABEL] });
+                core.notice(`Issue #${neu.data.number} geoeffnet.`);
+              }
+            } else if (AKTION === 'schliessen') {
+              const wo = probe ? hierUrl : lauf.html_url;
+              const was = probe ? 'Probelauf gruen' : `Wieder gruen mit ${lauf.head_sha.slice(0, 7)}`;
+              for (const i of offen) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: i.number, body: `${was}: ${wo}` });
+                await github.rest.issues.update({ owner, repo, issue_number: i.number, state: 'closed', state_reason: 'completed' });
+                core.notice(`Issue #${i.number} geschlossen.`);
+              }
+              if (offen.length === 0) core.notice('Kein offenes Issue mit diesem Label.');
+            }

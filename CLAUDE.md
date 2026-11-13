@@ -112,3 +112,22 @@ Commit wie den Bump neu erzeugen mit
 `nightly-live-failure`, statt den Lauf rot zu färben. DRIFT-005 ist damit
 erfüllt — Live-Tests sind nicht bloss per `-m "not live"` ausgeschlossen.
 Ein offenes `nightly-live-failure`-Issue vor der Arbeit prüfen.
+
+**Ein rotes `main` öffnet ein Issue.** `.github/workflows/main-rot.yml` läuft
+nach jedem CI-Lauf und öffnet bei Rot auf der Spitze des Standard-Branches ein
+Issue mit Label `main-rot`, ergänzt es bei jedem weiteren roten Lauf und
+schliesst es, sobald die Spitze wieder grün ist. Anlass: Vom 08. bis
+12.11.2026 war `main` rot, ohne dass es jemand sah — PR #110 trug einen grünen
+Check gegen einen Stand ohne die Audit-Reports aus #111. Verhindern lässt sich
+das nur in den Repo-Einstellungen («Require branches to be up to date before
+merging»); dieser Workflow macht es sichtbar. Ein offenes `main-rot`-Issue vor
+der Arbeit prüfen, wie oben.
+
+Die Entscheidung trifft `scripts/main_ci_status.py`, nicht der Workflow:
+Nur der Lauf der aktuellen Spitze zählt (die Laufreihenfolge ist nicht
+garantiert), der Standard-Branch kommt aus der Payload statt aus einem `main`
+im Code, und `cancelled` öffnet und schliesst nichts. Per `workflow_dispatch`
+lässt er sich mit eigenem Label `main-rot-probe` von Hand probefahren — ein
+Probelauf berührt kein echtes `main-rot`-Issue. Wird `ci.yml` umbenannt, muss
+`workflows:` im Melder mit; sonst feuert er nie, und das hält
+`tests/test_main_ci_status.py` fest.
