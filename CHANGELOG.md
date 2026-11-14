@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Ein rotes `main` öffnet ein Issue** (`.github/workflows/main-rot.yml`).
+  Nach jedem CI-Lauf entscheidet `scripts/main_ci_status.py`: Rot auf der
+  Spitze des Standard-Branches öffnet ein Issue mit Label `main-rot` oder
+  ergänzt das offene um Lauf, Commit und die nicht grünen Jobs samt Schritt;
+  Grün auf der Spitze schliesst es.
+
+  Anlass: Vom 08. bis 12.11.2026 war `main` rot, ohne dass es jemand sah.
+  PR #110 (ruff-Bump) trug einen grünen Check vom 01.11., gerechnet gegen einen
+  Stand ohne die Audit-Reports, die #111 dreissig Sekunden vor dem Merge nach
+  `main` gebracht hatte. Verhindern lässt sich das nur in den
+  Repo-Einstellungen («Require branches to be up to date before merging»);
+  dieser Workflow sorgt dafür, dass es nicht wieder Tage unbemerkt bleibt.
+
+  Nur der Lauf der aktuellen Spitze zählt: An jenem Tag gingen drei PRs binnen
+  dreissig Sekunden nach `main`, und in welcher Reihenfolge ihre Läufe enden,
+  ist nicht garantiert — ein später endender grüner Lauf eines älteren Commits
+  schlösse sonst ein berechtigtes Issue. Ist die Spitze nicht ermittelbar, wird
+  Rot trotzdem gemeldet und Grün schliesst nichts. `cancelled` und `skipped`
+  ändern nichts. Der Standard-Branch kommt aus der Payload, nicht aus einem
+  `main` im Code.
+
+  Per `workflow_dispatch` lässt sich der Melder einmal probefahren, mit
+  eigenem Label `main-rot-probe`, das kein echtes Issue berührt. Werte aus der
+  Payload gehen nur über `env:` in Shell und Skript, nie über `${{ }}`.
+
 - **Der SessionStart-Hook meldet ein nicht gesetztes `core.hooksPath`.**
   `core.hooksPath` gilt pro Klon und ist nicht versionierbar; ein
   pre-commit-Hook, den niemand installiert, schuetzt nichts. Solange es nicht
