@@ -1459,13 +1459,33 @@ class TestErrorIsFlagged:
         assert "Keine Künstler" in result.content[0].text
 
     @pytest.mark.asyncio
-    async def test_direct_call_raises_tool_error(self):
+    @pytest.mark.parametrize(
+        ("endpunkt", "eingabe"),
+        [
+            pytest.param(NB_SRU, {"query": "x"}, id="sru"),
+            pytest.param(NB_OAI_PMH, {"set_spec": "RFN"}, id="oai-pmh"),
+        ],
+    )
+    async def test_direct_call_raises_tool_error(self, monkeypatch, endpunkt, eingabe):
         # The mechanism: tools raise ToolError (mapped to isError) rather than
         # returning a 'Fehler:' string the client would read as a normal result.
+        #
+        # Bis zum 22.11.2026 mockte dieser Test nur OAI-PMH und rief mit
+        # `query="x"` auf — seit dem 20.09.2026 der SRU-Weg. Die OAI-Route wurde
+        # nie getroffen, die SRU-Anfrage lief ungemockt in einen respx-Fehler,
+        # und der kam als «Interner Fehler bei der Tool-Ausführung» heraus.
+        # `match="Fehler"` passte auf das Wort darin. Der Test war gruen, ohne
+        # dass je ein 503 behandelt wurde. Deshalb jetzt: beide Zugaenge, die
+        # Route muss getroffen sein, und die Meldung muss die fuer 503 sein.
+        _no_retry_delay(monkeypatch)
         with respx.mock:
-            respx.get(NB_OAI_PMH).mock(return_value=httpx.Response(503))
-            with pytest.raises(ToolError, match="Fehler"):
-                await heritage_search_helveticat(HelvticatSearchInput(query="x"))
+            route = respx.get(endpunkt).mock(return_value=httpx.Response(503))
+            with pytest.raises(ToolError) as info:
+                await heritage_search_helveticat(HelvticatSearchInput(**eingabe))
+        assert route.called, f"{endpunkt} nie angefragt — der Test traf den falschen Zugang"
+        meldung = str(info.value)
+        assert "Interner Fehler" not in meldung
+        assert "Dienst vorübergehend nicht verfügbar" in meldung
 
 
 class TestToolPins:

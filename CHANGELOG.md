@@ -218,6 +218,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nächste Eintrag wieder ab. Ein `#`-Kommentar ausserhalb jeder Docstring, der
   SEC-022-Pin-Test belegt die unveränderte Tool-Oberfläche.
 
+- **Der NB-Fehlertest prüfte nichts.** `test_direct_call_raises_tool_error`
+  mockte OAI-PMH mit HTTP 503 und rief `heritage_search_helveticat` mit
+  `query="x"` auf — seit dem 20.09.2026 der SRU-Weg. Die gemockte Route wurde
+  nie angefragt; die ungemockte SRU-Anfrage endete in einem respx-Fehler, der
+  als «Interner Fehler bei der Tool-Ausführung» herauskam, und
+  `match="Fehler"` passte auf das Wort darin. Gegengeprüft am 22.11.2026:
+  Entfernt man die 503-Behandlung in `_handle_error`, blieb der alte Test
+  grün. Jetzt fährt er beide Zugänge (SRU und OAI-PMH), verlangt, dass die
+  Route getroffen ist, und prüft die Meldung für 503 statt nur das Wort
+  «Fehler». Mit derselben Neutralisierung fallen beide Fälle.
+
 ### Changed
 
 - **⚠️ Neu-Abnahme nötig (SEC-022): Zwei Tool-Beschreibungen haben sich
