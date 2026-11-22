@@ -989,8 +989,9 @@ class TestHeritageCrossSearch:
         assert "SIK-ISEA" not in result
 
     @pytest.mark.asyncio
-    async def test_cross_search_partial_failure(self):
+    async def test_cross_search_partial_failure(self, monkeypatch):
         """Wenn eine Quelle fehlschlägt, sollen die anderen weiter angezeigt werden."""
+        _no_retry_delay(monkeypatch)
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
             respx.get(f"{CKAN_API}/package_search").mock(
@@ -1151,7 +1152,8 @@ class TestProgressReporting:
         assert ctx.warnings == []
 
     @pytest.mark.asyncio
-    async def test_failing_source_emits_warning(self):
+    async def test_failing_source_emits_warning(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
         ctx = _RecordingCtx()
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(
@@ -1298,7 +1300,8 @@ class TestStructuredLogging:
         assert call_events[0]["log_level"] == "info"
 
     @pytest.mark.asyncio
-    async def test_upstream_error_logged_at_warning(self):
+    async def test_upstream_error_logged_at_warning(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
         with capture_logs() as logs:
             with respx.mock:
                 respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
@@ -1345,12 +1348,13 @@ class TestTracing:
         assert srv._init_tracing() is False
 
     @pytest.mark.asyncio
-    async def test_tool_span_records_name_and_is_error(self):
+    async def test_tool_span_records_name_and_is_error(self, monkeypatch):
         # Probe the SDK, not the `opentelemetry` namespace. mcp 2.x depends on
         # `opentelemetry-api`, so the namespace is importable without the
         # `otel` extra — a namespace probe stops skipping and the SDK import
         # on the next line raises instead. CI installs `.[dev]` only.
         pytest.importorskip("opentelemetry.sdk")
+        _no_retry_delay(monkeypatch)
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -1438,7 +1442,8 @@ class TestErrorIsFlagged:
             return await client.call_tool(name, arguments)
 
     @pytest.mark.asyncio
-    async def test_upstream_failure_is_flagged_iserror(self):
+    async def test_upstream_failure_is_flagged_iserror(self, monkeypatch):
+        _no_retry_delay(monkeypatch)
         with respx.mock:
             respx.get(f"{CKAN_API}/datastore_search").mock(return_value=httpx.Response(503))
             result = await self._call("heritage_search_artists", {"params": {"query": "Hodler"}})

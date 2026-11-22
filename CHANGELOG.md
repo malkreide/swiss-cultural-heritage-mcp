@@ -125,6 +125,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Eine hängende Anfrage wird abgebrochen und wiederholt, statt den
+  Aufruf zu beenden.** Die geplanten Live-Läufe 184 und 185 (21. und
+  22.11.2026) fielen je an einem SIKART-Test: `httpx.ReadTimeout` nach 30 s
+  gegen `datastore_search` auf opendata.swiss. Nachgemessen am 22.11.2026: Die
+  Quelle war erreichbar und ihr Schema intakt, gesunde Antworten kamen in
+  0,4–3,5 s, aber einzelne Anfragen hingen über 60 s — und dieselbe Anfrage
+  direkt danach kam in 1,9 s. Drei Lücken machten daraus einen Fehler:
+  1. **Zehn Aufrufstellen umgingen `_fetch_with_retry` ganz** — alle
+     Werkzeuge für SIKART, Nationalmuseum und Helveticat samt Quersuche. Der
+     Retry kam mit Memobase und Dodis ins Haus und wurde nur dort eingebaut.
+     Ein Hänger hiess dort 30 s httpx-Timeout und Schluss, länger als das
+     Budget von 25 s, das dem Client zugesagt ist. Jetzt laufen alle
+     Upstream-Aufrufe über den Retry; `tests/test_retry_haenger.py` prüft das
+     am Quelltext und nennt jede Stelle mit Zeilennummer, die es nicht tut.
+  2. **Der erste Versuch bekam das ganze Budget.** Auch über den Retry hätte
+     ein Hänger die 25 s allein verbraucht. Neu begrenzt
+     `retry_attempt_timeout` (10 s) jeden Versuch einzeln; das ist fast die
+     dreifache Reserve gegenüber der langsamsten gesunden Antwort und passt
+     zweimal ins Budget. Live belegt am 22.11.2026: Eine
+     `package_search`-Anfrage wurde nach 10,01 s abgebrochen, die Wiederholung
+     kam in 0,80 s, und das Werkzeug lieferte sein Ergebnis.
+  3. **Ein abgelaufenes Budget wurde zum «Interner Fehler».** Die Wanduhr ist
+     ein `asyncio.timeout`, und das eingebaute `TimeoutError` steht nicht in
+     `ExpectedUpstreamError`. So erreichte eine hängende Quelle das Modell
+     auch bei Memobase und Dodis als Bug in diesem Server. Jetzt kommt ein
+     `UpstreamTimeoutError`, eine Unterklasse von `httpx.TimeoutException`,
+     und damit die Meldung «Zeitüberschreitung». Seit dem 7.8.2026 lag das
+     offen; der bestehende Timeout-Test wirft `httpx.TimeoutException` sofort
+     und simulierte nie einen Hänger.
+
+  Jede der drei Zusicherungen ist einzeln gegengeprüft: neutralisiert, fallen
+  je genau die zwei zugehörigen Tests. Wer die Quelle mit `curl` nachmisst,
+  bekommt von opendata.swiss ein HTTP 403 vom nginx der Quelle — der
+  User-Agent `curl/*` wird abgewiesen, `python-httpx` und der des Servers
+  nicht (gemessen am 22.11.2026). Das ist keine Sperre der Quelle, sondern des
+  Werkzeugs.
+
 - **`scripts/check_version_sync.py` war unter Windows immer rot.** Auf einer
   cp1252-Konsole fand das Gate keine Abweichung und endete trotzdem mit Exit 1:
   ein `UnicodeEncodeError` an dem `→` in der *Erfolgsmeldung* (gemessen am
