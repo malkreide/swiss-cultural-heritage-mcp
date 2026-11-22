@@ -110,6 +110,16 @@ class Settings(BaseSettings):
     # ``MCP_DEFAULT_TIMEOUT = 30.0``; 25s lassen Luft für Framing und Parsing.
     retry_total_budget: float = 25.0
 
+    # Deckel für den EINZELNEN Versuch. Ohne ihn bekommt der erste Versuch das
+    # ganze Budget, und eine Anfrage, die hängt, verbraucht es allein — der
+    # Retry existiert dann nur auf dem Papier. Gemessen am 22.11.2026 an
+    # opendata.swiss (`datastore_search` auf SIKART): gesunde Antworten in
+    # 0,4–3,5 s, Helveticat um 1 s; dazwischen einzelne Anfragen, die über 60 s
+    # hingen, während dieselbe Anfrage direkt danach in 1,9 s kam. 10 s lassen
+    # der langsamsten gesunden Antwort fast die dreifache Reserve und passen
+    # zweimal ins Budget.
+    retry_attempt_timeout: float = 10.0
+
     # Deckel für die EINZELNE Wartezeit. Begrenzt die exponentielle Leiter und
     # ein ``Retry-After``, das die Quelle senden darf, das wir aber nicht
     # aussitzen müssen.
@@ -792,6 +802,23 @@ class UpstreamUnavailableError(Exception):
     """
 
 
+class UpstreamTimeoutError(httpx.TimeoutException):
+    """Die Quelle hat innerhalb der Wanduhr von ``_fetch_with_retry`` nicht geantwortet.
+
+    Die Wanduhr ist ein ``asyncio.timeout``, und das wirft das eingebaute
+    ``TimeoutError`` — eine Klasse, die mit ``httpx.TimeoutException`` nichts zu
+    tun hat und deshalb nicht in ``ExpectedUpstreamError`` steht. Bis zum
+    22.11.2026 lief sie roh durch: Eine hängende Quelle erreichte den Client als
+    «Interner Fehler bei der Tool-Ausführung», also als Bug in diesem Server,
+    und nicht als Zeitüberschreitung, die sie war.
+
+    Als Unterklasse von ``httpx.TimeoutException`` gilt sie überall, wo ein
+    httpx-Timeout schon richtig behandelt wird: ``ExpectedUpstreamError``, die
+    Meldung in ``_handle_error``, die Fehlerblöcke der Quersuche. Und anders als
+    ein httpx-Timeout trägt sie eine Meldung — ``str()`` ist nie leer.
+    """
+
+
 def parse_retry_after(resp: httpx.Response | None) -> float | None:
     """Sekunden laut ``Retry-After`` der Antwort, oder ``None``.
 
@@ -860,6 +887,12 @@ async def _fetch_with_retry(
     ``Retry-After`` der Quelle, sonst die gestreute exponentielle Kurve, in
     jedem Fall gedeckelt.
 
+    Jeder einzelne Versuch endet spätestens nach
+    ``settings.retry_attempt_timeout`` Sekunden; eine hängende Anfrage wird
+    abgebrochen und wiederholt, solange das Budget reicht. Läuft die Uhr ab,
+    kommt ein ``UpstreamTimeoutError`` — ein ``httpx.TimeoutException`` und
+    damit ein erwarteter Upstream-Fehler, kein «Interner Fehler».
+
     4xx (ausser 429) werden sofort durchgereicht — ein Client-Fehler wird durch
     Wiederholen nicht besser.
     """
@@ -880,18 +913,25 @@ async def _fetch_with_retry(
         if remaining <= 0:
             break
         attempts += 1
+        # Der Versuch bekommt seinen eigenen Deckel, nicht das Restbudget. Sonst
+        # verbraucht eine hängende Anfrage alles, und die Wiederholung, die sie
+        # hätte retten können, findet nie statt.
+        window = min(remaining, settings.retry_attempt_timeout)
         try:
             # httpx begrenzt pro Operation, und sein Read-Timeout beginnt mit
             # jedem Chunk von vorn — eine langsam tröpfelnde Antwort überdauert
             # jede Einzelschranke, ohne dass ein Read abläuft. `asyncio.timeout`
             # ist die Wanduhr, die das Budget wirklich zusagt.
-            async with asyncio.timeout(remaining):
+            async with asyncio.timeout(window):
                 resp = await make_request()
                 resp.raise_for_status()
                 return resp
-        except TimeoutError as e:  # Budget weg, nicht bloss dieser Versuch
-            last_error = e
-            break
+        except TimeoutError:
+            last_error = UpstreamTimeoutError(
+                f"Keine Antwort innerhalb von {window:g}s (Versuch {attempts})."
+            )
+            if window >= remaining:  # Budget weg, nicht bloss dieser Versuch
+                break
         except httpx.HTTPStatusError as e:
             last_error = e
             code = e.response.status_code
@@ -1281,17 +1321,18 @@ async def _sru_suche(
     term: str, limit: int, index: str = "all_for_ui", relation: str = "="
 ) -> tuple[list[dict], int]:
     """Serverseitige Volltextsuche in Helveticat ueber SRU."""
-    resp = await _http_get(
-        NB_SRU,
-        params={
-            "version": "1.2",
-            "operation": "searchRetrieve",
-            "recordSchema": "dc",
-            "query": _cql_term(index, term, relation),
-            "maximumRecords": str(min(limit, SRU_MAX_RECORDS)),
-        },
+    resp = await _fetch_with_retry(
+        lambda: _http_get(
+            NB_SRU,
+            params={
+                "version": "1.2",
+                "operation": "searchRetrieve",
+                "recordSchema": "dc",
+                "query": _cql_term(index, term, relation),
+                "maximumRecords": str(min(limit, SRU_MAX_RECORDS)),
+            },
+        )
     )
-    resp.raise_for_status()
     return _parse_sru_records(resp.text)
 
 
@@ -1404,8 +1445,9 @@ async def heritage_search_artists(params: ArtistSearchInput) -> ResultEnvelope |
             }
             if q:
                 api_params["q"] = q
-            resp = await _http_get(f"{CKAN_API}/datastore_search", params=api_params)
-            resp.raise_for_status()
+            resp = await _fetch_with_retry(
+                lambda: _http_get(f"{CKAN_API}/datastore_search", params=api_params)
+            )
             data = resp.json()
             if not data.get("success"):
                 raise ValueError("CKAN-DataStore-Anfrage fehlgeschlagen.")
@@ -1520,15 +1562,16 @@ async def heritage_get_artist(params: ArtistDetailInput) -> ResultEnvelope | str
         str: Vollständiges Profil mit Lebensdaten, Orten, Kurzbiografie und Links.
     """
     try:
-        resp = await _http_get(
-            f"{CKAN_API}/datastore_search",
-            params={
-                "resource_id": SIKART_RESOURCE_ID,
-                "filters": json.dumps({"HAUPTNR": params.artist_id}),
-                "limit": 1,
-            },
+        resp = await _fetch_with_retry(
+            lambda: _http_get(
+                f"{CKAN_API}/datastore_search",
+                params={
+                    "resource_id": SIKART_RESOURCE_ID,
+                    "filters": json.dumps({"HAUPTNR": params.artist_id}),
+                    "limit": 1,
+                },
+            )
         )
-        resp.raise_for_status()
         data = resp.json()
 
         if not data.get("success"):
@@ -1645,11 +1688,12 @@ async def heritage_search_museum_datasets(params: MuseumSearchInput) -> ResultEn
             else:
                 q_part = ""
             search_q = f"{q_part}{org_filter}{extra}"
-            resp = await _http_get(
-                f"{CKAN_API}/package_search",
-                params={"q": search_q, "rows": params.limit, "start": params.offset},
+            resp = await _fetch_with_retry(
+                lambda: _http_get(
+                    f"{CKAN_API}/package_search",
+                    params={"q": search_q, "rows": params.limit, "start": params.offset},
+                )
             )
-            resp.raise_for_status()
             data = resp.json()
             if not data.get("success"):
                 raise ValueError(
@@ -1793,8 +1837,9 @@ async def heritage_browse_collection(params: CollectionBrowseInput) -> ResultEnv
         if params.query:
             api_params["q"] = params.query
 
-        resp = await _http_get(f"{CKAN_API}/datastore_search", params=api_params)
-        resp.raise_for_status()
+        resp = await _fetch_with_retry(
+            lambda: _http_get(f"{CKAN_API}/datastore_search", params=api_params)
+        )
         data = resp.json()
 
         if not data.get("success"):
@@ -2008,8 +2053,7 @@ async def heritage_search_helveticat(params: HelvticatSearchInput) -> ResultEnve
             if params.until_date:
                 oai_params["until"] = params.until_date
 
-            resp = await _http_get(NB_OAI_PMH, params=oai_params)
-            resp.raise_for_status()
+            resp = await _fetch_with_retry(lambda: _http_get(NB_OAI_PMH, params=oai_params))
 
             records = _parse_oai_records(resp.text)
             resumption = _extract_resumption_token(resp.text)
@@ -2171,8 +2215,7 @@ async def heritage_list_nb_collections(
     """
     params = params or NbCollectionsInput()
     try:
-        resp = await _http_get(NB_OAI_PMH, params={"verb": "ListSets"})
-        resp.raise_for_status()
+        resp = await _fetch_with_retry(lambda: _http_get(NB_OAI_PMH, params={"verb": "ListSets"}))
 
         root = ET.fromstring(resp.text)
         sets = []
@@ -2250,23 +2293,24 @@ async def heritage_get_publication(params: PublicationDetailInput) -> ResultEnve
             vollständige Katalogsatz.
     """
     try:
-        resp = await _http_get(
-            NB_OAI_PMH,
-            params={
-                "verb": "GetRecord",
-                "identifier": params.identifier,
-                # `marc21`, nicht `oai_dc`: Das Format haengt bei dieser Quelle
-                # am Publishing Profile (siehe `NB_PREFIX_BY_SET`). Mit
-                # `oai_dc` antwortete `GetRecord` auf JEDE gueltige ID mit
-                # `idDoesNotExist` — eine Meldung, die vom Identifier spricht
-                # und das Profil meint. Dieses Werkzeug hat dadurch nie einen
-                # Datensatz geliefert. `marc21` antwortete am 20.09.2026 auch
-                # fuer einen Record aus `RFN`, wo die Listen-Verben es nicht
-                # tun; ein Sonderfall je Set ist hier deshalb nicht noetig.
-                "metadataPrefix": NB_PREFIX_DEFAULT,
-            },
+        resp = await _fetch_with_retry(
+            lambda: _http_get(
+                NB_OAI_PMH,
+                params={
+                    "verb": "GetRecord",
+                    "identifier": params.identifier,
+                    # `marc21`, nicht `oai_dc`: Das Format haengt bei dieser Quelle
+                    # am Publishing Profile (siehe `NB_PREFIX_BY_SET`). Mit
+                    # `oai_dc` antwortete `GetRecord` auf JEDE gueltige ID mit
+                    # `idDoesNotExist` — eine Meldung, die vom Identifier spricht
+                    # und das Profil meint. Dieses Werkzeug hat dadurch nie einen
+                    # Datensatz geliefert. `marc21` antwortete am 20.09.2026 auch
+                    # fuer einen Record aus `RFN`, wo die Listen-Verben es nicht
+                    # tun; ein Sonderfall je Set ist hier deshalb nicht noetig.
+                    "metadataPrefix": NB_PREFIX_DEFAULT,
+                },
+            )
         )
-        resp.raise_for_status()
 
         records = _parse_oai_records(resp.text)
         if not records:
@@ -2390,11 +2434,12 @@ async def heritage_cross_search(
 
     async def _sik_isea() -> dict:
         try:
-            resp = await _http_get(
-                f"{CKAN_API}/datastore_search",
-                params={"resource_id": SIKART_RESOURCE_ID, "q": q, "limit": n},
+            resp = await _fetch_with_retry(
+                lambda: _http_get(
+                    f"{CKAN_API}/datastore_search",
+                    params={"resource_id": SIKART_RESOURCE_ID, "q": q, "limit": n},
+                )
             )
-            resp.raise_for_status()
             records = _ckan_result(resp.json(), "datastore_search", "records")["records"]
             return {
                 "source": "SIK-ISEA",
@@ -2413,11 +2458,12 @@ async def heritage_cross_search(
 
     async def _snm() -> dict:
         try:
-            resp = await _http_get(
-                f"{CKAN_API}/package_search",
-                params={"q": f"{q} organization:{SNM_ORG}", "rows": n},
+            resp = await _fetch_with_retry(
+                lambda: _http_get(
+                    f"{CKAN_API}/package_search",
+                    params={"q": f"{q} organization:{SNM_ORG}", "rows": n},
+                )
             )
-            resp.raise_for_status()
             pkgs = _ckan_result(resp.json(), "package_search", "results")["results"]
             return {
                 "source": "SNM",
